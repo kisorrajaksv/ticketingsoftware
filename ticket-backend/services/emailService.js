@@ -270,3 +270,311 @@ The QA Software Administration Team
     };
   }
 };
+
+/**
+ * Sends a password reset email containing a new temporary password and login link
+ */
+export const sendPasswordResetEmail = async ({
+  to,
+  fullName,
+  empId,
+  password
+}) => {
+  const loginUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const fromUser = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@qasoftware.com';
+
+  const transporter = createTransporter();
+
+  const plainText = `
+Password Reset Request - QA Software Workspace
+
+Hello ${fullName || 'User'},
+
+A password reset request was received for your QA Software Workspace account (${to}).
+
+Your new temporary password is:
+${password}
+
+Sign In:
+${loginUrl}
+
+Security Notice:
+Please change this temporary password immediately after signing in. If you did not initiate this request, please contact your QA Workspace Administrator immediately.
+
+Best regards,
+The QA Software Administration Team
+`.trim();
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Password Reset - QA Software Workspace</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0;">
+          
+          <!-- Brand Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 32px 36px; text-align: left;">
+              <div style="display: inline-block; background: rgba(255, 255, 255, 0.18); padding: 6px 12px; border-radius: 8px; color: #ffffff; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 12px;">
+                SECURITY &amp; ACCESS
+              </div>
+              <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #ffffff; line-height: 1.25;">
+                Password Reset Request 🔐
+              </h1>
+              <p style="margin: 8px 0 0 0; font-size: 14px; color: #dbeafe; line-height: 1.4;">
+                A temporary password has been generated for your account.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 32px 36px;">
+              <p style="margin: 0 0 20px 0; font-size: 15px; color: #334155; line-height: 1.6;">
+                Hello <strong>${fullName || 'User'}</strong>,<br />
+                We received a request to reset your password for your QA Software Workspace account (<strong>${to}</strong>).
+              </p>
+
+              <!-- Password Highlight Box -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #eff6ff; border: 1.5px dashed #60a5fa; border-radius: 12px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 18px 24px; text-align: center;">
+                    <div style="font-size: 12px; font-weight: 700; color: #1e40af; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
+                      Your New Temporary Password
+                    </div>
+                    <div style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 22px; font-weight: 800; color: #1d4ed8; letter-spacing: 1.5px; background: #ffffff; padding: 10px 18px; border-radius: 8px; display: inline-block; border: 1px solid #bfdbfe;">
+                      ${password}
+                    </div>
+                    <div style="font-size: 12px; color: #3b82f6; margin-top: 8px;">
+                      Use this password to log in, then update it in your profile settings.
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Login Button CTA -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 28px;">
+                <tr>
+                  <td align="center">
+                    <a href="${loginUrl}" target="_blank" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 14px 32px; border-radius: 10px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);">
+                      Sign In with Temporary Password &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Security Notice -->
+              <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #92400e; line-height: 1.5;">
+                <strong>Security Reminder:</strong> If you did not request this password reset, your account is still secure with this new temporary password, but please notify your administrator immediately.
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 36px; text-align: center; font-size: 12px; color: #94a3b8; line-height: 1.5;">
+              This is an automated security message from QA Software Workspace.<br />
+              Please do not reply directly to this email.
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`.trim();
+
+  if (!transporter) {
+    console.log(`\n======================================================`);
+    console.log(`📧 [PASSWORD RESET SERVICE - DEV CONSOLE SIMULATION]`);
+    console.log(`To: ${to}`);
+    console.log(`Subject: 🔐 QA Software - Temporary Password Reset`);
+    console.log(`Full Name: ${fullName}`);
+    console.log(`🔑 New Temporary Password: ${password}`);
+    console.log(`🌐 Login URL: ${loginUrl}`);
+    console.log(`======================================================\n`);
+
+    return {
+      success: true,
+      simulated: true,
+      message: 'Password reset logged to console (SMTP credentials not yet configured in .env).'
+    };
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"QA Software Workspace" <${fromUser}>`,
+      to,
+      subject: `🔐 QA Software - Temporary Password Reset`,
+      text: plainText,
+      html: htmlContent
+    });
+
+    console.log(`✅ Password reset email successfully delivered to ${to} (Message ID: ${info.messageId})`);
+    return {
+      success: true,
+      simulated: false,
+      messageId: info.messageId
+    };
+  } catch (error) {
+    console.error(`❌ Password reset email error for ${to}:`, error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Sends an email containing a 6-digit verification code (OTP) for password reset
+ */
+export const sendVerificationCodeEmail = async ({
+  to,
+  fullName,
+  code
+}) => {
+  const fromUser = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@qasoftware.com';
+  const transporter = createTransporter();
+
+  const plainText = `
+Verification Code for Password Reset - QA Software Workspace
+
+Hello ${fullName || 'User'},
+
+You requested to change your password for your QA Software account (${to}).
+
+Your 6-digit verification code is:
+${code}
+
+This code will expire in 15 minutes. Enter this code on the screen to confirm your identity and set your new password.
+
+If you did not request this, please ignore this email. Your password will remain unchanged.
+
+Best regards,
+The QA Software Security Team
+`.trim();
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verification Code - QA Software Workspace</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 540px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 32px 36px; text-align: left;">
+              <div style="display: inline-block; background: rgba(255, 255, 255, 0.18); padding: 5px 12px; border-radius: 6px; color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 10px;">
+                SECURITY VERIFICATION
+              </div>
+              <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff;">
+                Password Reset Verification 🔒
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 32px 36px;">
+              <p style="margin: 0 0 16px 0; font-size: 15px; color: #334155; line-height: 1.5;">
+                Hello <strong>${fullName || 'User'}</strong>,<br />
+                We received a request to change your password for your QA Software account (<strong>${to}</strong>).
+              </p>
+              <p style="margin: 0 0 24px 0; font-size: 14px; color: #64748b; line-height: 1.5;">
+                Enter the following 6-digit verification code on your screen to proceed:
+              </p>
+
+              <!-- Verification Code Box -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #eff6ff; border: 1.5px dashed #60a5fa; border-radius: 12px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 20px 24px; text-align: center;">
+                    <div style="font-size: 12px; font-weight: 700; color: #1e40af; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
+                      Verification Code
+                    </div>
+                    <div style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 32px; font-weight: 800; color: #1d4ed8; letter-spacing: 6px; background: #ffffff; padding: 10px 24px; border-radius: 8px; display: inline-block; border: 1px solid #bfdbfe;">
+                      ${code}
+                    </div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 10px;">
+                      ⏱ This code expires in <strong>15 minutes</strong>.
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #92400e; line-height: 1.45;">
+                <strong>Didn't request this?</strong> You can safely ignore this email. Your existing password will remain unchanged.
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 36px; text-align: center; font-size: 12px; color: #94a3b8;">
+              QA Software Workspace Security &bull; Automated notification
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`.trim();
+
+  if (!transporter) {
+    console.log(`\n======================================================`);
+    console.log(`📧 [EMAIL VERIFICATION - DEV CONSOLE SIMULATION]`);
+    console.log(`To: ${to}`);
+    console.log(`Full Name: ${fullName}`);
+    console.log(`🔑 Verification Code: ${code}`);
+    console.log(`⏱ Expires in: 15 minutes`);
+    console.log(`======================================================\n`);
+
+    return {
+      success: true,
+      simulated: true,
+      code,
+      message: 'Verification code logged to terminal console (SMTP not configured in .env).'
+    };
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"QA Software Workspace" <${fromUser}>`,
+      to,
+      subject: `🔒 Your Verification Code: ${code} - QA Software Workspace`,
+      text: plainText,
+      html: htmlContent
+    });
+
+    console.log(`✅ Verification email delivered to ${to} (Message ID: ${info.messageId})`);
+    return {
+      success: true,
+      simulated: false,
+      messageId: info.messageId
+    };
+  } catch (error) {
+    console.error(`❌ Verification email error for ${to}:`, error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};

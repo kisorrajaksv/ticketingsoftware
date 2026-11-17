@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pool from './db.js';
-import { sendWelcomeEmail, generateTemporaryPassword } from './services/emailService.js';
+import { sendWelcomeEmail, sendPasswordResetEmail, sendVerificationCodeEmail, generateTemporaryPassword } from './services/emailService.js';
 import { initDatabase } from './init-db.js';
 import path from 'path';
 import fs from 'fs';
@@ -107,6 +107,168 @@ app.post('/api/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// In-memory verification code store for password reset: email -> { code, expiresAt, userId }
+const resetCodeStore = new Map();
+
+// 1. Send Verification Code Endpoint
+app.post(['/api/forgot-password/send-code', '/api/auth/forgot-password/send-code'], async (req, res) => {
+  const { email } = req.body || {};
+
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'Please enter your registered email address.' });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(cleanEmail)) {
+    return res.status(400).json({ error: 'Please enter a valid email format.' });
+  }
+
+  try {
+    const userQuery = await pool.query(
+      'SELECT id, email, full_name FROM users WHERE LOWER(email) = $1',
+      [cleanEmail]
+    );
+
+    if (userQuery.rows.length === 0) {
+      return res.status(404).json({ error: 'No account was found with this registered email address.' });
+    }
+
+    const user = userQuery.rows[0];
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 mins
+
+    // Store in memory
+    resetCodeStore.set(cleanEmail, { code, expiresAt, userId: user.id });
+
+    // Persist in DB (safe check)
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS password_reset_codes (
+          id SERIAL PRIMARY KEY,
+          email VARCHAR(255) NOT NULL,
+          code VARCHAR(10) NOT NULL,
+          expires_at TIMESTAMP NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await pool.query(
+        `INSERT INTO password_reset_codes (email, code, expires_at)
+         VALUES ($1, $2, NOW() + INTERVAL '15 minutes')`,
+        [cleanEmail, code]
+      );
+    } catch (dbErr) {
+      console.warn('DB reset code table check:', dbErr.message);
+    }
+
+    // Send verification email
+    const emailResult = await sendVerificationCodeEmail({
+      to: user.email,
+      fullName: user.full_name,
+      code
+    });
+
+    return res.json({
+      success: true,
+      message: emailResult.simulated
+        ? 'Verification code generated! (Logged to console in dev mode)'
+        : `Verification code sent to ${user.email}. Please check your inbox.`,
+      email: user.email,
+      simulatedCode: emailResult.simulated ? code : null,
+      isSimulated: Boolean(emailResult.simulated)
+    });
+  } catch (error) {
+    console.error('Send verification code error:', error);
+    res.status(500).json({ error: 'Failed to send verification code. Please try again later.' });
+  }
+});
+
+// 2. Verify Code & Change Password Endpoint
+app.post(['/api/forgot-password/verify', '/api/auth/forgot-password/verify'], async (req, res) => {
+  const { email, code, new_password, confirm_password } = req.body || {};
+
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'Please enter your registered email address.' });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanCode = (code || '').trim();
+
+  if (!cleanCode) {
+    return res.status(400).json({ error: 'Please enter the 6-digit verification code.' });
+  }
+
+  if (!new_password || typeof new_password !== 'string') {
+    return res.status(400).json({ error: 'Please enter your new password.' });
+  }
+
+  if (new_password.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+  }
+
+  if (new_password.length > 128) {
+    return res.status(400).json({ error: 'New password must be 128 characters or fewer.' });
+  }
+
+  if (confirm_password !== undefined && new_password !== String(confirm_password)) {
+    return res.status(400).json({ error: 'New password and confirm password do not match.' });
+  }
+
+  // Check code in memory or DB
+  let isCodeValid = false;
+  const inMemoryRecord = resetCodeStore.get(cleanEmail);
+  if (inMemoryRecord && inMemoryRecord.code === cleanCode && inMemoryRecord.expiresAt > Date.now()) {
+    isCodeValid = true;
+  } else {
+    try {
+      const dbCheck = await pool.query(
+        `SELECT id FROM password_reset_codes
+         WHERE LOWER(email) = $1 AND code = $2 AND expires_at > NOW()
+         ORDER BY created_at DESC LIMIT 1`,
+        [cleanEmail, cleanCode]
+      );
+      if (dbCheck.rows.length > 0) {
+        isCodeValid = true;
+      }
+    } catch (e) {}
+  }
+
+  if (!isCodeValid) {
+    return res.status(400).json({ error: 'Invalid or expired verification code. Please request a new code.' });
+  }
+
+  try {
+    const userQuery = await pool.query(
+      'SELECT id, email FROM users WHERE LOWER(email) = $1',
+      [cleanEmail]
+    );
+
+    if (userQuery.rows.length === 0) {
+      return res.status(404).json({ error: 'User account not found.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(new_password, salt);
+
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, userQuery.rows[0].id]);
+
+    // Cleanup code
+    resetCodeStore.delete(cleanEmail);
+    try {
+      await pool.query('DELETE FROM password_reset_codes WHERE LOWER(email) = $1', [cleanEmail]);
+    } catch (e) {}
+
+    return res.json({
+      success: true,
+      message: 'Password has been changed successfully! You can now sign in with your new password.',
+      email: cleanEmail
+    });
+  } catch (error) {
+    console.error('Verify and change password error:', error);
+    res.status(500).json({ error: 'Failed to update password. Please try again later.' });
   }
 });
 

@@ -231,14 +231,21 @@
 }
 
 .forgot-password {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   font-size: 0.9rem;
   color: #2563eb;
   text-decoration: none;
   font-weight: 600;
+  font-family: inherit;
+  transition: color 0.15s ease;
 }
 
 .forgot-password:hover {
   text-decoration: underline;
+  color: #1d4ed8;
 }
 
 .sign-in-btn {
@@ -376,3 +383,288 @@
   color: white;
 }
 .modal-btn-confirm:hover { background: #dc2626; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Forgot Password Modal
+   ────────────────────────────────────────────────────────────────────────── */
+.forgot-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 20px;
+  animation: forgotFadeIn 0.2s ease-out;
+}
+
+@keyframes forgotFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.forgot-modal-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+  animation: forgotScaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes forgotScaleUp {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.forgot-modal-header {
+  padding: 24px 28px 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.forgot-header-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.forgot-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.forgot-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.forgot-modal-subtitle {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.forgot-modal-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.forgot-modal-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.forgot-modal-body {
+  padding: 22px 28px;
+}
+
+.forgot-alert-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.forgot-alert-success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 18px;
+}
+
+.forgot-alert-success-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+}
+
+.forgot-alert-success-text {
+  font-size: 0.85rem;
+  color: #166534;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.forgot-temp-pass-box {
+  margin-top: 14px;
+  background: #ffffff;
+  border: 1.5px dashed #86efac;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.forgot-temp-pass-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #15803d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.forgot-temp-pass-value {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 1px;
+}
+
+.forgot-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.forgot-copy-btn:hover {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.forgot-modal-footer {
+  padding: 16px 28px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.forgot-btn-cancel {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  color: #475569;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.forgot-btn-cancel:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.forgot-btn-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #2563eb;
+  border: none;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 11px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+  transition: all 0.15s ease;
+}
+
+.forgot-btn-submit:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+
+.forgot-btn-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.code-sent-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: #1e40af;
+  margin-bottom: 16px;
+}
+
+.code-sent-badge button {
+  background: transparent;
+  border: none;
+  color: #2563eb;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.code-sent-badge button:hover {
+  color: #1d4ed8;
+}
+
+.simulated-code-callout {
+  background: #f0fdf4;
+  border: 1px dashed #86efac;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  color: #15803d;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

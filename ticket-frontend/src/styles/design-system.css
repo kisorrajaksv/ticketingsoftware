@@ -953,6 +953,7 @@ table tbody tr:hover td,
 .sign-in-btn {
   border-radius: 9px;
   background: var(--color-primary);
+  color: #ffffff !important;
   box-shadow: 0 4px 12px rgba(37, 99, 235, .18);
 }
 
@@ -3424,7 +3425,28 @@ body:has(.login-container) #root {
   margin: 0;
 }
 
-.admin-layout.users-page .um-stat-card,
+.admin-layout.users-page .um-stat-card {
+  background: #ffffff !important;
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  min-height: 56px !important;
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 0;
+}
+
+.admin-layout.users-page .um-stat-card:hover {
+  transform: translateY(-2px);
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06) !important;
+}
+
 .admin-layout.tickets-page .overview-card,
 .admin-layout.tickets-page .overview-card.total,
 .admin-layout.tickets-page .overview-card.open,
@@ -3443,7 +3465,6 @@ body:has(.login-container) #root {
   transition: transform 0.2s ease;
 }
 
-.admin-layout.users-page .um-stat-card:hover,
 .admin-layout.tickets-page .overview-card:hover {
   transform: translateY(-2px);
   background: transparent !important;
@@ -3576,50 +3597,61 @@ body:has(.login-container) #root {
 }
 
 .admin-layout.users-page .um-fix-filter-chip {
-  height: 46px;
-  width: 34px;
-  flex: 0 0 34px;
-  padding: 0 6px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  display: inline-flex;
+  height: 40px !important;
+  width: 40px !important;
+  flex: 0 0 40px !important;
+  padding: 0 !important;
+  background: #ffffff !important;
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 9px !important;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  color: #64748b;
+  color: #64748b !important;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: none;
-  transition: color 0.18s ease, transform 0.18s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.18s ease;
   outline: none;
 }
 
 .admin-layout.users-page .um-fix-filter-chip svg {
-  color: #64748b;
+  color: #64748b !important;
   flex-shrink: 0;
   transition: color 0.15s ease;
 }
 
-.admin-layout.users-page .um-fix-filter-chip:hover,
-.admin-layout.users-page .um-fix-filter-chip:hover svg {
-  background: transparent;
-  border: none;
-  color: #0f172a;
+.admin-layout.users-page .um-fix-filter-chip:hover {
+  border-color: #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #0f172a !important;
 }
 
-.admin-layout.users-page .um-fix-filter-chip.is-locked,
-.admin-layout.users-page .um-fix-filter-chip.is-locked:hover,
-.admin-layout.users-page .um-fix-filter-chip.is-locked svg,
-.admin-layout.users-page .um-fix-filter-chip.is-locked:hover svg {
-  background: transparent;
-  border: none;
-  color: #2563eb;
-  box-shadow: none;
+.admin-layout.users-page .um-fix-filter-chip:hover svg {
+  color: #0f172a !important;
+}
+
+.admin-layout.users-page .um-fix-filter-chip.is-locked {
+  border-color: #bfdbfe !important;
+  background: #eff6ff !important;
+  color: #2563eb !important;
+  box-shadow: none !important;
+}
+
+.admin-layout.users-page .um-fix-filter-chip.is-locked svg {
+  color: #2563eb !important;
+}
+
+.admin-layout.users-page .um-fix-filter-chip.is-locked:hover {
+  border-color: #93c5fd !important;
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
 }
 
 .admin-layout.users-page .um-fix-filter-chip:focus,
 .admin-layout.users-page .um-fix-filter-chip:focus-visible {
-  box-shadow: none;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
   outline: none;
 }
 
@@ -3636,7 +3668,35 @@ body:has(.login-container) #root {
   min-width: 0;
 }
 
-.admin-layout.users-page .um-filter-selects .c-select-filter .c-select-trigger,
+.admin-layout.users-page .um-filter-selects .c-select-filter .c-select-trigger {
+  height: 40px !important;
+  border-radius: 9px !important;
+  background: #ffffff !important;
+  border: 1.5px solid #e2e8f0 !important;
+  padding: 0 12px !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.18s ease;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.admin-layout.users-page .um-filter-selects .c-select-filter .c-select-trigger:hover {
+  border-color: #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+.admin-layout.users-page .um-filter-selects .c-select-filter.is-open .c-select-trigger {
+  border-color: #2563eb !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+  color: #2563eb !important;
+}
+
 .admin-layout.tickets-page .tickets-filter-dropdowns .c-select-filter .c-select-trigger {
   height: 38px;
   border-radius: 9px;

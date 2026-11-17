@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
+  ArrowRight,
   BarChart3,
   ChevronDown,
   Clock3,
@@ -100,30 +101,38 @@ function AdminDashboard() {
     {
       key: 'totalProjects',
       label: 'Total projects',
+      actionLabel: 'View Projects',
       value: stats.totalProjects,
       icon: FolderKanban,
-      tone: 'blue'
+      tone: 'blue',
+      path: '/admin/projects'
     },
     {
       key: 'totalTickets',
       label: 'Total tickets',
+      actionLabel: 'View Tickets',
       value: stats.totalTickets,
       icon: Ticket,
-      tone: 'violet'
+      tone: 'violet',
+      path: '/admin/tickets'
     },
     {
       key: 'totalUsers',
       label: 'Team members',
+      actionLabel: 'View Members',
       value: stats.totalUsers,
       icon: UsersRound,
-      tone: 'mint'
+      tone: 'mint',
+      path: '/admin/users'
     },
     {
       key: 'pendingApprovals',
       label: 'Pending approvals',
+      actionLabel: 'View Approvals',
       value: stats.pendingApprovals,
       icon: Clock3,
-      tone: 'amber'
+      tone: 'amber',
+      path: '/admin/approvals'
     }
   ];
   const chartData = metricCards.map(({ label, value }) => ({
@@ -209,11 +218,21 @@ function AdminDashboard() {
           </section>
 
           <section id="dash-stats-grid" className="stats-grid" aria-label="Workspace totals" aria-live="polite">
-            {metricCards.map(({ key, label, value, icon: Icon, tone }) => (
+            {metricCards.map(({ key, label, actionLabel, value, icon: Icon, tone, path }) => (
               <article
-                className={`stat-card stat-${tone}`}
+                className={`stat-card stat-${tone} stat-card-clickable`}
                 id={key === 'pendingApprovals' ? 'pending-approvals' : `dash-stat-card-${key}`}
                 key={key}
+                onClick={() => path && navigate(path)}
+                role="button"
+                tabIndex={0}
+                aria-label={`Open ${label}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (path) navigate(path);
+                  }
+                }}
               >
                 <div className="stat-topline">
                   <div className="stat-icon-wrapper"><Icon size={19} strokeWidth={1.8} /></div>
@@ -222,7 +241,21 @@ function AdminDashboard() {
                 <div className="stat-value">{loading ? '—' : value.toLocaleString()}</div>
                 <div className="stat-bottomline">
                   <span className="stat-label">{label}</span>
-                  <span className="stat-arrow"><ChevronDown size={14} /></span>
+                  {path && (
+                    <button
+                      type="button"
+                      className="stat-quick-nav-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(path);
+                      }}
+                      title={`Go to ${label}`}
+                      aria-label={`Go to ${label}`}
+                    >
+                      <span>View</span>
+                      <ArrowRight size={13} strokeWidth={2.2} />
+                    </button>
+                  )}
                 </div>
               </article>
             ))}
@@ -269,8 +302,16 @@ function AdminDashboard() {
                 <span className="queue-note-icon"><ShieldCheck size={16} /></span>
                 <span>Review pending requests to keep work moving.</span>
               </div>
-              <button id="dash-view-approvals-btn" className="queue-button" onClick={focusApprovals}>
-                View approval total <ChevronDown size={15} />
+              <button
+                id="dash-view-approvals-btn"
+                type="button"
+                className="queue-button"
+                onClick={() => navigate('/admin/approvals')}
+                title="Go to Pending Approvals"
+                aria-label="Go to Pending Approvals"
+              >
+                <span>View approval queue</span>
+                <ArrowRight size={15} strokeWidth={2.4} />
               </button>
             </article>
           </section>
