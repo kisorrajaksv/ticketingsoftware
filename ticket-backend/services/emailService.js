@@ -436,97 +436,90 @@ The QA Software Administration Team
 
 /**
  * Sends an email containing a 6-digit verification code (OTP) for password reset
+ * Optimized for high inbox deliverability (avoids spam filters)
  */
 export const sendVerificationCodeEmail = async ({
   to,
   fullName,
   code
 }) => {
-  const fromUser = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@qasoftware.com';
+  const fromUser = (process.env.EMAIL_FROM || process.env.EMAIL_USER || 'qalead.ksv@gmail.com').trim();
   const transporter = createTransporter();
 
+  // Clean, spam-safe plain text version matching the HTML content
   const plainText = `
-Verification Code for Password Reset - QA Software Workspace
+QA Software
 
-Hello ${fullName || 'User'},
+Your verification code is: ${code}
 
-You requested to change your password for your QA Software account (${to}).
+Enter this code on the reset password screen to complete your request.
+This code will expire in 15 minutes.
 
-Your 6-digit verification code is:
-${code}
+If you did not request a password reset, you can safely ignore this email.
 
-This code will expire in 15 minutes. Enter this code on the screen to confirm your identity and set your new password.
-
-If you did not request this, please ignore this email. Your password will remain unchanged.
-
-Best regards,
-The QA Software Security Team
+Thanks,
+QA Software Team
 `.trim();
 
+  // Modern, high-deliverability transactional HTML template (clean text-to-HTML ratio, no spam triggers)
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Verification Code - QA Software Workspace</title>
+  <title>Verification Code</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 36px 16px;">
+<body style="margin: 0; padding: 0; background-color: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; -webkit-font-smoothing: antialiased;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f9fafb; padding: 40px 16px;">
     <tr>
       <td align="center">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 540px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 480px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
           
-          <!-- Header -->
+          <!-- Brand Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 32px 36px; text-align: left;">
-              <div style="display: inline-block; background: rgba(255, 255, 255, 0.18); padding: 5px 12px; border-radius: 6px; color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 10px;">
-                SECURITY VERIFICATION
-              </div>
-              <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff;">
-                Password Reset Verification 🔒
-              </h1>
-            </td>
-          </tr>
-
-          <!-- Body -->
-          <tr>
-            <td style="padding: 32px 36px;">
-              <p style="margin: 0 0 16px 0; font-size: 15px; color: #334155; line-height: 1.5;">
-                Hello <strong>${fullName || 'User'}</strong>,<br />
-                We received a request to change your password for your QA Software account (<strong>${to}</strong>).
-              </p>
-              <p style="margin: 0 0 24px 0; font-size: 14px; color: #64748b; line-height: 1.5;">
-                Enter the following 6-digit verification code on your screen to proceed:
-              </p>
-
-              <!-- Verification Code Box -->
-              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #eff6ff; border: 1.5px dashed #60a5fa; border-radius: 12px; margin-bottom: 24px;">
+            <td style="padding: 28px 32px 20px; border-bottom: 1px solid #f3f4f6;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td style="padding: 20px 24px; text-align: center;">
-                    <div style="font-size: 12px; font-weight: 700; color: #1e40af; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
-                      Verification Code
-                    </div>
-                    <div style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 32px; font-weight: 800; color: #1d4ed8; letter-spacing: 6px; background: #ffffff; padding: 10px 24px; border-radius: 8px; display: inline-block; border: 1px solid #bfdbfe;">
-                      ${code}
-                    </div>
-                    <div style="font-size: 12px; color: #64748b; margin-top: 10px;">
-                      ⏱ This code expires in <strong>15 minutes</strong>.
-                    </div>
+                  <td>
+                    <span style="font-size: 18px; font-weight: 700; color: #111827; letter-spacing: -0.3px;">
+                      QA Software
+                    </span>
                   </td>
                 </tr>
               </table>
-
-              <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #92400e; line-height: 1.45;">
-                <strong>Didn't request this?</strong> You can safely ignore this email. Your existing password will remain unchanged.
-              </div>
             </td>
           </tr>
 
-          <!-- Footer -->
+          <!-- Main Content -->
           <tr>
-            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 36px; text-align: center; font-size: 12px; color: #94a3b8;">
-              QA Software Workspace Security &bull; Automated notification
+            <td style="padding: 28px 32px 32px;">
+              <h2 style="margin: 0 0 12px 0; font-size: 20px; font-weight: 700; color: #111827;">
+                Reset your password
+              </h2>
+              <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.5; color: #4b5563;">
+                Hello${fullName ? ' ' + fullName : ''}, we received a request to reset your password. Use the verification code below to continue:
+              </p>
+
+              <!-- OTP Code Display -->
+              <div style="background-color: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px; text-align: center; margin: 24px 0;">
+                <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #111827; display: inline-block;">
+                  ${code}
+                </span>
+              </div>
+
+              <p style="margin: 0 0 16px 0; font-size: 13px; line-height: 1.5; color: #6b7280;">
+                This code is valid for <strong>15 minutes</strong>. If you did not request a password reset, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Clean Footer -->
+          <tr>
+            <td style="padding: 20px 32px; background-color: #f9fafb; border-top: 1px solid #f3f4f6; text-align: center;">
+              <p style="margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.4;">
+                This is an automated message from QA Software.
+              </p>
             </td>
           </tr>
 
@@ -557,11 +550,17 @@ The QA Software Security Team
 
   try {
     const info = await transporter.sendMail({
-      from: `"QA Software Workspace" <${fromUser}>`,
+      from: `"QA Software" <${fromUser}>`,
+      replyTo: fromUser,
       to,
-      subject: `🔒 Your Verification Code: ${code} - QA Software Workspace`,
+      subject: `${code} is your QA Software verification code`,
       text: plainText,
-      html: htmlContent
+      html: htmlContent,
+      headers: {
+        'X-Priority': '3',
+        'X-Entity-Ref-ID': `otp-${Date.now()}-${code}`,
+        'X-Auto-Response-Suppress': 'All'
+      }
     });
 
     console.log(`✅ Verification email delivered to ${to} (Message ID: ${info.messageId})`);
