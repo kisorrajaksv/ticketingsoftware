@@ -133,7 +133,6 @@ function SettingsContent() {
     emp_id: '',
     department: localStorage.getItem('userDepartment') || '',
     role: localStorage.getItem('userRole') || 'Member',
-    phone: '',
     bio: localStorage.getItem('userBio') || '',
     avatar: localStorage.getItem('userAvatar') || ''
   });
@@ -192,7 +191,6 @@ function SettingsContent() {
           emp_id: u.emp_id || '',
           department: u.department || '',
           role: u.role || 'Member',
-          phone: u.phone || '',
           bio: u.bio || '',
           avatar: u.avatar || ''
         });
@@ -325,7 +323,6 @@ function SettingsContent() {
         'http://localhost:5000/api/auth/profile',
         {
           full_name: trimmedName,
-          phone: profileForm.phone.trim(),
           bio: profileForm.bio,
           avatar: profileForm.avatar || null
         },
@@ -337,7 +334,6 @@ function SettingsContent() {
         setProfileForm((prev) => ({
           ...prev,
           full_name: updatedUser.full_name || '',
-          phone: updatedUser.phone || '',
           bio: updatedUser.bio || '',
           avatar: updatedUser.avatar || ''
         }));
@@ -513,24 +509,24 @@ function SettingsContent() {
   const avatarLabel = displayName.charAt(0).toUpperCase();
 
   return (
-    <main className="main-content">
+    <main id="ws-settings-main-content" className="main-content">
       <div className="ws-settings-page">
         <div className="ws-header-row">
           <div>
-            <h1>Application Settings</h1>
+            <h1 id="ws-settings-heading">Application Settings</h1>
           </div>
         </div>
 
         <div className="ws-grid">
           {/* 1. THEME SECTION */}
-          <section className="ws-card ws-col-half">
+          <section id="ws-theme-section" className="ws-card ws-col-half">
               <div className="ws-card-header">
                 <div className="ws-card-title-group">
                   <div className="ws-card-icon">
                     <Palette size={20} />
                   </div>
                   <div>
-                    <h3>Theme</h3>
+                    <h3 id="ws-theme-heading">Theme</h3>
                     <p>Switch between Light and Dark mode for the entire QA workspace.</p>
                   </div>
                 </div>
@@ -545,6 +541,7 @@ function SettingsContent() {
 
               <div className="ws-theme-options">
                 <button
+                  id="ws-theme-light-btn"
                   type="button"
                   className={`ws-theme-option ${theme === 'light' ? 'active' : ''}`}
                   onClick={() => handleSelectTheme('light')}
@@ -572,6 +569,7 @@ function SettingsContent() {
                 </button>
 
                 <button
+                  id="ws-theme-dark-btn"
                   type="button"
                   className={`ws-theme-option ${theme === 'dark' ? 'active' : ''}`}
                   onClick={() => handleSelectTheme('dark')}
@@ -608,7 +606,7 @@ function SettingsContent() {
                     <User size={20} />
                   </div>
                   <div>
-                    <h3>Profile &amp; Bio</h3>
+                    <h3 id="ws-profile-heading">Profile &amp; Bio</h3>
                     <p>View your account details, upload an avatar, and update your bio.</p>
                   </div>
                 </div>
@@ -641,10 +639,11 @@ function SettingsContent() {
                 </div>
 
                 <div className="ws-avatar-actions">
-                  <label className="ws-btn-secondary" style={{ cursor: 'pointer' }}>
+                  <label className="ws-btn-secondary" htmlFor="ws-avatar-upload" style={{ cursor: 'pointer' }}>
                     <Camera size={14} />
                     <span>Upload Photo</span>
                     <input
+                      id="ws-avatar-upload"
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
                       onChange={handleAvatarUpload}
@@ -653,6 +652,7 @@ function SettingsContent() {
                   </label>
                   {profileForm.avatar && (
                     <button
+                      id="ws-avatar-remove-btn"
                       type="button"
                       className="ws-btn-secondary"
                       onClick={() =>
@@ -666,7 +666,7 @@ function SettingsContent() {
                 </div>
               </div>
 
-              <form onSubmit={handleSaveProfile} className="ws-form-grid">
+              <form id="ws-profile-form" onSubmit={handleSaveProfile} className="ws-form-grid">
                 <div className="ws-field">
                   <label htmlFor="ws-full-name">Full Name</label>
                   <input
@@ -683,25 +683,11 @@ function SettingsContent() {
                 </div>
 
                 <div className="ws-field">
-                  <label htmlFor="ws-phone">Phone Number</label>
-                  <input
-                    id="ws-phone"
-                    type="text"
-                    value={profileForm.phone}
-                    onChange={(e) =>
-                      setProfileForm((prev) => ({ ...prev, phone: e.target.value }))
-                    }
-                    placeholder="+91 98765 43210"
-                    maxLength={30}
-                  />
-                </div>
-
-                <div className="ws-field">
                   <label htmlFor="ws-email">Email</label>
                   <input id="ws-email" type="email" value={profileForm.email} readOnly />
                 </div>
 
-                <div className="ws-field">
+                <div className="ws-field full">
                   <label htmlFor="ws-role-dept">Role &amp; Employee ID</label>
                   <input
                     id="ws-role-dept"
@@ -728,7 +714,7 @@ function SettingsContent() {
                 </div>
 
                 <div className="ws-field full ws-card-actions">
-                  <button type="submit" className="ws-btn-primary" disabled={profileSaving}>
+                  <button id="ws-save-profile-btn" type="submit" className="ws-btn-primary" disabled={profileSaving}>
                     <Save size={15} />
                     <span>{profileSaving ? 'Saving Profile...' : 'Save Profile & Bio'}</span>
                   </button>
@@ -747,6 +733,7 @@ function SettingsContent() {
                     </div>
                   </div>
                   <button
+                    id="ws-toggle-password-form-btn"
                     type="button"
                     className="ws-btn-secondary"
                     onClick={() => {
@@ -766,7 +753,7 @@ function SettingsContent() {
                 )}
 
                 {showPasswordForm && (
-                  <form onSubmit={handleChangePassword} className="ws-form-grid">
+                  <form id="ws-password-form" onSubmit={handleChangePassword} className="ws-form-grid">
                     {[
                       {
                         key: 'current',
@@ -812,6 +799,7 @@ function SettingsContent() {
                               required
                             />
                             <button
+                              id={`ws-pwd-eye-${key}-btn`}
                               type="button"
                               className="ws-password-eye-btn"
                               onClick={() =>
@@ -831,6 +819,7 @@ function SettingsContent() {
 
                     <div className="ws-field full ws-card-actions">
                       <button
+                        id="ws-password-cancel-btn"
                         type="button"
                         className="ws-btn-secondary"
                         onClick={() => {
@@ -841,7 +830,7 @@ function SettingsContent() {
                       >
                         Cancel
                       </button>
-                      <button type="submit" className="ws-btn-primary" disabled={passwordSaving}>
+                      <button id="ws-password-submit-btn" type="submit" className="ws-btn-primary" disabled={passwordSaving}>
                         <KeyRound size={15} />
                         <span>{passwordSaving ? 'Updating Password...' : 'Update Password'}</span>
                       </button>
@@ -852,14 +841,14 @@ function SettingsContent() {
             </section>
 
           {/* 3. SEND NOTIFICATION (SELECTED USER OR COMMON TO ALL) */}
-          <section className="ws-card ws-col-full">
+          <section id="ws-notifications-section" className="ws-card ws-col-full">
               <div className="ws-card-header">
                 <div className="ws-card-title-group">
                   <div className="ws-card-icon">
                     <Bell size={20} />
                   </div>
                   <div>
-                    <h3>Send Notification</h3>
+                    <h3 id="ws-notifications-heading">Send Notification</h3>
                     <p>
                       Notify specific selected team members or broadcast a common announcement to everyone.
                     </p>
@@ -877,11 +866,12 @@ function SettingsContent() {
               )}
 
               <div className="ws-notif-layout">
-                <form onSubmit={handleSendNotification} className="ws-form-grid">
+                <form id="ws-send-notif-form" onSubmit={handleSendNotification} className="ws-form-grid">
                   <div className="ws-field full">
                     <label>Target Audience</label>
                     <div className="ws-audience-toggle">
                       <button
+                        id="ws-audience-selected-btn"
                         type="button"
                         className={`ws-audience-btn ${targetType === 'selected' ? 'active' : ''}`}
                         onClick={() => setTargetType('selected')}
@@ -893,6 +883,7 @@ function SettingsContent() {
                         </div>
                       </button>
                       <button
+                        id="ws-audience-all-btn"
                         type="button"
                         className={`ws-audience-btn ${targetType === 'all' ? 'active' : ''}`}
                         onClick={() => setTargetType('all')}
@@ -913,6 +904,7 @@ function SettingsContent() {
                           <div className="ws-recipient-search">
                             <Search size={14} />
                             <input
+                              id="ws-recipient-search"
                               type="text"
                               placeholder="Search users by name, role, emp ID, email..."
                               value={recipientSearch}
@@ -920,6 +912,7 @@ function SettingsContent() {
                             />
                           </div>
                           <button
+                            id="ws-recipients-select-all-btn"
                             type="button"
                             className="ws-mini-btn"
                             onClick={() =>
@@ -930,6 +923,7 @@ function SettingsContent() {
                           </button>
                           {selectedUserIds.length > 0 && (
                             <button
+                              id="ws-recipients-clear-btn"
                               type="button"
                               className="ws-mini-btn"
                               onClick={() => setSelectedUserIds([])}
@@ -951,9 +945,11 @@ function SettingsContent() {
                               return (
                                 <label
                                   key={u.id}
+                                  htmlFor={`ws-recipient-${u.id}`}
                                   className={`ws-recipient-row ${isSelected ? 'selected' : ''}`}
                                 >
                                   <input
+                                    id={`ws-recipient-${u.id}`}
                                     type="checkbox"
                                     checked={isSelected}
                                     onChange={() => toggleRecipient(u.id)}
@@ -1033,7 +1029,7 @@ function SettingsContent() {
                   </div>
 
                   <div className="ws-field full ws-card-actions">
-                    <button type="submit" className="ws-btn-primary" disabled={notifSending}>
+                    <button id="ws-send-notif-btn" type="submit" className="ws-btn-primary" disabled={notifSending}>
                       <Send size={15} />
                       <span>
                         {notifSending
@@ -1050,6 +1046,7 @@ function SettingsContent() {
                   <div className="ws-history-header">
                     <div className="ws-tab-strip">
                       <button
+                        id="ws-notif-tab-sent-btn"
                         type="button"
                         className={`ws-tab-btn ${historyTab === 'sent' ? 'active' : ''}`}
                         onClick={() => setHistoryTab('sent')}
@@ -1057,6 +1054,7 @@ function SettingsContent() {
                         Sent ({sentNotifications.length})
                       </button>
                       <button
+                        id="ws-notif-tab-inbox-btn"
                         type="button"
                         className={`ws-tab-btn ${historyTab === 'inbox' ? 'active' : ''}`}
                         onClick={() => setHistoryTab('inbox')}
@@ -1066,6 +1064,7 @@ function SettingsContent() {
                     </div>
                     {historyTab === 'inbox' && unreadInboxCount > 0 && (
                       <button
+                        id="ws-notif-mark-all-read-btn"
                         type="button"
                         className="ws-mini-btn"
                         onClick={handleMarkAllInboxRead}
@@ -1082,7 +1081,7 @@ function SettingsContent() {
                         <div className="notif-empty-state">No notifications sent by you yet.</div>
                       ) : (
                         sentNotifications.map((item) => (
-                          <div key={item.id} className="ws-history-item">
+                          <div key={item.id} id={`ws-sent-item-${item.id}`} className="ws-history-item">
                             <div className="ws-history-item-top">
                               <strong>{item.title}</strong>
                               <span className="ws-badge primary">
@@ -1109,12 +1108,14 @@ function SettingsContent() {
                       inboxNotifications.map((item) => (
                         <div
                           key={item.id}
+                          id={`ws-inbox-item-${item.id}`}
                           className={`ws-history-item ${item.is_read ? '' : 'unread'}`}
                         >
                           <div className="ws-history-item-top">
                             <strong>{item.title}</strong>
                             {!item.is_read && (
                               <button
+                                id={`ws-inbox-read-btn-${item.id}`}
                                 type="button"
                                 className="ws-mini-btn"
                                 onClick={() => handleMarkSingleRead(item.id)}
@@ -1171,20 +1172,21 @@ function AdminWorkspacePage({ section }) {
     <div className="admin-layout">
       {showLogoutModal && (
         <div
+          id="ws-logout-modal-overlay"
           className="modal-overlay"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setShowLogoutModal(false);
           }}
         >
-          <section className="modal-content" role="dialog" aria-modal="true" aria-labelledby="workspace-logout-title">
+          <section id="ws-logout-modal" className="modal-content" role="dialog" aria-modal="true" aria-labelledby="workspace-logout-title">
             <div className="modal-icon"><LogOut size={21} /></div>
             <h2 className="modal-title" id="workspace-logout-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your account.</p>
             <div className="modal-actions">
-              <button className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
+              <button id="ws-logout-cancel-btn" className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="ws-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -1197,21 +1199,21 @@ function AdminWorkspacePage({ section }) {
       {section === 'settings' ? (
         <SettingsContent />
       ) : (
-        <main className="main-content">
+        <main id="ws-main-content" className="main-content">
           <div className="dashboard-container users-page">
-            <section className="users-page-heading">
+            <section id="ws-page-header-section" className="users-page-heading">
               <div>
                 <span className="section-kicker">{page.category}</span>
-                <h1>{page.title}</h1>
+                <h1 id="ws-page-heading">{page.title}</h1>
                 <p>{page.description}</p>
               </div>
               <span className="users-count">{page.badge}</span>
             </section>
 
-            <section className="users-placeholder">
+            <section id="ws-placeholder-section" className="users-placeholder">
               <div className="users-placeholder-icon"><page.Icon size={25} /></div>
               <span className="section-kicker">{page.category}</span>
-              <h2>{page.placeholderHeading}</h2>
+              <h2 id="ws-placeholder-heading">{page.placeholderHeading}</h2>
               <p>{page.placeholderDescription}</p>
               <div className="users-placeholder-note">
                 <span className="snapshot-dot" />

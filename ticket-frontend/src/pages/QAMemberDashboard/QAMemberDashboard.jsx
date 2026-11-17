@@ -132,22 +132,23 @@ export default function QAMemberDashboard() {
       {/* Sign Out Confirmation Modal */}
       {showLogoutModal && (
         <div
+          id="qa-logout-overlay"
           className="modal-overlay"
           onMouseDown={(e) => e.target === e.currentTarget && setShowLogoutModal(false)}
         >
-          <section className="modal-content" role="dialog" aria-modal="true">
+          <section id="qa-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon">
               <LogOut size={21} />
             </div>
-            <h2 className="modal-title">Sign out of your QA workspace?</h2>
+            <h2 id="qa-logout-title" className="modal-title">Sign out of your QA workspace?</h2>
             <p className="modal-text">
               You can sign back in at any time with your QA Member credentials (qamember@gmail.com).
             </p>
             <div className="modal-actions">
-              <button className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
+              <button id="qa-logout-cancel-btn" className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="qa-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -162,12 +163,13 @@ export default function QAMemberDashboard() {
         onLogout={() => setShowLogoutModal(true)}
       />
 
-      <main className="main-content">
+      <main id="qa-main-content" className="main-content">
         {/* Dashboard Content */}
         <div className="role-dashboard-container">
           <div className="qa-dashboard-layout">
             {/* Welcome Banner */}
             <section
+              id="qa-welcome-banner"
               className="role-welcome-card"
               style={{ background: 'linear-gradient(135deg, #064e3b 0%, #0f172a 100%)' }}
             >
@@ -182,7 +184,7 @@ export default function QAMemberDashboard() {
                 >
                   <CheckSquare size={13} /> QA Testing Workspace &bull; Quality Management System
                 </div>
-                <h1>Welcome, QA Member {displayName}!</h1>
+                <h1 id="qa-welcome-heading">Welcome, QA Member {displayName}!</h1>
                 <p>
                   Your QA Member console is active. You have tailored access to view test projects,
                   report bug tickets, review quality metrics, and inspect the team directory.
@@ -205,8 +207,8 @@ export default function QAMemberDashboard() {
             </section>
 
             {/* 4 Metric KPI Cards */}
-            <section className="qa-stats-grid">
-              <div className="qa-stat-card" onClick={() => navigate('/admin/projects')}>
+            <section id="qa-stats-section" className="qa-stats-grid">
+              <div id="qa-stat-card-projects" className="qa-stat-card" onClick={() => navigate('/admin/projects')}>
                 <div className="qa-stat-icon-wrap qa-icon-blue">
                   <FolderKanban size={22} />
                 </div>
@@ -216,7 +218,7 @@ export default function QAMemberDashboard() {
                 </div>
               </div>
 
-              <div className="qa-stat-card" onClick={() => navigate('/admin/tickets')}>
+              <div id="qa-stat-card-tickets" className="qa-stat-card" onClick={() => navigate('/admin/tickets')}>
                 <div className="qa-stat-icon-wrap qa-icon-emerald">
                   <Ticket size={22} />
                 </div>
@@ -226,7 +228,7 @@ export default function QAMemberDashboard() {
                 </div>
               </div>
 
-              <div className="qa-stat-card" onClick={() => navigate('/admin/tickets')}>
+              <div id="qa-stat-card-open-defects" className="qa-stat-card" onClick={() => navigate('/admin/tickets')}>
                 <div className="qa-stat-icon-wrap qa-icon-amber">
                   <AlertCircle size={22} />
                 </div>
@@ -236,7 +238,7 @@ export default function QAMemberDashboard() {
                 </div>
               </div>
 
-              <div className="qa-stat-card" onClick={() => navigate('/admin/users')}>
+              <div id="qa-stat-card-users" className="qa-stat-card" onClick={() => navigate('/admin/users')}>
                 <div className="qa-stat-icon-wrap qa-icon-purple">
                   <UsersRound size={22} />
                 </div>
@@ -248,7 +250,7 @@ export default function QAMemberDashboard() {
             </section>
 
             {/* Quick Access QA Action Hub */}
-            <section>
+            <section id="qa-hub-section">
               <div className="qa-section-title-row">
                 <span className="qa-section-title">
                   <CheckCircle2 size={18} color="#059669" />
@@ -259,64 +261,64 @@ export default function QAMemberDashboard() {
 
               <div className="qa-action-grid">
                 {/* 1. Projects */}
-                <div className="qa-action-card">
+                <div id="qa-hub-card-projects" className="qa-action-card">
                   <div className="qa-action-card-header">
                     <div className="qa-action-icon qa-icon-blue">
                       <FolderKanban size={20} />
                     </div>
                     <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>PRJ-VIEW</span>
                   </div>
-                  <h3>Projects &amp; Test Suites</h3>
+                  <h3 id="qa-hub-projects-heading">Projects &amp; Test Suites</h3>
                   <p>Inspect project details, test execution suites, and view spreadsheet sheets.</p>
-                  <button className="qa-action-btn" onClick={() => navigate('/admin/projects')}>
+                  <button id="qa-hub-projects-btn" className="qa-action-btn" onClick={() => navigate('/admin/projects')}>
                     <span>Open Projects</span>
                     <ArrowRight size={14} />
                   </button>
                 </div>
 
                 {/* 2. Tickets */}
-                <div className="qa-action-card">
+                <div id="qa-hub-card-tickets" className="qa-action-card">
                   <div className="qa-action-card-header">
                     <div className="qa-action-icon qa-icon-emerald">
                       <Ticket size={20} />
                     </div>
                     <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>TCK-LOG</span>
                   </div>
-                  <h3>Defects &amp; Tickets</h3>
+                  <h3 id="qa-hub-tickets-heading">Defects &amp; Tickets</h3>
                   <p>Log bug reports, update ticket test verification statuses, and triage defects.</p>
-                  <button className="qa-action-btn" onClick={() => navigate('/admin/tickets')}>
+                  <button id="qa-hub-tickets-btn" className="qa-action-btn" onClick={() => navigate('/admin/tickets')}>
                     <span>Manage Tickets</span>
                     <ArrowRight size={14} />
                   </button>
                 </div>
 
                 {/* 3. Reports */}
-                <div className="qa-action-card">
+                <div id="qa-hub-card-reports" className="qa-action-card">
                   <div className="qa-action-card-header">
                     <div className="qa-action-icon qa-icon-amber">
                       <BarChart3 size={20} />
                     </div>
                     <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>QA-METRICS</span>
                   </div>
-                  <h3>Quality Reports</h3>
+                  <h3 id="qa-hub-reports-heading">Quality Reports</h3>
                   <p>Analyze test coverage, defect distribution by priority, and project health.</p>
-                  <button className="qa-action-btn" onClick={() => navigate('/admin/reports')}>
+                  <button id="qa-hub-reports-btn" className="qa-action-btn" onClick={() => navigate('/admin/reports')}>
                     <span>View Reports</span>
                     <ArrowRight size={14} />
                   </button>
                 </div>
 
                 {/* 4. Users Directory */}
-                <div className="qa-action-card">
+                <div id="qa-hub-card-users" className="qa-action-card">
                   <div className="qa-action-card-header">
                     <div className="qa-action-icon qa-icon-purple">
                       <UsersRound size={20} />
                     </div>
                     <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>TEAM-DIR</span>
                   </div>
-                  <h3>Team Directory</h3>
+                  <h3 id="qa-hub-users-heading">Team Directory</h3>
                   <p>View team member details, assigned developers, project leads, and departments.</p>
-                  <button className="qa-action-btn" onClick={() => navigate('/admin/users')}>
+                  <button id="qa-hub-users-btn" className="qa-action-btn" onClick={() => navigate('/admin/users')}>
                     <span>Open Directory</span>
                     <ArrowRight size={14} />
                   </button>
@@ -325,9 +327,9 @@ export default function QAMemberDashboard() {
             </section>
 
             {/* Live Testing & Defect Queue */}
-            <section className="qa-card-box">
+            <section id="qa-queue-section" className="qa-card-box">
               <div className="qa-card-box-header">
-                <h2>
+                <h2 id="qa-queue-heading">
                   <Ticket size={18} color="#059669" />
                   Active QA Defect &amp; Ticket Queue
                 </h2>
@@ -337,6 +339,7 @@ export default function QAMemberDashboard() {
                   <div className="qa-table-search">
                     <Search size={15} color="#64748b" />
                     <input
+                      id="qa-ticket-search"
                       type="text"
                       placeholder="Search ticket code, title..."
                       value={ticketSearch}
@@ -348,6 +351,7 @@ export default function QAMemberDashboard() {
                   <div className="qa-filter-tabs">
                     {['All', 'Open', 'In Progress', 'Resolved'].map((st) => (
                       <button
+                        id={`qa-status-tab-${st.toLowerCase().replace(/\s+/g, '-')}`}
                         key={st}
                         className={`qa-tab-btn ${statusFilter === st ? 'active' : ''}`}
                         onClick={() => setStatusFilter(st)}
@@ -358,6 +362,7 @@ export default function QAMemberDashboard() {
                   </div>
 
                   <button
+                    id="qa-full-tickets-btn"
                     className="qa-action-btn"
                     style={{ width: 'auto', padding: '6px 12px' }}
                     onClick={() => navigate('/admin/tickets')}
@@ -369,7 +374,7 @@ export default function QAMemberDashboard() {
               </div>
 
               <div className="qa-table-responsive">
-                <table className="qa-tickets-table">
+                <table id="qa-tickets-table" className="qa-tickets-table">
                   <thead>
                     <tr>
                       <th>Ticket Code</th>
@@ -431,6 +436,7 @@ export default function QAMemberDashboard() {
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <button
+                                id={`qa-ticket-view-btn-${ticket.id}`}
                                 className="qa-action-btn"
                                 style={{ width: 'auto', padding: '4px 10px', fontSize: '0.75rem' }}
                                 onClick={() => navigate('/admin/tickets')}
@@ -448,7 +454,7 @@ export default function QAMemberDashboard() {
             </section>
 
             {/* QA Testing Lifecycle Pipeline */}
-            <section className="qa-pipeline-card">
+            <section id="qa-pipeline-section" className="qa-pipeline-card">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span className="qa-section-title">
                   <ShieldCheck size={18} color="#059669" />

@@ -745,15 +745,12 @@ app.get('/api/admin/projects', async (req, res) => {
 
 // Admin Projects: Create new project
 app.post('/api/admin/projects', async (req, res) => {
-  const authorization = req.headers.authorization;
-  if (!authorization?.startsWith('Bearer ')) {
+  const user = await getUserFromReq(req);
+  if (!user) {
     return res.status(401).json({ error: 'Authentication required' });
   }
-
-  try {
-    jwt.verify(authorization.slice('Bearer '.length), JWT_SECRET);
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+  if (user.role === 'Developer' || user.role === 'QA Member') {
+    return res.status(403).json({ error: 'You do not have permission to create projects.' });
   }
 
   const { project_code, name, description, lead_name, project_lead_id, client_name, department, status, priority, progress, start_date, end_date, team_members } = req.body;
@@ -861,16 +858,12 @@ app.post('/api/admin/projects', async (req, res) => {
 // Admin Projects: Delete project
 // Admin Projects: Update project
 app.put('/api/admin/projects/:id', async (req, res) => {
-  const authorization = req.headers.authorization;
-  if (!authorization?.startsWith('Bearer ')) {
+  const user = await getUserFromReq(req);
+  if (!user) {
     return res.status(401).json({ error: 'Authentication required' });
   }
-
-  let decodedUser = null;
-  try {
-    decodedUser = jwt.verify(authorization.slice('Bearer '.length), JWT_SECRET);
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+  if (user.role === 'Developer' || user.role === 'QA Member') {
+    return res.status(403).json({ error: 'You do not have permission to edit projects.' });
   }
 
   const { id } = req.params;
@@ -987,7 +980,7 @@ app.put('/api/admin/projects/:id', async (req, res) => {
       try {
         const leadUserRes = await pool.query('SELECT full_name, email FROM users WHERE id = $1', [leadId]);
         const leadUser = leadUserRes.rows[0];
-        const assignedByName = decodedUser?.full_name || decodedUser?.email || 'Admin';
+        const assignedByName = user?.full_name || user?.email || 'Admin';
         await pool.query(
           `INSERT INTO project_lead_assignments (project_id, project_lead_id, lead_name, lead_email, project_lead_name, project_lead_email, assigned_by)
            VALUES ($1, $2, $3, $4, $3, $4, $5)`,
@@ -1024,15 +1017,12 @@ app.put('/api/admin/projects/:id', async (req, res) => {
 });
 
 app.delete('/api/admin/projects/:id', async (req, res) => {
-  const authorization = req.headers.authorization;
-  if (!authorization?.startsWith('Bearer ')) {
+  const user = await getUserFromReq(req);
+  if (!user) {
     return res.status(401).json({ error: 'Authentication required' });
   }
-
-  try {
-    jwt.verify(authorization.slice('Bearer '.length), JWT_SECRET);
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+  if (user.role === 'Developer' || user.role === 'QA Member') {
+    return res.status(403).json({ error: 'You do not have permission to delete projects.' });
   }
 
   const { id } = req.params;
@@ -1108,12 +1098,18 @@ app.get('/api/admin/projects/:id/sheets', async (req, res) => {
   const user = await getUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'Authentication required' });
 
-  // RBAC: Developers are strictly restricted from full test sheets
-  if (user.role === 'Developer') {
-    return res.status(403).json({ error: 'Developers are restricted from accessing complete test case sheets. You can view your assigned bug tickets.' });
-  }
-
   try {
+    // RBAC: Developers can only view sheets for projects they are actively assigned to (read-only)
+    if (user.role === 'Developer') {
+      const devAssignment = await pool.query(
+        "SELECT 1 FROM project_developer_assignments WHERE project_id = $1 AND developer_id = $2 AND status = 'Active' LIMIT 1",
+        [id, user.id]
+      );
+      if (devAssignment.rows.length === 0) {
+        return res.status(403).json({ error: 'You are not assigned to this project.' });
+      }
+    }
+
     // 1. Check if project exists
     const projRes = await pool.query('SELECT * FROM projects WHERE id = $1', [id]);
     const project = projRes.rows[0];
@@ -1173,6 +1169,12 @@ app.post('/api/admin/projects/:id/sheets', async (req, res) => {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 
+  const user = await getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
+  if (user.role === 'Developer') {
+    return res.status(403).json({ error: 'Developers have read-only access to project sheets.' });
+  }
+
   const { id } = req.params;
   const { sheet_name, columns, rows, formatting, tab_color } = req.body;
 
@@ -1215,6 +1217,12 @@ app.put('/api/admin/projects/:id/sheets/:sheetId', async (req, res) => {
     jwt.verify(authorization.slice('Bearer '.length), JWT_SECRET);
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  const user = await getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
+  if (user.role === 'Developer') {
+    return res.status(403).json({ error: 'Developers have read-only access to project sheets.' });
   }
 
   const { id, sheetId } = req.params;
@@ -1273,6 +1281,12 @@ app.delete('/api/admin/projects/:id/sheets/:sheetId', async (req, res) => {
     jwt.verify(authorization.slice('Bearer '.length), JWT_SECRET);
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  const user = await getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
+  if (user.role === 'Developer') {
+    return res.status(403).json({ error: 'Developers have read-only access to project sheets.' });
   }
 
   const { id, sheetId } = req.params;
@@ -1342,14 +1356,16 @@ const findProjectWithRoles = async (projectIdOrCode, user) => {
   );
   const isProjectLead = user.role === 'Project Lead' && (isAssignedLead || (!proj.project_lead_id && !proj.lead_name));
   const isQAMember = user.role === 'QA Member';
+  const isDeveloper = user.role === 'Developer';
 
   return {
     proj,
     isManager,
     isProjectLead,
     isQAMember,
+    isDeveloper,
     canLockOrRequest: isManager || isProjectLead,
-    canEditDocsAndLinks: !isQAMember
+    canEditDocsAndLinks: !isQAMember && !isDeveloper
   };
 };
 
@@ -1676,7 +1692,7 @@ app.post('/api/admin/projects/:id/documents/upload', async (req, res) => {
     }
     if (!ctx.canEditDocsAndLinks) {
       req.resume();
-      return res.status(403).json({ error: 'Access denied. QA Members are not permitted to upload project documents.' });
+      return res.status(403).json({ error: 'Access denied. You do not have permission to upload project documents.' });
     }
     if (ctx.proj.documents_locked) {
       req.resume();
@@ -1735,7 +1751,7 @@ app.post('/api/admin/projects/:id/documents', async (req, res) => {
     }
 
     if (!ctx.canEditDocsAndLinks) {
-      return res.status(403).json({ error: 'Access denied. QA Members are not permitted to upload project documents.' });
+      return res.status(403).json({ error: 'Access denied. You do not have permission to upload project documents.' });
     }
 
     if (ctx.proj.documents_locked) {
@@ -1792,7 +1808,7 @@ app.delete('/api/admin/projects/:id/documents/:docId', async (req, res) => {
     }
 
     if (!ctx.canEditDocsAndLinks) {
-      return res.status(403).json({ error: 'Access denied. QA Members cannot delete project documents.' });
+      return res.status(403).json({ error: 'Access denied. You do not have permission to delete project documents.' });
     }
 
     const docRes = await pool.query(
@@ -1905,7 +1921,7 @@ app.put('/api/admin/projects/:id/links', async (req, res) => {
     if (!ctx) return res.status(404).json({ error: 'Project not found.' });
 
     if (!ctx.canEditDocsAndLinks) {
-      return res.status(403).json({ error: 'Access denied. QA Members have read-only access to project links.' });
+      return res.status(403).json({ error: 'Access denied. You have read-only access to project links.' });
     }
 
     if (ctx.proj.links_locked) {
@@ -2743,14 +2759,14 @@ io.on('connection', (socket) => {
   let currentRoom = null;
   let currentUser = null;
 
-  socket.on('join_user_room', ({ userId }) => {
+  socket.on('join_user_room', ({ userId } = {}) => {
     const numericId = Number(userId);
     if (Number.isInteger(numericId) && numericId > 0) {
       socket.join(`user_${numericId}`);
     }
   });
 
-  socket.on('leave_user_room', ({ userId }) => {
+  socket.on('leave_user_room', ({ userId } = {}) => {
     const numericId = Number(userId);
     if (Number.isInteger(numericId) && numericId > 0) {
       socket.leave(`user_${numericId}`);
@@ -2758,7 +2774,7 @@ io.on('connection', (socket) => {
   });
 
   // 1. Join Sheet Room
-  socket.on('join_sheet_room', ({ projectId, sheetId, user }) => {
+  socket.on('join_sheet_room', ({ projectId, sheetId, user } = {}) => {
     if (!projectId) return;
     const roomId = `project_sheet_${projectId}`;
     currentRoom = roomId;
@@ -2779,7 +2795,8 @@ io.on('connection', (socket) => {
   });
 
   // 2. Leave Sheet Room
-  socket.on('leave_sheet_room', ({ projectId }) => {
+  socket.on('leave_sheet_room', ({ projectId } = {}) => {
+    if (!projectId) return;
     const roomId = `project_sheet_${projectId}`;
     socket.leave(roomId);
     if (roomViewers.has(roomId)) {
@@ -2793,8 +2810,9 @@ io.on('connection', (socket) => {
   });
 
   // 3. Live Instant Cell Edit Broadcast
-  socket.on('sheet_cell_edited', (data) => {
+  socket.on('sheet_cell_edited', (data = {}) => {
     const { projectId, sheetId, rowIndex, colId, value, user } = data;
+    if (!projectId) return;
     const roomId = `project_sheet_${projectId}`;
     socket.to(roomId).emit('sheet_cell_updated', {
       sheetId,
@@ -2806,8 +2824,9 @@ io.on('connection', (socket) => {
   });
 
   // 4. Live Full Sheet Data Sync (e.g. after adding rows, columns, or bulk changes)
-  socket.on('sheet_data_synced', (data) => {
+  socket.on('sheet_data_synced', (data = {}) => {
     const { projectId, sheetId, sheets, updatedBy } = data;
+    if (!projectId) return;
     const roomId = `project_sheet_${projectId}`;
     socket.to(roomId).emit('sheet_data_synced', {
       sheetId,
@@ -2817,8 +2836,9 @@ io.on('connection', (socket) => {
   });
 
   // 5. Live Cell Focus / Selection (Shows colored border indicating someone is on that cell)
-  socket.on('sheet_cell_focused', (data) => {
+  socket.on('sheet_cell_focused', (data = {}) => {
     const { projectId, sheetId, rowIndex, colId, user } = data;
+    if (!projectId) return;
     const roomId = `project_sheet_${projectId}`;
     socket.to(roomId).emit('sheet_cell_focused', {
       sheetId,
@@ -2830,19 +2850,20 @@ io.on('connection', (socket) => {
   });
 
   // 6. Ticket Modal Room & Developer Lock / Intimation
-  socket.on('join_ticket_room', ({ ticketId, user }) => {
+  socket.on('join_ticket_room', ({ ticketId } = {}) => {
     if (!ticketId) return;
     const ticketRoom = `ticket_${ticketId}`;
     socket.join(ticketRoom);
   });
 
-  socket.on('leave_ticket_room', ({ ticketId }) => {
+  socket.on('leave_ticket_room', ({ ticketId } = {}) => {
     if (!ticketId) return;
     socket.leave(`ticket_${ticketId}`);
   });
 
-  socket.on('ticket_resolving_claim', (data) => {
+  socket.on('ticket_resolving_claim', (data = {}) => {
     const { ticketId, user } = data;
+    if (!ticketId) return;
     io.emit('ticket_lock_changed', {
       ticketId,
       locked_by: user?.name,
@@ -2851,8 +2872,9 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('ticket_resolving_release', (data) => {
+  socket.on('ticket_resolving_release', (data = {}) => {
     const { ticketId } = data;
+    if (!ticketId) return;
     io.emit('ticket_lock_changed', {
       ticketId,
       locked_by: null,
@@ -2860,8 +2882,9 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('ticket_resolving_typing', (data) => {
+  socket.on('ticket_resolving_typing', (data = {}) => {
     const { ticketId, user, field } = data;
+    if (!ticketId) return;
     socket.to(`ticket_${ticketId}`).emit('ticket_resolving_typing', {
       ticketId,
       user,

@@ -138,7 +138,7 @@ function Login() {
           <div className="logo-icon-wrapper">
             <CubeLogo />
           </div>
-          <h1 className="logo-text">
+          <h1 id="login-brand-heading" className="logo-text">
             <span>QA</span> Software
           </h1>
           <p className="logo-subtitle">Project | Testing | Tickets | Team Management</p>
@@ -148,7 +148,7 @@ function Login() {
 
       <div className="right-panel">
         <div className="form-wrapper">
-          <h2 className="welcome-text">
+          <h2 id="login-welcome-heading" className="welcome-text">
             Welcome <span>Back</span>
           </h2>
           <p className="subtitle">Sign in to your QA Software account</p>
@@ -172,12 +172,13 @@ function Login() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} noValidate autoComplete="off">
+          <form id="login-form" onSubmit={handleLogin} noValidate autoComplete="off">
             <div className="form-group">
-              <label className="form-label">Email Address</label>
+              <label className="form-label" htmlFor="login-email">Email Address</label>
               <div className={`input-container ${emailError ? 'error-state' : ''}`} style={{ border: emailError ? '1px solid #ef4444' : '', borderRadius: '8px', transition: 'all 0.2s' }}>
                 <Mail className="input-icon" style={{ color: emailError ? '#ef4444' : '#64748b', transition: 'all 0.2s' }} />
                 <input 
+                  id="login-email"
                   type="email" 
                   name="login_email"
                   autoComplete="off"
@@ -200,10 +201,11 @@ function Login() {
             </div>
 
             <div className="form-group" style={{ marginBottom: '5px' }}>
-              <label className="form-label">Password</label>
+              <label className="form-label" htmlFor="login-password">Password</label>
               <div className={`input-container ${passwordError ? 'error-state' : ''}`} style={{ border: passwordError ? '1px solid #ef4444' : '', borderRadius: '8px', transition: 'all 0.2s' }}>
                 <Lock className="input-icon" style={{ color: passwordError ? '#ef4444' : '#64748b', transition: 'all 0.2s' }} />
                 <input 
+                  id="login-password"
                   type={showPassword ? "text" : "password"} 
                   name="login_password"
                   autoComplete="new-password"
@@ -219,9 +221,9 @@ function Login() {
                   style={{ borderColor: 'transparent' }}
                 />
                 {showPassword ? (
-                  <EyeOff className="eye-icon" onClick={() => !isLoading && setShowPassword(false)} />
+                  <EyeOff id="login-hide-password-btn" className="eye-icon" onClick={() => !isLoading && setShowPassword(false)} />
                 ) : (
-                  <Eye className="eye-icon" onClick={() => !isLoading && setShowPassword(true)} />
+                  <Eye id="login-show-password-btn" className="eye-icon" onClick={() => !isLoading && setShowPassword(true)} />
                 )}
               </div>
               {/* Permanent reserved space to prevent layout jump */}
@@ -231,10 +233,10 @@ function Login() {
             </div>
 
             <div className="options-container" style={{ justifyContent: 'flex-end' }}>
-              <a href="#" className="forgot-password">Forgot Password?</a>
+              <a id="login-forgot-password-link" href="#" className="forgot-password">Forgot Password?</a>
             </div>
 
-            <button type="submit" className="sign-in-btn" disabled={isLoading} style={{ opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
+            <button id="login-submit-btn" type="submit" className="sign-in-btn" disabled={isLoading} style={{ opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
               {isLoading ? (
                 <>
                   <span style={{ display: 'inline-block', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite', marginRight: '8px' }}></span>

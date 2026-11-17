@@ -144,18 +144,18 @@ function AdminDashboard() {
   return (
     <div className="admin-layout">
       {showLogoutModal && (
-        <div className="modal-overlay" onMouseDown={(event) => {
+        <div id="dash-logout-overlay" className="modal-overlay" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setShowLogoutModal(false);
         }}>
-          <section className="modal-content" role="dialog" aria-modal="true" aria-labelledby="logout-title">
+          <section id="dash-logout-modal" className="modal-content" role="dialog" aria-modal="true" aria-labelledby="logout-title">
             <div className="modal-icon"><LogOut size={21} /></div>
             <h2 className="modal-title" id="logout-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your account.</p>
             <div className="modal-actions">
-              <button className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
+              <button id="dash-logout-cancel-btn" className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="dash-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -168,12 +168,12 @@ function AdminDashboard() {
         onLogout={() => setShowLogoutModal(true)}
       />
 
-      <main className="main-content">
+      <main id="dash-main-content" className="main-content">
         <div className="dashboard-container">
-          <section className="welcome-banner">
+          <section id="dash-welcome-banner" className="welcome-banner">
             <div className="welcome-content">
               <span className="eyebrow"><span className="eyebrow-dot" /> QA OPERATIONS</span>
-              <h1>Good to see you, {displayName}</h1>
+              <h1 id="dash-welcome-heading">Good to see you, {displayName}</h1>
               <p>Your team’s quality workspace, all in one place.</p>
               <div className="welcome-meta">
                 <span className="welcome-date">{formattedDate}</span>
@@ -187,32 +187,32 @@ function AdminDashboard() {
             <div className="banner-decoration banner-decoration-one" />
             <div className="banner-decoration banner-decoration-two" />
             <div className="banner-mark"><SmallCubeLogo /></div>
-            <button className="refresh-button" onClick={() => refreshStats()} disabled={loading}>
+            <button id="dash-refresh-btn" className="refresh-button" onClick={() => refreshStats()} disabled={loading}>
               <RefreshCw size={15} className={loading ? 'refresh-spinning' : ''} />
               {loading ? 'Refreshing' : 'Refresh data'}
             </button>
           </section>
 
           {errorMessage && (
-            <div className="error-banner" role="alert">
+            <div id="dash-error-banner" className="error-banner" role="alert">
               <span>{errorMessage}</span>
-              <button onClick={() => refreshStats()}>Try again</button>
+              <button id="dash-retry-btn" onClick={() => refreshStats()}>Try again</button>
             </div>
           )}
 
-          <section className="section-heading">
+          <section id="dash-overview-section" className="section-heading">
             <div>
               <span className="section-kicker">AT A GLANCE</span>
-              <h2>Workspace overview</h2>
+              <h2 id="dash-overview-heading">Workspace overview</h2>
             </div>
             <span className="snapshot-label"><span className="snapshot-dot" /> Current totals</span>
           </section>
 
-          <section className="stats-grid" aria-label="Workspace totals" aria-live="polite">
+          <section id="dash-stats-grid" className="stats-grid" aria-label="Workspace totals" aria-live="polite">
             {metricCards.map(({ key, label, value, icon: Icon, tone }) => (
               <article
                 className={`stat-card stat-${tone}`}
-                id={key === 'pendingApprovals' ? 'pending-approvals' : undefined}
+                id={key === 'pendingApprovals' ? 'pending-approvals' : `dash-stat-card-${key}`}
                 key={key}
               >
                 <div className="stat-topline">
@@ -228,17 +228,17 @@ function AdminDashboard() {
             ))}
           </section>
 
-          <section className="dashboard-panels">
+          <section id="dash-panels-section" className="dashboard-panels">
             <article className="panel chart-panel">
               <div className="panel-heading">
                 <div>
                   <span className="section-kicker">INVENTORY</span>
-                  <h2>Workspace totals</h2>
+                  <h2 id="dash-chart-heading">Workspace totals</h2>
                   <p>Current record counts across your workspace</p>
                 </div>
                 <span className="panel-icon"><BarChart3 size={18} /></span>
               </div>
-              <div className="chart-wrap" role="img" aria-label="Bar chart of current workspace record counts">
+              <div id="dash-chart-wrap" className="chart-wrap" role="img" aria-label="Bar chart of current workspace record counts">
                 {chartData.map(({ name, value }) => (
                   <div className="chart-row" key={name}>
                     <span className="chart-label">{name}</span>
@@ -258,7 +258,7 @@ function AdminDashboard() {
               <div className="panel-heading">
                 <div>
                   <span className="section-kicker">ACTION REQUIRED</span>
-                  <h2>Review queue</h2>
+                  <h2 id="dash-queue-heading">Review queue</h2>
                 </div>
                 <span className="panel-icon panel-icon-amber"><Clock3 size={18} /></span>
               </div>
@@ -269,13 +269,13 @@ function AdminDashboard() {
                 <span className="queue-note-icon"><ShieldCheck size={16} /></span>
                 <span>Review pending requests to keep work moving.</span>
               </div>
-              <button className="queue-button" onClick={focusApprovals}>
+              <button id="dash-view-approvals-btn" className="queue-button" onClick={focusApprovals}>
                 View approval total <ChevronDown size={15} />
               </button>
             </article>
           </section>
 
-          <footer className="dashboard-footer">
+          <footer id="dash-footer" className="dashboard-footer">
             <span><span className={`footer-status-dot${errorMessage ? ' footer-status-error' : ''}`} />{errorMessage ? 'Data could not be refreshed' : 'Dashboard data is up to date'}</span>
             <span>Counts are provided by your workspace API</span>
           </footer>

@@ -299,6 +299,8 @@ function AdminProjects() {
   // Role permissions
   const currentUserRole = localStorage.getItem('userRole') || 'Manager';
   const isQAMember = currentUserRole === 'QA Member';
+  const isDeveloper = currentUserRole === 'Developer';
+  const canManageProjects = !isQAMember && !isDeveloper;
 
   // Fetch projects from backend
   const fetchProjects = useCallback(async () => {
@@ -355,6 +357,10 @@ function AdminProjects() {
 
   // Filter & Sort Projects
   const filteredProjects = useMemo(() => {
+    if (isDeveloper) {
+      return [...projects].sort((a, b) => (b.id || 0) - (a.id || 0));
+    }
+
     const activeSearch = searchQuery.trim().toLowerCase();
 
     return projects.filter((p) => {
@@ -382,7 +388,7 @@ function AdminProjects() {
       // 'Last Updated' default order
       return (b.id || 0) - (a.id || 0);
     });
-  }, [projects, searchQuery, departmentFilter, statusFilter, sortBy]);
+  }, [projects, searchQuery, departmentFilter, statusFilter, sortBy, isDeveloper]);
 
   // Compute Stats from real database records (0 when empty)
   const stats = useMemo(() => {
@@ -741,12 +747,13 @@ function AdminProjects() {
       {/* Logout Modal */}
       {showLogoutModal && (
         <div
+          id="pj-logout-overlay"
           className="pj-modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setShowLogoutModal(false);
           }}
         >
-          <div className="pj-modal-card" style={{ maxWidth: '420px', padding: '24px' }}>
+          <div id="pj-logout-modal" className="pj-modal-card" style={{ maxWidth: '420px', padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div
                 style={{
@@ -763,7 +770,7 @@ function AdminProjects() {
                 <LogOut size={20} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>
+                <h3 id="pj-logout-title" style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>
                   Sign out of workspace?
                 </h3>
                 <span style={{ fontSize: '13px', color: '#64748b' }}>
@@ -772,10 +779,11 @@ function AdminProjects() {
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-              <button className="pj-btn-cancel" onClick={() => setShowLogoutModal(false)}>
+              <button id="pj-logout-cancel-btn" className="pj-btn-cancel" onClick={() => setShowLogoutModal(false)}>
                 Cancel
               </button>
               <button
+                id="pj-logout-confirm-btn"
                 className="pj-btn-submit"
                 style={{ backgroundColor: '#dc2626' }}
                 onClick={confirmLogout}
@@ -791,21 +799,22 @@ function AdminProjects() {
       <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Content Pane */}
-      <main className="main-content">
+      <main id="pj-main-content" className="main-content">
         {/* Projects Page Container */}
         <div className="pj-page-container">
           {/* 1. Projects Directory Header Row */}
-          <section className="pj-subheader">
+          <section id="pj-header-section" className="pj-subheader">
             <div className="pj-title-group">
               <div className="pj-title-text">
-                <h1>Projects Directory</h1>
+                <h1 id="pj-page-heading">Projects Directory</h1>
               </div>
             </div>
 
             <div className="pj-header-actions">
               {/* Grid vs List View Toggle */}
-              <div className="pj-view-switcher" role="group" aria-label="View mode">
+              <div id="pj-view-switcher" className="pj-view-switcher" role="group" aria-label="View mode">
                 <button
+                  id="pj-view-grid-btn"
                   className={`pj-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
                   onClick={() => setViewMode('grid')}
                   aria-label="Grid view"
@@ -813,6 +822,7 @@ function AdminProjects() {
                   <LayoutGrid size={18} />
                 </button>
                 <button
+                  id="pj-view-list-btn"
                   className={`pj-view-btn ${viewMode === 'list' ? 'active' : ''}`}
                   onClick={() => setViewMode('list')}
                   aria-label="List view"
@@ -820,6 +830,7 @@ function AdminProjects() {
                   <List size={18} />
                 </button>
                 <button
+                  id="pj-view-sheet-btn"
                   className={`pj-view-btn ${viewMode === 'sheet' ? 'active' : ''}`}
                   onClick={() => setViewMode('sheet')}
                   aria-label="Sheet view"
@@ -829,8 +840,8 @@ function AdminProjects() {
               </div>
 
               {/* + Create Project Primary Button */}
-              {!isQAMember && (
-                <button className="pj-btn-create-primary" onClick={openCreateModal}>
+              {canManageProjects && (
+                <button id="pj-create-project-btn" className="pj-btn-create-primary" onClick={openCreateModal}>
                   <Plus size={18} strokeWidth={2.5} />
                   <span>Create Project</span>
                 </button>
@@ -861,12 +872,12 @@ function AdminProjects() {
           )}
 
           {/* 2. Dashboard Metrics (2x2) + Search & Filter Panel */}
-          <section className="pj-overview-controls-row">
+          <section id="pj-overview-section" className={`pj-overview-controls-row${isDeveloper ? ' pj-no-filters' : ''}`}>
             {/* Left: Dashboard 2x2 Metric Cards */}
             <div className="pj-dashboard-panel">
               <div className="pj-metrics-grid">
                 {/* Card 1: Total Projects */}
-                <div className="pj-metric-card">
+                <div id="pj-metric-total" className="pj-metric-card">
                   <div className="pj-metric-left">
                     <div className="pj-metric-icon-box blue">
                       <Folder size={24} />
@@ -879,7 +890,7 @@ function AdminProjects() {
                 </div>
 
                 {/* Card 2: In Progress */}
-                <div className="pj-metric-card">
+                <div id="pj-metric-in-progress" className="pj-metric-card">
                   <div className="pj-metric-left">
                     <div className="pj-metric-icon-box green">
                       <PlayCircle size={24} />
@@ -892,7 +903,7 @@ function AdminProjects() {
                 </div>
 
                 {/* Card 3: Not Started */}
-                <div className="pj-metric-card">
+                <div id="pj-metric-not-started" className="pj-metric-card">
                   <div className="pj-metric-left">
                     <div className="pj-metric-icon-box orange">
                       <Clock size={24} />
@@ -905,7 +916,7 @@ function AdminProjects() {
                 </div>
 
                 {/* Card 4: Completed */}
-                <div className="pj-metric-card">
+                <div id="pj-metric-completed" className="pj-metric-card">
                   <div className="pj-metric-left">
                     <div className="pj-metric-icon-box purple">
                       <FolderPlus size={24} />
@@ -919,63 +930,70 @@ function AdminProjects() {
               </div>
             </div>
 
-            {/* Right: Search & Three Filters */}
-            <div className="pj-filter-controls-row">
-              <div className="pj-search-input-wrap">
-                <Search size={16} />
-                <input
-                  type="text"
-                  placeholder="Search by project name, code, project type..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+            {/* Right: Search & Three Filters (hidden for Developer) */}
+            {!isDeveloper && (
+              <div className="pj-filter-controls-row">
+                <div className="pj-search-input-wrap">
+                  <Search size={16} />
+                  <input
+                    id="pj-search-input"
+                    type="text"
+                    placeholder="Search by project name, code, project type..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+
+                <div className="pj-dropdown-group">
+                  <CustomSelect
+                    id="pj-type-filter"
+                    value={departmentFilter}
+                    onChange={(val) => {
+                      if (!filtersLocked) setDepartmentFilter(val);
+                    }}
+                    options={PJ_TYPE_OPTIONS}
+                    variant="filter"
+                    placeholder="All Project Types"
+                    disabled={filtersLocked}
+                  />
+
+                  <CustomSelect
+                    id="pj-status-filter"
+                    value={statusFilter}
+                    onChange={(val) => {
+                      if (!filtersLocked) setStatusFilter(val);
+                    }}
+                    options={PJ_STATUS_OPTIONS}
+                    variant="filter"
+                    placeholder="All Statuses"
+                    disabled={filtersLocked}
+                  />
+
+                  <CustomSelect
+                    id="pj-sort-filter"
+                    value={sortBy}
+                    onChange={(val) => {
+                      if (!filtersLocked) setSortBy(val);
+                    }}
+                    options={PJ_SORT_OPTIONS}
+                    variant="filter"
+                    placeholder="Sort by"
+                    disabled={filtersLocked}
+                  />
+
+                  <button
+                    id="pj-filter-lock-btn"
+                    type="button"
+                    className={`pj-fix-filter-chip ${filtersLocked ? 'is-locked' : ''}`}
+                    onClick={toggleFilterLock}
+                    aria-pressed={filtersLocked}
+                    aria-label={filtersLocked ? 'Unlock filters' : 'Lock filters'}
+                  >
+                    {filtersLocked ? <Lock size={16} /> : <Unlock size={16} />}
+                  </button>
+                </div>
               </div>
-
-              <div className="pj-dropdown-group">
-                <CustomSelect
-                  value={departmentFilter}
-                  onChange={(val) => {
-                    if (!filtersLocked) setDepartmentFilter(val);
-                  }}
-                  options={PJ_TYPE_OPTIONS}
-                  variant="filter"
-                  placeholder="All Project Types"
-                  disabled={filtersLocked}
-                />
-
-                <CustomSelect
-                  value={statusFilter}
-                  onChange={(val) => {
-                    if (!filtersLocked) setStatusFilter(val);
-                  }}
-                  options={PJ_STATUS_OPTIONS}
-                  variant="filter"
-                  placeholder="All Statuses"
-                  disabled={filtersLocked}
-                />
-
-                <CustomSelect
-                  value={sortBy}
-                  onChange={(val) => {
-                    if (!filtersLocked) setSortBy(val);
-                  }}
-                  options={PJ_SORT_OPTIONS}
-                  variant="filter"
-                  placeholder="Sort by"
-                  disabled={filtersLocked}
-                />
-
-                <button
-                  type="button"
-                  className={`pj-fix-filter-chip ${filtersLocked ? 'is-locked' : ''}`}
-                  onClick={toggleFilterLock}
-                  aria-pressed={filtersLocked}
-                  aria-label={filtersLocked ? 'Unlock filters' : 'Lock filters'}
-                >
-                  {filtersLocked ? <Lock size={16} /> : <Unlock size={16} />}
-                </button>
-              </div>
-            </div>
+            )}
           </section>
 
           {/* 4. Projects Display: Sheet View, Grid View or List View */}
@@ -993,26 +1011,32 @@ function AdminProjects() {
               margin: '20px 0'
             }}>
               <Folder size={42} color="#94A3B8" />
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#1E293B' }}>No Projects Created Yet</h3>
+              <h3 id="pj-empty-heading" style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#1E293B' }}>
+                {isDeveloper ? 'No Assigned Projects Yet' : 'No Projects Created Yet'}
+              </h3>
               <p style={{ margin: 0, fontSize: '14px', color: '#64748B', maxWidth: '440px' }}>
-                Your production workspace is clean and ready. Click the "+ Create Project" button above to initiate your first QA project.
+                {isDeveloper
+                  ? 'You have not been assigned to any projects yet. Contact your Project Lead or Manager to get assigned.'
+                  : 'Your production workspace is clean and ready. Click the "+ Create Project" button above to initiate your first QA project.'}
               </p>
             </div>
           ) : viewMode === 'sheet' ? (
             <ProjectSpreadsheetView
               projects={projects}
-              onUpdateProject={handleUpdateProjectCell}
-              onAddRow={handleAddSheetRow}
-              onDeleteRow={handleDeleteProject}
+              onUpdateProject={canManageProjects ? handleUpdateProjectCell : undefined}
+              onAddRow={canManageProjects ? handleAddSheetRow : undefined}
+              onDeleteRow={canManageProjects ? handleDeleteProject : undefined}
               onOpenProjectSheet={(project) => navigate(`/admin/projects/${project.id}/sheet`)}
-              searchQuery={searchQuery}
-              departmentFilter={departmentFilter}
-              statusFilter={statusFilter}
+              searchQuery={isDeveloper ? '' : searchQuery}
+              departmentFilter={isDeveloper ? 'All Departments' : departmentFilter}
+              statusFilter={isDeveloper ? 'All Statuses' : statusFilter}
+              readOnly={!canManageProjects}
             />
           ) : viewMode === 'grid' ? (
-            <section className="pj-cards-grid">
+            <section id="pj-cards-grid" className="pj-cards-grid">
               {filteredProjects.map((project) => (
                 <article
+                  id={`pj-card-${project.id || project.project_code}`}
                   key={project.id || project.project_code}
                   className="pj-card"
                   onDoubleClick={(event) => {
@@ -1034,9 +1058,10 @@ function AdminProjects() {
                       </span>
 
                       {/* Three-dots menu */}
-                      {!isQAMember && (
+                      {canManageProjects && (
                         <div className="pj-card-menu-wrap">
                           <button
+                            id={`pj-card-more-btn-${project.id}`}
                             className="pj-btn-more"
                             onClick={() =>
                               setActiveMenuId(activeMenuId === project.id ? null : project.id)
@@ -1047,8 +1072,9 @@ function AdminProjects() {
                           </button>
 
                           {activeMenuId === project.id && (
-                            <div className="pj-dropdown-menu">
+                            <div id={`pj-card-dropdown-${project.id}`} className="pj-dropdown-menu">
                               <button
+                                id={`pj-card-edit-btn-${project.id}`}
                                 className="pj-dropdown-item"
                                 onClick={() => openEditModal(project)}
                               >
@@ -1056,6 +1082,7 @@ function AdminProjects() {
                                 <span>Edit</span>
                               </button>
                               <button
+                                id={`pj-card-delete-btn-${project.id}`}
                                 className="pj-dropdown-item danger"
                                 onClick={() => handleDeleteProject(project.id)}
                               >
@@ -1071,7 +1098,7 @@ function AdminProjects() {
 
                   {/* Title & Project Code */}
                   <div className="pj-card-titles">
-                    <h3 className="pj-card-name">{project.name}</h3>
+                    <h3 id={`pj-card-name-${project.id || project.project_code}`} className="pj-card-name">{project.name}</h3>
                     <p className="pj-card-code">{project.project_code}</p>
                   </div>
 
@@ -1141,6 +1168,7 @@ function AdminProjects() {
                   {/* Card Quick Actions Bar */}
                   <div className="pj-card-actions-bar">
                     <button
+                      id={`pj-card-sheet-btn-${project.id || project.project_code}`}
                       type="button"
                       className="pj-card-action-btn sheet"
                       onClick={(e) => {
@@ -1152,6 +1180,7 @@ function AdminProjects() {
                       <span>Test Sheet</span>
                     </button>
                     <button
+                      id={`pj-card-workspace-btn-${project.id || project.project_code}`}
                       type="button"
                       className="pj-card-action-btn workspace"
                       onClick={(e) => {
@@ -1168,9 +1197,9 @@ function AdminProjects() {
             </section>
           ) : (
             /* List / Table Mode */
-            <section className="pj-table-card">
+            <section id="pj-table-section" className="pj-table-card">
               <div className="pj-table-scroll">
-                <table className="pj-table">
+                <table id="pj-list-table" className="pj-table">
                   <thead>
                     <tr>
                       <th>Project Code</th>
@@ -1189,6 +1218,7 @@ function AdminProjects() {
                   <tbody>
                     {filteredProjects.map((project) => (
                       <tr
+                        id={`pj-list-row-${project.id || project.project_code}`}
                         key={project.id || project.project_code}
                         onDoubleClick={(event) => {
                           if (!event.target.closest('button')) openProjectWorkspace(project);
@@ -1217,6 +1247,7 @@ function AdminProjects() {
                         <td style={{ fontWeight: 700 }}>{project.tickets_count ?? 0}</td>
                         <td style={{ textAlign: 'right' }}>
                           <button
+                            id={`pj-list-sheet-btn-${project.id || project.project_code}`}
                             className="pj-btn-more"
                             style={{ display: 'inline-flex', marginRight: '6px' }}
                             onClick={() => navigate(`/admin/projects/${project.id}/sheet`)}
@@ -1224,8 +1255,9 @@ function AdminProjects() {
                           >
                             <FileSpreadsheet size={15} />
                           </button>
-                          {!isQAMember && (
+                          {canManageProjects && (
                             <button
+                              id={`pj-list-edit-btn-${project.id || project.project_code}`}
                               className="pj-btn-more"
                               style={{ display: 'inline-flex' }}
                               onClick={() => openEditModal(project)}
@@ -1248,20 +1280,22 @@ function AdminProjects() {
       {/* 5. Create / Edit Project Modal */}
       {isModalOpen && (
         <div
+          id="pj-form-modal-overlay"
           className="pj-modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setIsModalOpen(false);
           }}
         >
-          <div className="pj-modal-card">
+          <div id="pj-form-modal-card" className="pj-modal-card">
             <div className="pj-modal-header">
               <div>
-                <h3>{isEditing ? 'Edit Project Specifications' : 'Create New Project'}</h3>
+                <h3 id="pj-form-modal-title">{isEditing ? 'Edit Project Specifications' : 'Create New Project'}</h3>
                 <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#64748B' }}>
                   {isEditing ? 'Update project scope, lead assignment, and timelines.' : 'Fill in project details and configure workspace access.'}
                 </p>
               </div>
               <button
+                id="pj-form-modal-close-btn"
                 className="pj-modal-close-btn"
                 onClick={() => setIsModalOpen(false)}
                 aria-label="Close dialog"
@@ -1270,7 +1304,7 @@ function AdminProjects() {
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit}>
+            <form id="pj-project-form" onSubmit={handleFormSubmit}>
               <div className="pj-modal-body">
                 {formError && (
                   <div
@@ -1290,10 +1324,11 @@ function AdminProjects() {
 
                 <div className="pj-form-grid">
                   <div className="pj-form-group">
-                    <label>
+                    <label htmlFor="pj-modal-name">
                       Project Name <span className="req-star" style={{ color: '#EF4444' }}>*</span>
                     </label>
                     <input
+                      id="pj-modal-name"
                       type="text"
                       name="name"
                       placeholder="e.g. Customer Support Portal"
@@ -1305,10 +1340,11 @@ function AdminProjects() {
                   </div>
 
                   <div className="pj-form-group">
-                    <label>
+                    <label htmlFor="pj-modal-code">
                       Project Code <span className="req-star" style={{ color: '#EF4444' }}>*</span>
                     </label>
                     <input
+                      id="pj-modal-code"
                       type="text"
                       name="project_code"
                       placeholder="e.g. PRJ-CSP-0001"
@@ -1325,10 +1361,11 @@ function AdminProjects() {
                   </div>
 
                   <div className="pj-form-group">
-                    <label>
+                    <label htmlFor="pj-modal-type">
                       Project Type <span className="req-star" style={{ color: '#EF4444' }}>*</span>
                     </label>
                     <CustomSelect
+                      id="pj-modal-type"
                       value={formData.department}
                       onChange={(val) => setFormData((prev) => ({ ...prev, department: val }))}
                       options={MODAL_PROJECT_TYPE_OPTIONS}
@@ -1338,10 +1375,11 @@ function AdminProjects() {
                   </div>
 
                   <div className="pj-form-group">
-                    <label>
+                    <label htmlFor="pj-modal-client">
                       Client Name <span className="req-star" style={{ color: '#EF4444' }}>*</span>
                     </label>
                     <input
+                      id="pj-modal-client"
                       type="text"
                       name="client_name"
                       placeholder="e.g. Acme Health Corp"
@@ -1353,10 +1391,11 @@ function AdminProjects() {
                   </div>
 
                   <div className="pj-form-group pj-form-full">
-                    <label>
+                    <label htmlFor="pj-modal-lead">
                       Project Lead <span className="req-star" style={{ color: '#EF4444' }}>*</span>
                     </label>
                     <CustomSelect
+                      id="pj-modal-lead"
                       value={String(formData.project_lead_id || '')}
                       onChange={(val) => {
                         const leadObj = projectLeads.find((l) => String(l.id) === String(val));
@@ -1374,10 +1413,11 @@ function AdminProjects() {
 
                   <div className="pj-form-row-3">
                     <div className="pj-form-group">
-                      <label>
+                      <label htmlFor="pj-modal-priority">
                         Priority <span className="req-star" style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <CustomSelect
+                        id="pj-modal-priority"
                         value={formData.priority || 'Medium'}
                         onChange={(val) => setFormData((prev) => ({ ...prev, priority: val }))}
                         options={MODAL_PROJECT_PRIORITY_OPTIONS}
@@ -1386,10 +1426,11 @@ function AdminProjects() {
                     </div>
 
                     <div className="pj-form-group">
-                      <label>
+                      <label htmlFor="pj-modal-status">
                         Status <span className="req-star" style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <CustomSelect
+                        id="pj-modal-status"
                         value={formData.status}
                         onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
                         options={MODAL_PROJECT_STATUS_OPTIONS}
@@ -1398,10 +1439,11 @@ function AdminProjects() {
                     </div>
 
                     <div className="pj-form-group">
-                      <label>
+                      <label htmlFor="pj-modal-team-members">
                         Team Members <span className="req-star" style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <input
+                        id="pj-modal-team-members"
                         type="number"
                         name="team_members"
                         min="1"
@@ -1415,10 +1457,11 @@ function AdminProjects() {
                   </div>
 
                   <div className="pj-form-group">
-                    <label>
+                    <label htmlFor="pj-modal-start-date">
                       Start Date <span className="req-star" style={{ color: '#EF4444' }}>*</span>
                     </label>
                     <input
+                      id="pj-modal-start-date"
                       type="date"
                       name="start_date"
                       value={formData.start_date}
@@ -1429,10 +1472,11 @@ function AdminProjects() {
                   </div>
 
                   <div className="pj-form-group">
-                    <label>
+                    <label htmlFor="pj-modal-end-date">
                       Target End Date <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 'normal' }}>(Optional)</span>
                     </label>
                     <input
+                      id="pj-modal-end-date"
                       type="date"
                       name="end_date"
                       value={formData.end_date || ''}
@@ -1442,10 +1486,11 @@ function AdminProjects() {
                   </div>
 
                   <div className="pj-form-group pj-form-full">
-                    <label>
+                    <label htmlFor="pj-modal-description">
                       Project Description <span className="req-star" style={{ color: '#EF4444' }}>*</span>
                     </label>
                     <textarea
+                      id="pj-modal-description"
                       name="description"
                       rows="3"
                       placeholder="Brief overview of project scope and objectives..."
@@ -1459,6 +1504,7 @@ function AdminProjects() {
 
               <div className="pj-modal-footer">
                 <button
+                  id="pj-form-cancel-btn"
                   type="button"
                   className="pj-btn-cancel"
                   onClick={() => setIsModalOpen(false)}
@@ -1466,6 +1512,7 @@ function AdminProjects() {
                   Cancel
                 </button>
                 <button
+                  id="pj-form-submit-btn"
                   type="submit"
                   className="pj-btn-submit"
                   disabled={submitting}
@@ -1481,6 +1528,7 @@ function AdminProjects() {
       {/* DELETE PROJECT CONFIRMATION MODAL */}
       {projectToDelete && (
         <div
+          id="pj-delete-modal-overlay"
           className="pj-del-modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget && !deletingProject) {
@@ -1489,6 +1537,7 @@ function AdminProjects() {
           }}
         >
           <div
+            id="pj-delete-modal-card"
             className="pj-del-modal-card"
             role="dialog"
             aria-modal="true"
@@ -1499,6 +1548,7 @@ function AdminProjects() {
                 <AlertTriangle size={20} color="#dc2626" /> Delete Project
               </h3>
               <button
+                id="pj-delete-modal-close-btn"
                 type="button"
                 className="pj-del-modal-close"
                 onClick={() => setProjectToDelete(null)}
@@ -1520,6 +1570,7 @@ function AdminProjects() {
 
             <div className="pj-del-modal-footer">
               <button
+                id="pj-delete-cancel-btn"
                 type="button"
                 className="pj-del-btn-cancel"
                 disabled={deletingProject}
@@ -1528,6 +1579,7 @@ function AdminProjects() {
                 Cancel
               </button>
               <button
+                id="pj-delete-confirm-btn"
                 type="button"
                 className="pj-del-btn-danger"
                 disabled={deletingProject}

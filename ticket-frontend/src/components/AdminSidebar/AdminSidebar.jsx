@@ -205,6 +205,7 @@ function AdminSidebar({
   return (
     <>
       <button
+        id="sidebar-mobile-open-btn"
         type="button"
         className="mobile-nav-toggle"
         onClick={() => setMobileOpen(true)}
@@ -216,6 +217,7 @@ function AdminSidebar({
       </button>
       {mobileOpen && (
         <button
+          id="sidebar-mobile-backdrop-btn"
           type="button"
           className="sidebar-backdrop"
           onClick={() => setMobileOpen(false)}
@@ -227,7 +229,7 @@ function AdminSidebar({
         id="workspace-sidebar"
       >
         <div className="sidebar-brand-row">
-          <Link className="sidebar-brand" to={effectiveHomeRoute} aria-label="QA Software dashboard">
+          <Link id="sidebar-brand-link" className="sidebar-brand" to={effectiveHomeRoute} aria-label="QA Software dashboard">
             <SmallCubeLogo />
             <div className="brand-text-col">
               <span className="brand-name"><span>QA</span> Software</span>
@@ -235,6 +237,7 @@ function AdminSidebar({
             </div>
           </Link>
           <button
+            id="sidebar-collapse-toggle-btn"
             type="button"
             className="sidebar-toggle"
             onClick={() => setCollapsed((current) => {
@@ -249,6 +252,7 @@ function AdminSidebar({
             {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
           <button
+            id="sidebar-mobile-close-btn"
             type="button"
             className="sidebar-mobile-close"
             onClick={() => setMobileOpen(false)}
@@ -258,10 +262,10 @@ function AdminSidebar({
           </button>
         </div>
 
-        <div className="sidebar-section-label">MAIN MENU</div>
-        <nav className="sidebar-nav" aria-label="Main navigation">
+        <nav id="sidebar-nav-menu" className="sidebar-nav" aria-label="Main navigation">
           {effectiveNavItems.map(({ label, to, icon: Icon, end }) => (
             <NavLink
+              id={`sidebar-nav-${to.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')}`}
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
               end={end}
               key={label}
@@ -279,6 +283,7 @@ function AdminSidebar({
         <div className="sidebar-footer">
           <NotificationCenter collapsed={collapsed} />
           <Link
+            id="sidebar-profile-link"
             className="workspace-card workspace-profile-card"
             to="/admin/settings"
             title={profile.email ? `${profileName} (${profile.email})` : profileName}
@@ -304,7 +309,7 @@ function AdminSidebar({
               aria-hidden="true"
             />
           </Link>
-          <button className="nav-item nav-logout" onClick={onLogout}>
+          <button id="sidebar-logout-btn" className="nav-item nav-logout" onClick={onLogout}>
             <LogOut className="nav-icon" /> <span className="nav-label">Sign out</span>
           </button>
         </div>

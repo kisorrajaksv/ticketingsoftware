@@ -194,6 +194,7 @@ function NotificationCenter({ collapsed = false }) {
   return (
     <>
       <button
+        id="notif-sidebar-trigger-btn"
         type="button"
         className="nav-item sidebar-notif-trigger"
         onClick={() => {
@@ -213,7 +214,7 @@ function NotificationCenter({ collapsed = false }) {
       </button>
 
       {liveToast && (
-        <div className="notif-toast" role="status" aria-live="polite">
+        <div id="notif-toast" className="notif-toast" role="status" aria-live="polite">
           <div className="notif-toast-icon">
             <Bell size={16} />
           </div>
@@ -233,6 +234,7 @@ function NotificationCenter({ collapsed = false }) {
             )}
           </div>
           <button
+            id="notif-toast-close-btn"
             type="button"
             className="notif-toast-close"
             onClick={() => setLiveToast(null)}
@@ -248,13 +250,15 @@ function NotificationCenter({ collapsed = false }) {
         onClose={() => setDrawerOpen(false)}
       >
         <section
+          id="notif-drawer-section"
           className="notif-drawer-card"
           role="dialog"
           aria-modal={drawerOpen}
           aria-labelledby="notif-drawer-title"
         >
-          <header className="notif-drawer-header">
+          <header id="notif-drawer-header" className="notif-drawer-header">
             <button
+              id="notif-drawer-close-btn"
               type="button"
               className="notif-drawer-close-btn"
               onClick={() => setDrawerOpen(false)}
@@ -278,6 +282,7 @@ function NotificationCenter({ collapsed = false }) {
             {unreadCount > 0 && (
               <div className="notif-drawer-header-actions">
                 <button
+                  id="notif-mark-all-read-btn"
                   type="button"
                   className="notif-mark-all-btn"
                   onClick={handleMarkAllRead}
@@ -291,6 +296,7 @@ function NotificationCenter({ collapsed = false }) {
 
             <div className="notif-drawer-tabs">
               <button
+                id="notif-tab-all-btn"
                 type="button"
                 className={`notif-filter-tab ${filterTab === 'all' ? 'active' : ''}`}
                 onClick={() => setFilterTab('all')}
@@ -298,6 +304,7 @@ function NotificationCenter({ collapsed = false }) {
                 All ({notifications.length})
               </button>
               <button
+                id="notif-tab-unread-btn"
                 type="button"
                 className={`notif-filter-tab ${filterTab === 'unread' ? 'active' : ''}`}
                 onClick={() => setFilterTab('unread')}
@@ -323,6 +330,7 @@ function NotificationCenter({ collapsed = false }) {
                   const meta = TYPE_META[item.type] || TYPE_META.info;
                   return (
                     <article
+                      id={`notif-card-${item.id}`}
                       key={item.id}
                       className={`notif-item-card ${item.is_read ? 'read' : 'unread'}`}
                     >
@@ -341,6 +349,7 @@ function NotificationCenter({ collapsed = false }) {
                         </div>
                         {!item.is_read && (
                           <button
+                            id={`notif-read-btn-${item.id}`}
                             type="button"
                             className="notif-read-single-btn"
                             onClick={() => handleMarkAsRead(item.id)}
@@ -352,7 +361,7 @@ function NotificationCenter({ collapsed = false }) {
                         )}
                       </div>
 
-                      <h4 className="notif-item-title">{item.title}</h4>
+                      <h4 id={`notif-title-${item.id}`} className="notif-item-title">{item.title}</h4>
                       {item.message && <p className="notif-item-message">{item.message}</p>}
 
                       <div className="notif-item-meta">

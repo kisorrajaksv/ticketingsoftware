@@ -57,11 +57,11 @@ function App() {
         <Route path="/admin/projects" element={<AdminProjects />} />
         <Route path="/admin/projects/:projectId" element={<AdminProjectWorkspace />} />
         
-        {/* Test Case Sheet - Restricted from Developers */}
+        {/* Test Case Sheet - Developers have read-only access */}
         <Route
           path="/admin/projects/:projectId/sheet"
           element={
-            <RoleRoute allowedRoles={['Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Super Admin']} fallback="/developer">
+            <RoleRoute allowedRoles={['Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Super Admin', 'Developer']} fallback="/developer">
               <AdminProjectSheet />
             </RoleRoute>
           }

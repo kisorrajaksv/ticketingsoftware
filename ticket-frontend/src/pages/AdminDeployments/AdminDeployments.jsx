@@ -170,23 +170,25 @@ function AdminDeployments() {
       {/* Logout Modal */}
       {showLogoutModal && (
         <div
+          id="deployments-logout-overlay"
           className="modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setShowLogoutModal(false);
           }}
         >
-          <section className="modal-content" role="dialog" aria-modal="true">
+          <section id="deployments-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon"><LogOut size={21} /></div>
-            <h2 className="modal-title">Sign out of your workspace?</h2>
+            <h2 id="deployments-logout-title" className="modal-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your account.</p>
             <div className="modal-actions">
               <button
+                id="deployments-logout-cancel-btn"
                 className="modal-btn modal-btn-cancel"
                 onClick={() => setShowLogoutModal(false)}
               >
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="deployments-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -198,17 +200,18 @@ function AdminDeployments() {
       <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Content Area */}
-      <main className="main-content">
+      <main id="deployments-main-content" className="main-content">
         <div className="dashboard-container">
           <div className="projects-layout">
             {/* Header Card */}
             <div className="projects-header-row">
               <div className="projects-header-info">
-                <h2>Deployment Approvals Queue</h2>
+                <h2 id="deployments-page-heading">Deployment Approvals Queue</h2>
                 <p>Verify release readiness, smoke test gates, and production push requests.</p>
               </div>
               <div className="users-header-actions">
                 <button
+                  id="deployments-request-btn"
                   className="btn-primary-action"
                   onClick={() => setIsModalOpen(true)}
                 >
@@ -223,6 +226,7 @@ function AdminDeployments() {
               <div className="users-search-box">
                 <Search size={16} color="#64748b" />
                 <input
+                  id="deployments-search-input"
                   type="text"
                   placeholder="Search deployment code, service, version..."
                   value={searchQuery}
@@ -232,6 +236,7 @@ function AdminDeployments() {
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <CustomSelect
+                  id="deployments-env-filter"
                   value={envFilter}
                   onChange={setEnvFilter}
                   options={ENV_FILTER_OPTIONS}
@@ -240,6 +245,7 @@ function AdminDeployments() {
                 />
 
                 <CustomSelect
+                  id="deployments-status-filter"
                   value={statusFilter}
                   onChange={setStatusFilter}
                   options={STATUS_FILTER_OPTIONS}
@@ -251,7 +257,7 @@ function AdminDeployments() {
 
             {/* Deployments Table */}
             <div className="users-table-card">
-              <table className="users-table">
+              <table id="deployments-table" className="users-table">
                 <thead>
                   <tr>
                     <th>Deployment Code</th>
@@ -339,15 +345,17 @@ function AdminDeployments() {
       {/* Create Deployment Modal */}
       {isModalOpen && (
         <div
+          id="deploy-create-modal-overlay"
           className="modal-overlay-user"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setIsModalOpen(false);
           }}
         >
-          <div className="modal-card-user" role="dialog" aria-modal="true">
+          <div id="deploy-create-modal" className="modal-card-user" role="dialog" aria-modal="true">
             <div className="modal-header-user">
-              <h3>Request Deployment Approval</h3>
+              <h3 id="deploy-create-modal-title">Request Deployment Approval</h3>
               <button
+                id="deploy-create-modal-close-btn"
                 className="modal-close-btn"
                 onClick={() => setIsModalOpen(false)}
                 aria-label="Close dialog"
@@ -356,14 +364,15 @@ function AdminDeployments() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateDeployment}>
+            <form id="deploy-create-form" onSubmit={handleCreateDeployment}>
               <div className="modal-body-user">
                 {formError && <div className="user-error-banner">{formError}</div>}
 
                 <div className="form-grid-2">
                   <div className="form-group-user">
-                    <label>Deployment Code *</label>
+                    <label htmlFor="deploy-code">Deployment Code *</label>
                     <input
+                      id="deploy-code"
                       type="text"
                       name="deploy_code"
                       placeholder="e.g. DEP-905"
@@ -374,8 +383,9 @@ function AdminDeployments() {
                   </div>
 
                   <div className="form-group-user">
-                    <label>Target Environment</label>
+                    <label htmlFor="deploy-environment">Target Environment</label>
                     <CustomSelect
+                      id="deploy-environment"
                       value={formData.environment}
                       onChange={(val) => setFormData((prev) => ({ ...prev, environment: val }))}
                       options={MODAL_ENV_OPTIONS}
@@ -386,8 +396,9 @@ function AdminDeployments() {
 
                 <div className="form-grid-2">
                   <div className="form-group-user">
-                    <label>Service / Application *</label>
+                    <label htmlFor="deploy-service-name">Service / Application *</label>
                     <input
+                      id="deploy-service-name"
                       type="text"
                       name="service_name"
                       placeholder="e.g. Payment Gateway API"
@@ -398,8 +409,9 @@ function AdminDeployments() {
                   </div>
 
                   <div className="form-group-user">
-                    <label>Release Version *</label>
+                    <label htmlFor="deploy-version">Release Version *</label>
                     <input
+                      id="deploy-version"
                       type="text"
                       name="version"
                       placeholder="e.g. v2.4.1"
@@ -411,8 +423,9 @@ function AdminDeployments() {
                 </div>
 
                 <div className="form-group-user">
-                  <label>Release Notes / Changes</label>
+                  <label htmlFor="deploy-release-notes">Release Notes / Changes</label>
                   <input
+                    id="deploy-release-notes"
                     type="text"
                     name="release_notes"
                     placeholder="Summary of bug fixes, performance improvements, or PR links..."
@@ -423,8 +436,9 @@ function AdminDeployments() {
 
                 <div className="form-grid-2">
                   <div className="form-group-user">
-                    <label>Requested By</label>
+                    <label htmlFor="deploy-requested-by">Requested By</label>
                     <input
+                      id="deploy-requested-by"
                       type="text"
                       name="requested_by"
                       value={formData.requested_by}
@@ -433,8 +447,9 @@ function AdminDeployments() {
                   </div>
 
                   <div className="form-group-user">
-                    <label>Initial Status</label>
+                    <label htmlFor="deploy-status">Initial Status</label>
                     <CustomSelect
+                      id="deploy-status"
                       value={formData.status}
                       onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
                       options={MODAL_STATUS_OPTIONS}
@@ -446,6 +461,7 @@ function AdminDeployments() {
 
               <div className="modal-footer-user">
                 <button
+                  id="deploy-create-cancel-btn"
                   type="button"
                   className="btn-secondary"
                   onClick={() => setIsModalOpen(false)}
@@ -453,6 +469,7 @@ function AdminDeployments() {
                   Cancel
                 </button>
                 <button
+                  id="deploy-create-submit-btn"
                   type="submit"
                   className="btn-primary-action"
                   disabled={submitting}

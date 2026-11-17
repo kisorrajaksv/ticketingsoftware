@@ -47,7 +47,8 @@ import {
   Maximize2,
   Folder,
   Radio,
-  Users
+  Users,
+  Eye
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../../utils/apiConfig';
@@ -164,6 +165,7 @@ export default function AdminProjectSheet() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const isDeveloper = (localStorage.getItem('userRole') || '') === 'Developer';
 
   // Project metadata
   const [project, setProject] = useState(() => location.state?.project || {
@@ -592,6 +594,7 @@ export default function AdminProjectSheet() {
 
   // Save changes to backend & localStorage
   const persistSheetChanges = async (updatedSheets) => {
+    if (isDeveloper) return;
     setCloudStatus('saving');
     const localKey = `pjs_sheets_${projectId}`;
     localStorage.setItem(localKey, JSON.stringify(updatedSheets));
@@ -770,6 +773,7 @@ export default function AdminProjectSheet() {
 
   // Apply Formatting to Selection (All, Row, Column, or Active Cell)
   const applyFormatting = (property, value) => {
+    if (isDeveloper) return;
     recordUndo();
     const currentFmt = { ...(currentSheet.formatting || {}) };
 
@@ -802,6 +806,7 @@ export default function AdminProjectSheet() {
 
   // Clear Formatting
   const handleClearFormatting = () => {
+    if (isDeveloper) return;
     recordUndo();
     const currentFmt = { ...(currentSheet.formatting || {}) };
 
@@ -854,7 +859,7 @@ export default function AdminProjectSheet() {
   };
 
   const handleUndo = () => {
-    if (undoStack.length === 0) return;
+    if (isDeveloper || undoStack.length === 0) return;
     const lastState = undoStack[undoStack.length - 1];
     setRedoStack((prev) => [...prev, JSON.stringify(sheets)]);
     setUndoStack((prev) => prev.slice(0, -1));
@@ -865,7 +870,7 @@ export default function AdminProjectSheet() {
   };
 
   const handleRedo = () => {
-    if (redoStack.length === 0) return;
+    if (isDeveloper || redoStack.length === 0) return;
     const nextState = redoStack[redoStack.length - 1];
     setUndoStack((prev) => [...prev, JSON.stringify(sheets)]);
     setRedoStack((prev) => prev.slice(0, -1));
@@ -877,6 +882,10 @@ export default function AdminProjectSheet() {
 
   // Commit Cell Edit
   const commitEdit = (rowIndex, colId, newVal) => {
+    if (isDeveloper) {
+      setEditingCell(null);
+      return;
+    }
     const row = displayRows[rowIndex];
     if (!row) {
       setEditingCell(null);
@@ -941,6 +950,7 @@ export default function AdminProjectSheet() {
   // Global Clipboard Paste Listener for Images & Screenshots
   useEffect(() => {
     const handleImagePaste = (e) => {
+      if (isDeveloper) return;
       const items = e.clipboardData?.items;
       if (!items) return;
 
@@ -974,6 +984,7 @@ export default function AdminProjectSheet() {
 
   // Start cell editing
   const startEditing = (rowIndex, colId) => {
+    if (isDeveloper) return;
     const row = displayRows[rowIndex];
     if (!row) return;
 
@@ -1120,6 +1131,7 @@ export default function AdminProjectSheet() {
 
   // Cut Action
   const handleCut = useCallback(() => {
+    if (isDeveloper) return;
     handleCopy();
     recordUndo();
     if (selectionMode === 'all') {
@@ -1168,6 +1180,7 @@ export default function AdminProjectSheet() {
 
   // Paste Action
   const handlePaste = useCallback(async () => {
+    if (isDeveloper) return;
     let clipboardText = '';
     try {
       clipboardText = await navigator.clipboard.readText();
@@ -1345,20 +1358,21 @@ export default function AdminProjectSheet() {
         return;
       }
       if (e.key === 'v' || e.key === 'V') {
-        if (!editingCell) {
+        if (!editingCell && !isDeveloper) {
           e.preventDefault();
           handlePaste();
         }
         return;
       }
       if (e.key === 'x' || e.key === 'X') {
-        if (!editingCell) {
+        if (!editingCell && !isDeveloper) {
           e.preventDefault();
           handleCut();
         }
         return;
       }
       if (e.key === 'z' || e.key === 'Z') {
+        if (isDeveloper) return;
         e.preventDefault();
         if (e.shiftKey) {
           handleRedo();
@@ -1368,6 +1382,7 @@ export default function AdminProjectSheet() {
         return;
       }
       if (e.key === 'y' || e.key === 'Y') {
+        if (isDeveloper) return;
         e.preventDefault();
         handleRedo();
         return;
@@ -1380,16 +1395,19 @@ export default function AdminProjectSheet() {
         return;
       }
       if (e.key === 'b' || e.key === 'B') {
+        if (isDeveloper) return;
         e.preventDefault();
         applyFormatting('bold', !activeStyle.bold);
         return;
       }
       if (e.key === 'i' || e.key === 'I') {
+        if (isDeveloper) return;
         e.preventDefault();
         applyFormatting('italic', !activeStyle.italic);
         return;
       }
       if (e.key === 'u' || e.key === 'U') {
+        if (isDeveloper) return;
         e.preventDefault();
         applyFormatting('underline', !activeStyle.underline);
         return;
@@ -1443,8 +1461,9 @@ export default function AdminProjectSheet() {
       }
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      startEditing(rowIndex, colId);
+      if (!isDeveloper) startEditing(rowIndex, colId);
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (isDeveloper) return;
       if (selectionMode === 'all') {
         recordUndo();
         const updatedRows = currentRows.map((r) => {
@@ -1480,6 +1499,7 @@ export default function AdminProjectSheet() {
 
   // Add N Rows automatically from input count (all fields empty)
   const handleAddNRows = (count = 1, position = 'bottom') => {
+    if (isDeveloper) return;
     const numRows = Math.max(1, Math.min(1000, parseInt(count, 10) || 1));
     recordUndo();
     const now = Date.now();
@@ -1520,7 +1540,7 @@ export default function AdminProjectSheet() {
 
   // Delete Row(s)
   const handleDeleteRow = () => {
-    if (currentRows.length === 0) return;
+    if (isDeveloper || currentRows.length === 0) return;
     recordUndo();
 
     if (selectionMode === 'row' && selectedRowIndices.length > 0) {
@@ -1563,7 +1583,7 @@ export default function AdminProjectSheet() {
   // Add Column
   const handleAddColumnSubmit = (e) => {
     e.preventDefault();
-    if (!newColLabel.trim()) return;
+    if (isDeveloper || !newColLabel.trim()) return;
 
     recordUndo();
     const newColId = `col_${Date.now()}`;
@@ -1597,6 +1617,7 @@ export default function AdminProjectSheet() {
 
   // Image Double Click Trigger for upload
   const handleImageDoubleClick = (rIdx, colId) => {
+    if (isDeveloper) return;
     setPendingUploadCell({ rowIndex: rIdx, colId });
     fileInputRef.current?.click();
   };
@@ -1604,7 +1625,7 @@ export default function AdminProjectSheet() {
   // Conditional Formatting Rules management
   const handleAddConditionalRule = (e) => {
     e.preventDefault();
-    if (!newRuleValue.trim()) return;
+    if (isDeveloper || !newRuleValue.trim()) return;
 
     recordUndo();
     const newRule = {
@@ -1633,6 +1654,7 @@ export default function AdminProjectSheet() {
   };
 
   const handleToggleConditionalRule = (ruleId) => {
+    if (isDeveloper) return;
     recordUndo();
     const currentRules = currentSheet.conditionalRules || [...DEFAULT_CONDITIONAL_RULES];
     const updatedRules = currentRules.map((r) => (r.id === ruleId ? { ...r, enabled: !r.enabled } : r));
@@ -1648,6 +1670,7 @@ export default function AdminProjectSheet() {
   };
 
   const handleDeleteConditionalRule = (ruleId) => {
+    if (isDeveloper) return;
     recordUndo();
     const currentRules = currentSheet.conditionalRules || [...DEFAULT_CONDITIONAL_RULES];
     const updatedRules = currentRules.filter((r) => r.id !== ruleId);
@@ -1665,6 +1688,7 @@ export default function AdminProjectSheet() {
 
   // Delete Column
   const handleDeleteColumn = (colId) => {
+    if (isDeveloper) return;
     if (currentColumns.length <= 1) {
       alert('A sheet must have at least one column.');
       return;
@@ -1690,6 +1714,7 @@ export default function AdminProjectSheet() {
 
   // Add New Sheet Tab (+)
   const handleAddSheetTab = async () => {
+    if (isDeveloper) return;
     recordUndo();
     const sheetNum = sheets.length + 1;
     const sheetName = `Sheet ${sheetNum}`;
@@ -1735,6 +1760,7 @@ export default function AdminProjectSheet() {
 
   // Duplicate Sheet Tab
   const handleDuplicateSheet = (index) => {
+    if (isDeveloper) return;
     recordUndo();
     const sourceSheet = sheets[index];
     if (!sourceSheet) return;
@@ -1756,13 +1782,14 @@ export default function AdminProjectSheet() {
 
   // Inline Rename Sheet Tab
   const startTabRename = (index) => {
+    if (isDeveloper) return;
     setEditingTabIdx(index);
     setEditingTabName(sheets[index].sheet_name);
     setTabMenuIndex(null);
   };
 
   const commitTabRename = () => {
-    if (editingTabIdx === null) return;
+    if (isDeveloper || editingTabIdx === null) return;
     const finalName = editingTabName.trim() || `Sheet ${editingTabIdx + 1}`;
     recordUndo();
     const updatedSheets = [...sheets];
@@ -1778,6 +1805,7 @@ export default function AdminProjectSheet() {
 
   // Change Tab Color
   const handleChangeTabColor = (index, colorHex) => {
+    if (isDeveloper) return;
     recordUndo();
     const updatedSheets = [...sheets];
     updatedSheets[index] = {
@@ -1793,6 +1821,7 @@ export default function AdminProjectSheet() {
   // Delete Sheet Tab
   const handleDeleteTab = async (index, e) => {
     if (e) e.stopPropagation();
+    if (isDeveloper) return;
     if (sheets.length <= 1) {
       alert('Cannot delete the last sheet tab. A workbook must have at least one sheet.');
       return;
@@ -1931,6 +1960,7 @@ export default function AdminProjectSheet() {
 
   // Handle 1-click bulk ticket generation
   const handleBulkRaiseTickets = async () => {
+    if (isDeveloper) return;
     if (pendingBulkCases.total === 0) {
       showToast('All failed and recommendation test cases already have tickets raised.');
       return;
@@ -1995,16 +2025,16 @@ export default function AdminProjectSheet() {
     <div className="pjs-layout">
       {/* Logout confirmation */}
       {showLogoutModal && (
-        <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowLogoutModal(false)}>
-          <section className="modal-content" role="dialog" aria-modal="true">
+        <div id="pjs-logout-modal-overlay" className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowLogoutModal(false)}>
+          <section id="pjs-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon"><LogOut size={21} /></div>
-            <h2 className="modal-title">Sign out of your workspace?</h2>
+            <h2 id="pjs-logout-modal-title" className="modal-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your account.</p>
             <div className="modal-actions">
-              <button className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
+              <button id="pjs-logout-cancel-btn" className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="pjs-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -2016,12 +2046,13 @@ export default function AdminProjectSheet() {
       <AdminSidebar defaultCollapsed onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Google Sheets Application Viewport */}
-      <main className="pjs-main" onKeyDown={handleKeyDown} tabIndex={0} ref={tableRef}>
+      <main id="pjs-main-content" className="pjs-main" onKeyDown={handleKeyDown} tabIndex={0} ref={tableRef}>
         
         {/* 1. Google Sheets App Header Bar */}
-        <header className="pjs-header">
+        <header id="pjs-header" className="pjs-header">
           <div className="pjs-header-left">
             <button
+              id="pjs-back-projects-btn"
               className="pjs-back-btn"
               onClick={() => navigate('/admin/projects')}
               title="Return to Projects Catalog"
@@ -2030,6 +2061,7 @@ export default function AdminProjectSheet() {
               <span>Projects</span>
             </button>
             <button
+              id="pjs-back-workspace-btn"
               className="pjs-back-btn pjs-back-btn-secondary"
               onClick={() => navigate(`/admin/projects/${projectId}`, { state: { project } })}
               title="Return to Project Workspace Details"
@@ -2047,8 +2079,13 @@ export default function AdminProjectSheet() {
               <div className="pjs-doc-title-row">
                 <span className="pjs-doc-title">{project.name || 'Project Sheet'}</span>
                 <span className="pjs-doc-pill">{project.project_code}</span>
-                <span className={`pjs-cloud-pill ${cloudStatus}`}>
-                  {cloudStatus === 'saving' ? (
+                <span className={`pjs-cloud-pill ${isDeveloper ? 'saved' : cloudStatus}`}>
+                  {isDeveloper ? (
+                    <>
+                      <Eye size={12} />
+                      <span>Read Only</span>
+                    </>
+                  ) : cloudStatus === 'saving' ? (
                     <>
                       <Clock size={12} />
                       <span>Saving...</span>
@@ -2063,31 +2100,34 @@ export default function AdminProjectSheet() {
               </div>
 
               {/* Google Sheets Menu Row (File, Edit, View, Insert, Format, Data, Tools, Help) */}
-              <nav className="pjs-menu-bar" aria-label="Sheet Menus">
+              <nav id="pjs-menu-bar" className="pjs-menu-bar" aria-label="Sheet Menus">
                 {/* File Menu */}
                 <div className="pjs-menu-item-wrap">
                   <button
+                    id="pjs-menu-file-btn"
                     className={`pjs-menu-item-btn ${activeMenu === 'file' ? 'active' : ''}`}
                     onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'file' ? null : 'file'); }}
                   >
                     File
                   </button>
                   {activeMenu === 'file' && (
-                    <div className="pjs-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                      <button className="pjs-dropdown-opt" onClick={() => { handleAddSheetTab(); setActiveMenu(null); }}>
-                        <Plus size={14} /> New Sheet Tab
-                      </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { handleExportCSV(); setActiveMenu(null); }}>
+                    <div id="pjs-menu-file-dropdown" className="pjs-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                      {!isDeveloper && (
+                        <button id="pjs-menu-file-new-tab-btn" className="pjs-dropdown-opt" onClick={() => { handleAddSheetTab(); setActiveMenu(null); }}>
+                          <Plus size={14} /> New Sheet Tab
+                        </button>
+                      )}
+                      <button id="pjs-menu-file-export-csv-btn" className="pjs-dropdown-opt" onClick={() => { handleExportCSV(); setActiveMenu(null); }}>
                         <Download size={14} /> Download as CSV
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { window.print(); setActiveMenu(null); }}>
+                      <button id="pjs-menu-file-print-btn" className="pjs-dropdown-opt" onClick={() => { window.print(); setActiveMenu(null); }}>
                         <Printer size={14} /> Print Sheet
                       </button>
                       <div className="pjs-dropdown-divider" />
-                      <button className="pjs-dropdown-opt" onClick={() => navigate('/admin/projects')}>
+                      <button id="pjs-menu-file-close-projects-btn" className="pjs-dropdown-opt" onClick={() => navigate('/admin/projects')}>
                         <ArrowLeft size={14} /> Close to Projects Catalog
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => navigate(`/admin/projects/${projectId}`, { state: { project } })}>
+                      <button id="pjs-menu-file-close-workspace-btn" className="pjs-dropdown-opt" onClick={() => navigate(`/admin/projects/${projectId}`, { state: { project } })}>
                         <Folder size={14} /> Close to Project Workspace
                       </button>
                     </div>
@@ -2095,59 +2135,63 @@ export default function AdminProjectSheet() {
                 </div>
 
                 {/* Edit Menu */}
+                {!isDeveloper && (
                 <div className="pjs-menu-item-wrap">
                   <button
+                    id="pjs-menu-edit-btn"
                     className={`pjs-menu-item-btn ${activeMenu === 'edit' ? 'active' : ''}`}
                     onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'edit' ? null : 'edit'); }}
                   >
                     Edit
                   </button>
                   {activeMenu === 'edit' && (
-                    <div className="pjs-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                      <button className="pjs-dropdown-opt" onClick={() => { handleUndo(); setActiveMenu(null); }}>
+                    <div id="pjs-menu-edit-dropdown" className="pjs-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                      <button id="pjs-menu-edit-undo-btn" className="pjs-dropdown-opt" onClick={() => { handleUndo(); setActiveMenu(null); }}>
                         <RotateCcw size={14} /> Undo <span className="pjs-shortcut">Ctrl+Z</span>
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { handleRedo(); setActiveMenu(null); }}>
+                      <button id="pjs-menu-edit-redo-btn" className="pjs-dropdown-opt" onClick={() => { handleRedo(); setActiveMenu(null); }}>
                         <RotateCw size={14} /> Redo <span className="pjs-shortcut">Ctrl+Y</span>
                       </button>
                       <div className="pjs-dropdown-divider" />
-                      <button className="pjs-dropdown-opt" onClick={() => { handleCut(); setActiveMenu(null); }}>
+                      <button id="pjs-menu-edit-cut-btn" className="pjs-dropdown-opt" onClick={() => { handleCut(); setActiveMenu(null); }}>
                         <Scissors size={14} /> Cut <span className="pjs-shortcut">Ctrl+X</span>
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { handleCopy(); setActiveMenu(null); }}>
+                      <button id="pjs-menu-edit-copy-btn" className="pjs-dropdown-opt" onClick={() => { handleCopy(); setActiveMenu(null); }}>
                         <Copy size={14} /> Copy <span className="pjs-shortcut">Ctrl+C</span>
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { handlePaste(); setActiveMenu(null); }}>
+                      <button id="pjs-menu-edit-paste-btn" className="pjs-dropdown-opt" onClick={() => { handlePaste(); setActiveMenu(null); }}>
                         <Clipboard size={14} /> Paste <span className="pjs-shortcut">Ctrl+V</span>
                       </button>
                       <div className="pjs-dropdown-divider" />
-                      <button className="pjs-dropdown-opt" onClick={() => { handleSelectAll(); setActiveMenu(null); }}>
+                      <button id="pjs-menu-edit-select-all-btn" className="pjs-dropdown-opt" onClick={() => { handleSelectAll(); setActiveMenu(null); }}>
                         Select all <span className="pjs-shortcut">Ctrl+A</span>
                       </button>
-                      <button className="pjs-dropdown-opt danger" onClick={() => { handleDeleteRow(); setActiveMenu(null); }}>
+                      <button id="pjs-menu-edit-delete-row-btn" className="pjs-dropdown-opt danger" onClick={() => { handleDeleteRow(); setActiveMenu(null); }}>
                         <Trash2 size={14} /> Delete Selected Row
                       </button>
                     </div>
                   )}
                 </div>
+                )}
 
                 {/* View Menu */}
                 <div className="pjs-menu-item-wrap">
                   <button
+                    id="pjs-menu-view-btn"
                     className={`pjs-menu-item-btn ${activeMenu === 'view' ? 'active' : ''}`}
                     onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'view' ? null : 'view'); }}
                   >
                     View
                   </button>
                   {activeMenu === 'view' && (
-                    <div className="pjs-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                      <button className="pjs-dropdown-opt" onClick={() => { setZoomLevel(100); setActiveMenu(null); }}>
+                    <div id="pjs-menu-view-dropdown" className="pjs-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                      <button id="pjs-menu-view-zoom-100-btn" className="pjs-dropdown-opt" onClick={() => { setZoomLevel(100); setActiveMenu(null); }}>
                         Zoom: 100% {zoomLevel === 100 && <Check size={14} />}
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { setZoomLevel(125); setActiveMenu(null); }}>
+                      <button id="pjs-menu-view-zoom-125-btn" className="pjs-dropdown-opt" onClick={() => { setZoomLevel(125); setActiveMenu(null); }}>
                         Zoom: 125% {zoomLevel === 125 && <Check size={14} />}
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { setZoomLevel(75); setActiveMenu(null); }}>
+                      <button id="pjs-menu-view-zoom-75-btn" className="pjs-dropdown-opt" onClick={() => { setZoomLevel(75); setActiveMenu(null); }}>
                         Zoom: 75% {zoomLevel === 75 && <Check size={14} />}
                       </button>
                     </div>
@@ -2155,84 +2199,93 @@ export default function AdminProjectSheet() {
                 </div>
 
                 {/* Insert Menu */}
+                {!isDeveloper && (
                 <div className="pjs-menu-item-wrap">
                   <button
+                    id="pjs-menu-insert-btn"
                     className={`pjs-menu-item-btn ${activeMenu === 'insert' ? 'active' : ''}`}
                     onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'insert' ? null : 'insert'); }}
                   >
                     Insert
                   </button>
                   {activeMenu === 'insert' && (
-                    <div className="pjs-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                      <button className="pjs-dropdown-opt" onClick={() => { handleAddRow('above'); setActiveMenu(null); }}>
+                    <div id="pjs-menu-insert-dropdown" className="pjs-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                      <button id="pjs-menu-insert-row-above-btn" className="pjs-dropdown-opt" onClick={() => { handleAddRow('above'); setActiveMenu(null); }}>
                         <ArrowUp size={14} /> Row above
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { handleAddRow('below'); setActiveMenu(null); }}>
+                      <button id="pjs-menu-insert-row-below-btn" className="pjs-dropdown-opt" onClick={() => { handleAddRow('below'); setActiveMenu(null); }}>
                         <ArrowDown size={14} /> Row below
                       </button>
                       <div className="pjs-dropdown-divider" />
-                      <button className="pjs-dropdown-opt" onClick={() => { setShowAddColModal(true); setActiveMenu(null); }}>
+                      <button id="pjs-menu-insert-col-btn" className="pjs-dropdown-opt" onClick={() => { setShowAddColModal(true); setActiveMenu(null); }}>
                         <Columns size={14} /> Insert Column
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { handleAddSheetTab(); setActiveMenu(null); }}>
+                      <button id="pjs-menu-insert-tab-btn" className="pjs-dropdown-opt" onClick={() => { handleAddSheetTab(); setActiveMenu(null); }}>
                         <Plus size={14} /> New Sheet Tab
                       </button>
                     </div>
                   )}
                 </div>
+                )}
 
                 {/* Format Menu */}
+                {!isDeveloper && (
                 <div className="pjs-menu-item-wrap">
                   <button
+                    id="pjs-menu-format-btn"
                     className={`pjs-menu-item-btn ${activeMenu === 'format' ? 'active' : ''}`}
                     onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'format' ? null : 'format'); }}
                   >
                     Format
                   </button>
                   {activeMenu === 'format' && (
-                    <div className="pjs-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                      <button className="pjs-dropdown-opt" onClick={() => { applyFormatting('bold', !activeStyle.bold); setActiveMenu(null); }}>
+                    <div id="pjs-menu-format-dropdown" className="pjs-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                      <button id="pjs-menu-format-bold-btn" className="pjs-dropdown-opt" onClick={() => { applyFormatting('bold', !activeStyle.bold); setActiveMenu(null); }}>
                         <Bold size={14} /> Bold <span className="pjs-shortcut">Ctrl+B</span>
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { applyFormatting('italic', !activeStyle.italic); setActiveMenu(null); }}>
+                      <button id="pjs-menu-format-italic-btn" className="pjs-dropdown-opt" onClick={() => { applyFormatting('italic', !activeStyle.italic); setActiveMenu(null); }}>
                         <Italic size={14} /> Italic <span className="pjs-shortcut">Ctrl+I</span>
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { applyFormatting('underline', !activeStyle.underline); setActiveMenu(null); }}>
+                      <button id="pjs-menu-format-underline-btn" className="pjs-dropdown-opt" onClick={() => { applyFormatting('underline', !activeStyle.underline); setActiveMenu(null); }}>
                         <Underline size={14} /> Underline <span className="pjs-shortcut">Ctrl+U</span>
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { applyFormatting('strikethrough', !activeStyle.strikethrough); setActiveMenu(null); }}>
+                      <button id="pjs-menu-format-strike-btn" className="pjs-dropdown-opt" onClick={() => { applyFormatting('strikethrough', !activeStyle.strikethrough); setActiveMenu(null); }}>
                         <Strikethrough size={14} /> Strikethrough
                       </button>
                       <div className="pjs-dropdown-divider" />
-                      <button className="pjs-dropdown-opt" onClick={() => { applyFormatting('wrap', 'wrap'); setActiveMenu(null); showToast('Wrap text enabled'); }}>
+                      <button id="pjs-menu-format-wrap-btn" className="pjs-dropdown-opt" onClick={() => { applyFormatting('wrap', 'wrap'); setActiveMenu(null); showToast('Wrap text enabled'); }}>
                         <WrapText size={14} /> Text Wrapping: Wrap
                       </button>
-                      <button className="pjs-dropdown-opt" onClick={() => { applyFormatting('wrap', 'overflow'); setActiveMenu(null); showToast('Overflow enabled'); }}>
+                      <button id="pjs-menu-format-overflow-btn" className="pjs-dropdown-opt" onClick={() => { applyFormatting('wrap', 'overflow'); setActiveMenu(null); showToast('Overflow enabled'); }}>
                         <WrapText size={14} /> Text Wrapping: Overflow
                       </button>
                       <div className="pjs-dropdown-divider" />
-                      <button className="pjs-dropdown-opt" onClick={() => { setShowConditionalModal(true); setActiveMenu(null); }}>
+                      <button id="pjs-menu-format-conditional-btn" className="pjs-dropdown-opt" onClick={() => { setShowConditionalModal(true); setActiveMenu(null); }}>
                         <Sparkles size={14} color="#1a73e8" /> Conditional formatting...
                       </button>
                       <div className="pjs-dropdown-divider" />
-                      <button className="pjs-dropdown-opt" onClick={() => { handleClearFormatting(); setActiveMenu(null); }}>
+                      <button id="pjs-menu-format-clear-btn" className="pjs-dropdown-opt" onClick={() => { handleClearFormatting(); setActiveMenu(null); }}>
                         <RemoveFormatting size={14} /> Clear Formatting
                       </button>
                     </div>
                   )}
                 </div>
+                )}
 
                 {/* Data Menu */}
+                {!isDeveloper && (
                 <div className="pjs-menu-item-wrap">
                   <button
+                    id="pjs-menu-data-btn"
                     className={`pjs-menu-item-btn ${activeMenu === 'data' ? 'active' : ''}`}
                     onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'data' ? null : 'data'); }}
                   >
                     Data
                   </button>
                   {activeMenu === 'data' && (
-                    <div className="pjs-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                    <div id="pjs-menu-data-dropdown" className="pjs-dropdown-menu" onClick={(e) => e.stopPropagation()}>
                       <button
+                        id="pjs-menu-data-sort-az-btn"
                         className="pjs-dropdown-opt"
                         onClick={() => {
                           recordUndo();
@@ -2250,6 +2303,7 @@ export default function AdminProjectSheet() {
                         Sort column A → Z
                       </button>
                       <button
+                        id="pjs-menu-data-sort-za-btn"
                         className="pjs-dropdown-opt"
                         onClick={() => {
                           recordUndo();
@@ -2269,6 +2323,7 @@ export default function AdminProjectSheet() {
                     </div>
                   )}
                 </div>
+                )}
               </nav>
             </div>
           </div>
@@ -2321,31 +2376,34 @@ export default function AdminProjectSheet() {
             </div>
 
             {/* 1-Click Bulk Raise Tickets for Day / Sheet Run */}
-            <button
-              type="button"
-              className={`pjs-bulk-raise-btn ${pendingBulkCases.total > 0 ? 'has-pending' : 'all-raised'}`}
-              onClick={() => {
-                if (pendingBulkCases.total === 0) {
-                  showToast('All failed and recommendation test cases in this sheet already have tickets raised.');
-                } else {
-                  setBulkResultNotice(null);
-                  setBulkRaiseModalOpen(true);
-                }
-              }}
-              title={pendingBulkCases.total > 0 
-                ? `Raise ${pendingBulkCases.total} new unraised ticket(s) for this project` 
-                : 'All failed/recommendation test cases already have tickets raised'}
-            >
-              <Bug size={14} />
-              <span>{pendingBulkCases.total > 0 ? `Raise New Tickets (${pendingBulkCases.total})` : 'All Tickets Raised'}</span>
-              {pendingBulkCases.total > 0 ? (
-                <span className="pjs-bulk-badge">{pendingBulkCases.total}</span>
-              ) : (
-                <Check size={13} className="pjs-bulk-check-icon" />
-              )}
-            </button>
+            {!isDeveloper && (
+              <button
+                id="pjs-bulk-raise-btn"
+                type="button"
+                className={`pjs-bulk-raise-btn ${pendingBulkCases.total > 0 ? 'has-pending' : 'all-raised'}`}
+                onClick={() => {
+                  if (pendingBulkCases.total === 0) {
+                    showToast('All failed and recommendation test cases in this sheet already have tickets raised.');
+                  } else {
+                    setBulkResultNotice(null);
+                    setBulkRaiseModalOpen(true);
+                  }
+                }}
+                title={pendingBulkCases.total > 0 
+                  ? `Raise ${pendingBulkCases.total} new unraised ticket(s) for this project` 
+                  : 'All failed/recommendation test cases already have tickets raised'}
+              >
+                <Bug size={14} />
+                <span>{pendingBulkCases.total > 0 ? `Raise New Tickets (${pendingBulkCases.total})` : 'All Tickets Raised'}</span>
+                {pendingBulkCases.total > 0 ? (
+                  <span className="pjs-bulk-badge">{pendingBulkCases.total}</span>
+                ) : (
+                  <Check size={13} className="pjs-bulk-check-icon" />
+                )}
+              </button>
+            )}
 
-            <button className="pjs-share-btn" onClick={handleExportCSV} title="Export CSV Spreadsheet">
+            <button id="pjs-export-csv-btn" className="pjs-share-btn" onClick={handleExportCSV} title="Export CSV Spreadsheet">
               <Download size={14} />
               <span>Export</span>
             </button>
@@ -2353,15 +2411,19 @@ export default function AdminProjectSheet() {
         </header>
 
         {/* 2. Google Sheets Action Toolbar */}
-        <div className="pjs-toolbar">
+        <div id="pjs-toolbar" className="pjs-toolbar">
           {/* History */}
-          <button className="pjs-tb-btn" onClick={handleUndo} title="Undo (Ctrl+Z)" disabled={undoStack.length === 0}>
-            <RotateCcw size={15} />
-          </button>
-          <button className="pjs-tb-btn" onClick={handleRedo} title="Redo (Ctrl+Y)" disabled={redoStack.length === 0}>
-            <RotateCw size={15} />
-          </button>
-          <button className="pjs-tb-btn" onClick={() => window.print()} title="Print">
+          {!isDeveloper && (
+            <>
+              <button id="pjs-tb-undo-btn" className="pjs-tb-btn" onClick={handleUndo} title="Undo (Ctrl+Z)" disabled={undoStack.length === 0}>
+                <RotateCcw size={15} />
+              </button>
+              <button id="pjs-tb-redo-btn" className="pjs-tb-btn" onClick={handleRedo} title="Redo (Ctrl+Y)" disabled={redoStack.length === 0}>
+                <RotateCw size={15} />
+              </button>
+            </>
+          )}
+          <button id="pjs-tb-print-btn" className="pjs-tb-btn" onClick={() => window.print()} title="Print">
             <Printer size={15} />
           </button>
 
@@ -2369,6 +2431,7 @@ export default function AdminProjectSheet() {
 
           {/* Zoom */}
           <select
+            id="pj-sheet-zoom-select"
             className="pjs-tb-select"
             value={zoomLevel}
             onChange={(e) => setZoomLevel(Number(e.target.value))}
@@ -2381,10 +2444,13 @@ export default function AdminProjectSheet() {
             <option value={150}>150%</option>
           </select>
 
-          <div className="pjs-tb-divider" />
+          {!isDeveloper && (
+            <>
+              <div className="pjs-tb-divider" />
 
-          {/* Font Family */}
+              {/* Font Family */}
           <select
+            id="pj-sheet-font-family"
             className="pjs-tb-font-select"
             value={activeStyle.fontFamily}
             onChange={(e) => applyFormatting('fontFamily', e.target.value)}
@@ -2400,6 +2466,7 @@ export default function AdminProjectSheet() {
           {/* Font Size Step Controls */}
           <div className="pjs-tb-font-size-group">
             <button
+              id="pjs-tb-font-dec-btn"
               className="pjs-tb-size-btn"
               onClick={() => handleFontSizeStep(-1)}
               title="Decrease font size"
@@ -2407,6 +2474,7 @@ export default function AdminProjectSheet() {
               <Minus size={13} />
             </button>
             <select
+              id="pj-sheet-font-size"
               className="pjs-tb-size-select"
               value={activeStyle.fontSize}
               onChange={(e) => applyFormatting('fontSize', Number(e.target.value))}
@@ -2417,6 +2485,7 @@ export default function AdminProjectSheet() {
               ))}
             </select>
             <button
+              id="pjs-tb-font-inc-btn"
               className="pjs-tb-size-btn"
               onClick={() => handleFontSizeStep(1)}
               title="Increase font size"
@@ -2429,6 +2498,7 @@ export default function AdminProjectSheet() {
 
           {/* Text Formatting */}
           <button
+            id="pjs-tb-bold-btn"
             className={`pjs-tb-btn ${activeStyle.bold ? 'active' : ''}`}
             onClick={() => applyFormatting('bold', !activeStyle.bold)}
             title="Bold (Ctrl+B)"
@@ -2436,6 +2506,7 @@ export default function AdminProjectSheet() {
             <Bold size={15} />
           </button>
           <button
+            id="pjs-tb-italic-btn"
             className={`pjs-tb-btn ${activeStyle.italic ? 'active' : ''}`}
             onClick={() => applyFormatting('italic', !activeStyle.italic)}
             title="Italic (Ctrl+I)"
@@ -2443,6 +2514,7 @@ export default function AdminProjectSheet() {
             <Italic size={15} />
           </button>
           <button
+            id="pjs-tb-underline-btn"
             className={`pjs-tb-btn ${activeStyle.underline ? 'active' : ''}`}
             onClick={() => applyFormatting('underline', !activeStyle.underline)}
             title="Underline (Ctrl+U)"
@@ -2450,6 +2522,7 @@ export default function AdminProjectSheet() {
             <Underline size={15} />
           </button>
           <button
+            id="pjs-tb-strike-btn"
             className={`pjs-tb-btn ${activeStyle.strikethrough ? 'active' : ''}`}
             onClick={() => applyFormatting('strikethrough', !activeStyle.strikethrough)}
             title="Strikethrough"
@@ -2460,6 +2533,7 @@ export default function AdminProjectSheet() {
           {/* Text color picker */}
           <div className="pjs-color-picker-wrap">
             <button
+              id="pjs-tb-text-color-btn"
               className="pjs-tb-btn pjs-tb-color-trigger"
               onClick={(e) => {
                 e.stopPropagation();
@@ -2471,11 +2545,12 @@ export default function AdminProjectSheet() {
               <span className="pjs-color-bar" style={{ backgroundColor: activeStyle.color || '#202124' }} />
             </button>
             {openColorPopover === 'text' && (
-              <div className="pjs-color-palette-popover" onClick={(e) => e.stopPropagation()}>
+              <div id="pjs-text-color-popover" className="pjs-color-palette-popover" onClick={(e) => e.stopPropagation()}>
                 <div className="pjs-palette-title">Text Color</div>
                 <div className="pjs-palette-grid">
                   {TEXT_COLORS.map((hex) => (
                     <button
+                      id={`pjs-text-color-swatch-${hex.replace('#', '')}`}
                       key={hex}
                       className={`pjs-palette-swatch ${activeStyle.color === hex ? 'selected' : ''}`}
                       style={{ backgroundColor: hex }}
@@ -2488,6 +2563,7 @@ export default function AdminProjectSheet() {
                   ))}
                 </div>
                 <button
+                  id="pjs-text-color-reset-btn"
                   className="pjs-palette-reset-btn"
                   onClick={() => {
                     applyFormatting('color', '#202124');
@@ -2503,6 +2579,7 @@ export default function AdminProjectSheet() {
           {/* Fill color picker */}
           <div className="pjs-color-picker-wrap">
             <button
+              id="pjs-tb-fill-color-btn"
               className="pjs-tb-btn pjs-tb-color-trigger"
               onClick={(e) => {
                 e.stopPropagation();
@@ -2514,11 +2591,12 @@ export default function AdminProjectSheet() {
               <span className="pjs-color-bar" style={{ backgroundColor: activeStyle.bgColor || '#ffffff' }} />
             </button>
             {openColorPopover === 'fill' && (
-              <div className="pjs-color-palette-popover" onClick={(e) => e.stopPropagation()}>
+              <div id="pjs-fill-color-popover" className="pjs-color-palette-popover" onClick={(e) => e.stopPropagation()}>
                 <div className="pjs-palette-title">Fill Color</div>
                 <div className="pjs-palette-grid">
                   {FILL_COLORS.map((c) => (
                     <button
+                      id={`pjs-fill-color-swatch-${c.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                       key={c.label}
                       className={`pjs-palette-swatch ${activeStyle.bgColor === c.hex ? 'selected' : ''}`}
                       style={{ backgroundColor: c.hex || '#ffffff', border: c.hex ? '1px solid #dadce0' : '1px dashed #9aa0a6' }}
@@ -2531,6 +2609,7 @@ export default function AdminProjectSheet() {
                   ))}
                 </div>
                 <button
+                  id="pjs-fill-color-reset-btn"
                   className="pjs-palette-reset-btn"
                   onClick={() => {
                     applyFormatting('bgColor', '');
@@ -2547,6 +2626,7 @@ export default function AdminProjectSheet() {
 
           {/* Horizontal Alignment */}
           <button
+            id="pjs-tb-align-left-btn"
             className={`pjs-tb-btn ${activeStyle.align === 'left' ? 'active' : ''}`}
             onClick={() => applyFormatting('align', 'left')}
             title="Align Left"
@@ -2554,6 +2634,7 @@ export default function AdminProjectSheet() {
             <AlignLeft size={15} />
           </button>
           <button
+            id="pjs-tb-align-center-btn"
             className={`pjs-tb-btn ${activeStyle.align === 'center' ? 'active' : ''}`}
             onClick={() => applyFormatting('align', 'center')}
             title="Align Center"
@@ -2561,6 +2642,7 @@ export default function AdminProjectSheet() {
             <AlignCenter size={15} />
           </button>
           <button
+            id="pjs-tb-align-right-btn"
             className={`pjs-tb-btn ${activeStyle.align === 'right' ? 'active' : ''}`}
             onClick={() => applyFormatting('align', 'right')}
             title="Align Right"
@@ -2570,6 +2652,7 @@ export default function AdminProjectSheet() {
 
           {/* Vertical Alignment */}
           <button
+            id="pjs-tb-valign-top-btn"
             className={`pjs-tb-btn ${activeStyle.valign === 'top' ? 'active' : ''}`}
             onClick={() => applyFormatting('valign', 'top')}
             title="Align Top"
@@ -2577,6 +2660,7 @@ export default function AdminProjectSheet() {
             <ArrowUp size={13} />
           </button>
           <button
+            id="pjs-tb-valign-middle-btn"
             className={`pjs-tb-btn ${activeStyle.valign === 'middle' ? 'active' : ''}`}
             onClick={() => applyFormatting('valign', 'middle')}
             title="Align Middle"
@@ -2584,6 +2668,7 @@ export default function AdminProjectSheet() {
             <AlignCenter size={13} style={{ transform: 'rotate(90deg)' }} />
           </button>
           <button
+            id="pjs-tb-valign-bottom-btn"
             className={`pjs-tb-btn ${activeStyle.valign === 'bottom' ? 'active' : ''}`}
             onClick={() => applyFormatting('valign', 'bottom')}
             title="Align Bottom"
@@ -2595,6 +2680,7 @@ export default function AdminProjectSheet() {
 
           {/* Text Wrap */}
           <button
+            id="pjs-tb-wrap-btn"
             className={`pjs-tb-btn ${activeStyle.wrap === 'wrap' ? 'active' : ''}`}
             onClick={() => {
               const nextWrap = activeStyle.wrap === 'wrap' ? 'overflow' : 'wrap';
@@ -2608,6 +2694,7 @@ export default function AdminProjectSheet() {
 
           {/* Conditional Formatting Modal Launcher */}
           <button
+            id="pjs-tb-conditional-btn"
             className={`pjs-tb-btn ${showConditionalModal ? 'active' : ''}`}
             onClick={() => setShowConditionalModal(true)}
             title="Conditional Formatting Rules"
@@ -2617,6 +2704,7 @@ export default function AdminProjectSheet() {
 
           {/* Clear Formatting */}
           <button
+            id="pjs-tb-clear-format-btn"
             className="pjs-tb-btn"
             onClick={handleClearFormatting}
             title="Clear formatting"
@@ -2625,65 +2713,76 @@ export default function AdminProjectSheet() {
           </button>
 
           <div className="pjs-tb-divider" />
+            </>
+          )}
+
+          {isDeveloper && <div className="pjs-tb-divider" />}
 
           {/* Copy, Cut, Paste Tools */}
-          <button className="pjs-tb-btn" onClick={handleCopy} title="Copy Selected (Ctrl+C)">
+          <button id="pjs-tb-copy-btn" className="pjs-tb-btn" onClick={handleCopy} title="Copy Selected (Ctrl+C)">
             <Copy size={15} />
           </button>
-          <button className="pjs-tb-btn" onClick={handleCut} title="Cut Selected (Ctrl+X)">
-            <Scissors size={15} />
-          </button>
-          <button className="pjs-tb-btn" onClick={handlePaste} title="Paste Content (Ctrl+V)">
-            <Clipboard size={15} />
-          </button>
+          {!isDeveloper && (
+            <>
+              <button id="pjs-tb-cut-btn" className="pjs-tb-btn" onClick={handleCut} title="Cut Selected (Ctrl+X)">
+                <Scissors size={15} />
+              </button>
+              <button id="pjs-tb-paste-btn" className="pjs-tb-btn" onClick={handlePaste} title="Paste Content (Ctrl+V)">
+                <Clipboard size={15} />
+              </button>
 
-          <div className="pjs-tb-divider" />
+              <div className="pjs-tb-divider" />
 
-          {/* Row & Column Insertion with N Rows Input */}
-          <div className="pjs-tb-row-input-group" title="Add N Rows at bottom">
-            <button
-              className="pjs-tb-pill-btn"
-              onClick={() => handleAddNRows(rowsToAddInput, 'bottom')}
-              title={`Add ${rowsToAddInput || 1} rows at bottom`}
-            >
-              <Plus size={14} />
-              <span>Row</span>
-            </button>
-            <input
-              type="number"
-              min="1"
-              max="1000"
-              className="pjs-tb-row-count-input"
-              value={rowsToAddInput}
-              onChange={(e) => setRowsToAddInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleAddNRows(rowsToAddInput, 'bottom');
-                }
-              }}
-              title="Number of rows to add (Press Enter to add)"
-            />
-          </div>
-          <button className="pjs-tb-pill-btn" onClick={() => setShowAddColModal(true)} title="Insert New Column">
-            <Columns size={14} />
-            <span>Column</span>
-          </button>
-          <button className="pjs-tb-btn danger" onClick={handleDeleteRow} title="Delete Selected Row">
-            <Trash2 size={15} />
-          </button>
+              {/* Row & Column Insertion with N Rows Input */}
+              <div className="pjs-tb-row-input-group" title="Add N Rows at bottom">
+                <button
+                  id="pjs-tb-add-rows-btn"
+                  className="pjs-tb-pill-btn"
+                  onClick={() => handleAddNRows(rowsToAddInput, 'bottom')}
+                  title={`Add ${rowsToAddInput || 1} rows at bottom`}
+                >
+                  <Plus size={14} />
+                  <span>Row</span>
+                </button>
+                <input
+                  id="pj-sheet-toolbar-rows-count"
+                  type="number"
+                  min="1"
+                  max="1000"
+                  className="pjs-tb-row-count-input"
+                  value={rowsToAddInput}
+                  onChange={(e) => setRowsToAddInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddNRows(rowsToAddInput, 'bottom');
+                    }
+                  }}
+                  title="Number of rows to add (Press Enter to add)"
+                />
+              </div>
+              <button id="pjs-tb-add-col-btn" className="pjs-tb-pill-btn" onClick={() => setShowAddColModal(true)} title="Insert New Column">
+                <Columns size={14} />
+                <span>Column</span>
+              </button>
+              <button id="pjs-tb-delete-row-btn" className="pjs-tb-btn danger" onClick={handleDeleteRow} title="Delete Selected Row">
+                <Trash2 size={15} />
+              </button>
+            </>
+          )}
 
           {/* Search bar inside toolbar */}
           <div className="pjs-tb-search">
             <Search size={14} color="#5f6368" />
             <input
+              id="pj-sheet-search-input"
               type="text"
               placeholder="Find in sheet..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
             />
             {searchFilter && (
-              <button className="pjs-tb-search-clear" onClick={() => setSearchFilter('')}>
+              <button id="pjs-tb-search-clear-btn" className="pjs-tb-search-clear" onClick={() => setSearchFilter('')}>
                 <X size={12} />
               </button>
             )}
@@ -2699,18 +2798,24 @@ export default function AdminProjectSheet() {
             fx
           </div>
           <input
+            id="pj-sheet-formula-input"
             type="text"
             className="pjs-formula-input"
-            placeholder="Type value or formula for selected cell..."
+            placeholder={isDeveloper ? 'Read-only cell value...' : 'Type value or formula for selected cell...'}
             value={formulaValue}
-            onChange={(e) => setFormulaValue(e.target.value)}
+            onChange={(e) => {
+              if (!isDeveloper) setFormulaValue(e.target.value);
+            }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (!isDeveloper && e.key === 'Enter') {
                 e.preventDefault();
                 commitEdit(activeCell.rowIndex, activeCell.colId, formulaValue);
               }
             }}
-            onBlur={() => commitEdit(activeCell.rowIndex, activeCell.colId, formulaValue)}
+            onBlur={() => {
+              if (!isDeveloper) commitEdit(activeCell.rowIndex, activeCell.colId, formulaValue);
+            }}
+            readOnly={isDeveloper}
           />
         </div>
 
@@ -2719,12 +2824,13 @@ export default function AdminProjectSheet() {
           className="pjs-grid-viewport"
           style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left' }}
         >
-          <table className="pjs-table">
+          <table id="pjs-grid-table" className="pjs-table">
             <thead>
               {/* Column Letter Row (A, B, C...) with Whole-Column Selection */}
               <tr className="pjs-col-letter-row">
                 {/* Select All Corner Box */}
                 <th
+                  id="pjs-select-all-corner-btn"
                   className={`pjs-select-all-cell ${selectionMode === 'all' ? 'active' : ''}`}
                   onClick={handleSelectAll}
                   title="Select all cells (Ctrl+A)"
@@ -2739,6 +2845,7 @@ export default function AdminProjectSheet() {
 
                   return (
                     <th
+                      id={`pjs-col-letter-${cIdx}-${col.id}`}
                       key={col.id}
                       className={`pjs-col-letter-th ${isAllSelected ? 'all-selected' : ''} ${isColSelected ? 'selected' : ''} ${isCopiedCol ? 'copied' : ''}`}
                       style={{ width: col.width }}
@@ -2750,6 +2857,7 @@ export default function AdminProjectSheet() {
                         <span>{getColLetter(cIdx)}</span>
                         {/* Column menu trigger arrow */}
                         <span
+                          id={`pjs-col-menu-arrow-${cIdx}-${col.id}`}
                           className="pjs-col-menu-arrow"
                           onClick={(e) => handleContextMenu(e, 'col', null, col.id)}
                         >
@@ -2769,6 +2877,7 @@ export default function AdminProjectSheet() {
                     <div className="pjs-col-header-inner">
                       <span className="pjs-col-label">{col.label}</span>
                       <button
+                        id={`pjs-col-delete-btn-${col.id}`}
                         className="pjs-col-del-btn"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -2802,6 +2911,7 @@ export default function AdminProjectSheet() {
                   >
                     {/* Row Index Number Header (1, 2, 3...) with Whole-Row Selection */}
                     <td
+                      id={`pjs-row-number-${rIdx}`}
                       className={`pjs-row-number-td ${selectionMode === 'all' ? 'all-selected' : ''} ${isRowSelected ? 'selected' : ''}`}
                       onClick={(e) => handleSelectRow(rIdx, e)}
                       onContextMenu={(e) => handleContextMenu(e, 'row', rIdx)}
@@ -2821,6 +2931,7 @@ export default function AdminProjectSheet() {
 
                       return (
                         <td
+                          id={`pjs-cell-${rIdx}-${col.id}`}
                           key={col.id}
                           className={`pjs-cell ${isFailRow ? 'fail-row-cell' : ''} ${isActiveCell ? 'active' : ''} ${isAllSelected ? 'all-selected-cell' : ''} ${isRowSelected ? 'row-highlight' : ''} ${isColSelected ? 'col-highlight' : ''}`}
                           style={{
@@ -2839,6 +2950,7 @@ export default function AdminProjectSheet() {
                           {isEditing ? (
                             col.type === 'status' ? (
                               <select
+                                id={`pj-sheet-cell-status-${rIdx}-${col.id}`}
                                 ref={cellInputRef}
                                 className="pjs-status-cover-select"
                                 value={editValue}
@@ -2857,6 +2969,7 @@ export default function AdminProjectSheet() {
                               </select>
                             ) : col.type === 'priority' ? (
                               <select
+                                id={`pj-sheet-cell-priority-${rIdx}-${col.id}`}
                                 ref={cellInputRef}
                                 className="pjs-cell-select"
                                 value={editValue}
@@ -2874,6 +2987,7 @@ export default function AdminProjectSheet() {
                             ) : col.type === 'image' ? (
                               <div className="pjs-cell-img-edit-box">
                                 <input
+                                  id={`pj-sheet-cell-image-${rIdx}-${col.id}`}
                                   ref={cellInputRef}
                                   type="text"
                                   placeholder="Paste image URL or Ctrl+V..."
@@ -2883,6 +2997,7 @@ export default function AdminProjectSheet() {
                                   onBlur={() => commitEdit(rIdx, col.id, editValue)}
                                 />
                                 <button
+                                  id={`pjs-cell-img-browse-btn-${rIdx}-${col.id}`}
                                   type="button"
                                   className="pjs-img-upload-trigger"
                                   onClick={() => {
@@ -2896,6 +3011,7 @@ export default function AdminProjectSheet() {
                               </div>
                             ) : (
                               <input
+                                id={`pj-sheet-cell-editor-${rIdx}-${col.id}`}
                                 ref={cellInputRef}
                                 type={col.type === 'date' ? 'date' : col.type === 'number' ? 'number' : 'text'}
                                 className="pjs-cell-editor"
@@ -2907,6 +3023,7 @@ export default function AdminProjectSheet() {
                           ) : col.type === 'status' ? (
                             !rawVal ? (
                               <div
+                                id={`pjs-cell-status-empty-${rIdx}-${col.id}`}
                                 className="pjs-status-cover-empty"
                                 onClick={() => startEditing(rIdx, col.id)}
                                 title="Click to set status"
@@ -2916,6 +3033,7 @@ export default function AdminProjectSheet() {
                             ) : (
                               <div className="pjs-status-cell-wrapper">
                                 <div
+                                  id={`pjs-cell-status-trigger-${rIdx}-${col.id}`}
                                   className={`pjs-status-cover ${String(rawVal).toLowerCase().replace(/\s+/g, '')}`}
                                   onClick={() => startEditing(rIdx, col.id)}
                                   title={`Status: ${rawVal} (Click to change)`}
@@ -2927,6 +3045,7 @@ export default function AdminProjectSheet() {
                                 </div>
                                 {row.ticket_code ? (
                                   <button
+                                    id={`pjs-cell-ticket-badge-btn-${rIdx}-${col.id}`}
                                     type="button"
                                     className={`pjs-cell-ticket-badge ${String(row.ticket_status || 'Open').toLowerCase().replace(/\s+/g, '-')}`}
                                     onClick={(e) => {
@@ -2973,8 +3092,9 @@ export default function AdminProjectSheet() {
                                       </>
                                     )}
                                   </button>
-                                ) : isFailOrRecRow ? (
+                                ) : !isDeveloper && isFailOrRecRow ? (
                                   <button
+                                    id={`pjs-cell-raise-bug-btn-${rIdx}-${col.id}`}
                                     type="button"
                                     className="pjs-cell-raise-bug-btn"
                                     onClick={(e) => {
@@ -3004,11 +3124,13 @@ export default function AdminProjectSheet() {
                           ) : col.type === 'image' ? (
                             rawVal ? (
                               <div
+                                id={`pjs-cell-img-content-${rIdx}-${col.id}`}
                                 className="pjs-cell-img-content"
                                 onClick={() => handleCellClick(rIdx, col.id)}
                                 onDoubleClick={() => handleImageDoubleClick(rIdx, col.id)}
                               >
                                 <img
+                                  id={`pjs-cell-img-thumb-${rIdx}-${col.id}`}
                                   src={rawVal}
                                   alt="Screenshot"
                                   className="pjs-cell-img-thumb"
@@ -3019,6 +3141,7 @@ export default function AdminProjectSheet() {
                                   title="Click to view full image, dbl-click to replace"
                                 />
                                 <button
+                                  id={`pjs-cell-img-expand-btn-${rIdx}-${col.id}`}
                                   className="pjs-cell-img-expand-btn"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -3028,27 +3151,31 @@ export default function AdminProjectSheet() {
                                 >
                                   <Maximize2 size={11} />
                                 </button>
-                                <button
-                                  className="pjs-cell-img-clear-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    commitEdit(rIdx, col.id, '');
-                                    showToast('Image cleared');
-                                  }}
-                                  title="Remove image"
-                                >
-                                  <X size={11} />
-                                </button>
+                                {!isDeveloper && (
+                                  <button
+                                    id={`pjs-cell-img-clear-btn-${rIdx}-${col.id}`}
+                                    className="pjs-cell-img-clear-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      commitEdit(rIdx, col.id, '');
+                                      showToast('Image cleared');
+                                    }}
+                                    title="Remove image"
+                                  >
+                                    <X size={11} />
+                                  </button>
+                                )}
                               </div>
                             ) : (
                               <div
+                                id={`pjs-cell-img-empty-${rIdx}-${col.id}`}
                                 className={`pjs-cell-img-box ${isActiveCell ? 'active-target' : ''}`}
                                 onClick={() => handleCellClick(rIdx, col.id)}
                                 onDoubleClick={() => handleImageDoubleClick(rIdx, col.id)}
-                                title="Click to select cell (Ctrl+V to paste screenshot) | Double-click to browse file"
+                                title={isDeveloper ? 'Screenshot cell (Read-only)' : 'Click to select cell (Ctrl+V to paste screenshot) | Double-click to browse file'}
                               >
                                 <Image size={13} className="pjs-cell-img-empty-icon" />
-                                <span>{isActiveCell ? 'Paste (Ctrl+V) / Dbl-click' : 'Paste or dbl-click'}</span>
+                                <span>{isDeveloper ? 'No image' : (isActiveCell ? 'Paste (Ctrl+V) / Dbl-click' : 'Paste or dbl-click')}</span>
                               </div>
                             )
                           ) : (
@@ -3082,10 +3209,12 @@ export default function AdminProjectSheet() {
           </table>
 
           {/* Google Sheets-Style "Add N more rows at bottom" Control */}
+          {!isDeveloper && (
           <div className="pjs-bottom-add-rows-bar">
             <div className="pjs-bottom-add-rows-left">
               <span className="pjs-add-rows-txt">Add</span>
               <input
+                id="pj-sheet-bottom-rows-count"
                 type="number"
                 min="1"
                 max="1000"
@@ -3102,6 +3231,7 @@ export default function AdminProjectSheet() {
               />
               <span className="pjs-add-rows-txt">more rows at bottom.</span>
               <button
+                id="pjs-bottom-add-rows-btn"
                 className="pjs-add-rows-action-btn"
                 onClick={() => handleAddNRows(rowsToAddInput, 'bottom')}
                 title={`Add ${rowsToAddInput || 1} rows`}
@@ -3113,25 +3243,29 @@ export default function AdminProjectSheet() {
 
             <div className="pjs-quick-add-chips">
               <span className="pjs-quick-add-label">Quick:</span>
-              <button className="pjs-quick-chip" onClick={() => handleAddNRows(1, 'bottom')}>+1</button>
-              <button className="pjs-quick-chip" onClick={() => handleAddNRows(5, 'bottom')}>+5</button>
-              <button className="pjs-quick-chip" onClick={() => handleAddNRows(10, 'bottom')}>+10</button>
-              <button className="pjs-quick-chip" onClick={() => handleAddNRows(50, 'bottom')}>+50</button>
-              <button className="pjs-quick-chip" onClick={() => handleAddNRows(100, 'bottom')}>+100</button>
+              <button id="pjs-quick-add-1-btn" className="pjs-quick-chip" onClick={() => handleAddNRows(1, 'bottom')}>+1</button>
+              <button id="pjs-quick-add-5-btn" className="pjs-quick-chip" onClick={() => handleAddNRows(5, 'bottom')}>+5</button>
+              <button id="pjs-quick-add-10-btn" className="pjs-quick-chip" onClick={() => handleAddNRows(10, 'bottom')}>+10</button>
+              <button id="pjs-quick-add-50-btn" className="pjs-quick-chip" onClick={() => handleAddNRows(50, 'bottom')}>+50</button>
+              <button id="pjs-quick-add-100-btn" className="pjs-quick-chip" onClick={() => handleAddNRows(100, 'bottom')}>+100</button>
             </div>
           </div>
+          )}
         </div>
 
         {/* 5. Google Sheets Bottom Tab Bar (N number of sheets) & Status Calculations */}
-        <footer className="pjs-bottom-bar">
+        <footer id="pjs-bottom-bar" className="pjs-bottom-bar">
           <div className="pjs-sheet-tabs-container">
             {/* Add Sheet Tab Button (+) */}
-            <button className="pjs-tab-action-btn" onClick={handleAddSheetTab} title="Add new sheet tab">
-              <Plus size={16} strokeWidth={2.5} />
-            </button>
+            {!isDeveloper && (
+              <button id="pjs-add-tab-btn" className="pjs-tab-action-btn" onClick={handleAddSheetTab} title="Add new sheet tab">
+                <Plus size={16} strokeWidth={2.5} />
+              </button>
+            )}
 
             {/* All Sheets Menu Button (≡) */}
             <button
+              id="pjs-all-sheets-btn"
               className="pjs-tab-action-btn"
               onClick={() => setShowAllSheetsModal(true)}
               title="All sheets in workbook"
@@ -3147,6 +3281,7 @@ export default function AdminProjectSheet() {
 
                 return (
                   <div
+                    id={`pjs-sheet-tab-${idx}`}
                     key={sh.id || idx}
                     className={`pjs-sheet-tab ${isActive ? 'active' : ''}`}
                     onClick={() => {
@@ -3154,7 +3289,9 @@ export default function AdminProjectSheet() {
                       setActiveCell({ rowIndex: 0, colId: sheets[idx]?.columns?.[0]?.id || 'col_title' });
                       setSelectionMode('cell');
                     }}
-                    onDoubleClick={() => startTabRename(idx)}
+                    onDoubleClick={() => {
+                      if (!isDeveloper) startTabRename(idx);
+                    }}
                   >
                     {/* Tab Color Indicator Stripe */}
                     {sh.tab_color && (
@@ -3164,6 +3301,7 @@ export default function AdminProjectSheet() {
                     {/* Tab Name or Inline Rename Input */}
                     {isEditingName ? (
                       <input
+                        id={`pj-sheet-tab-rename-${idx}`}
                         ref={tabRenameInputRef}
                         type="text"
                         className="pjs-tab-rename-input"
@@ -3181,24 +3319,27 @@ export default function AdminProjectSheet() {
                     )}
 
                     {/* Dropdown Options Arrow on Tab */}
-                    <button
-                      className="pjs-tab-dropdown-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setTabMenuIndex(tabMenuIndex === idx ? null : idx);
-                      }}
-                      title="Sheet options"
-                    >
-                      <ChevronDown size={12} />
-                    </button>
+                    {!isDeveloper && (
+                      <button
+                        id={`pjs-tab-menu-btn-${idx}`}
+                        className="pjs-tab-dropdown-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTabMenuIndex(tabMenuIndex === idx ? null : idx);
+                        }}
+                        title="Sheet options"
+                      >
+                        <ChevronDown size={12} />
+                      </button>
+                    )}
 
                     {/* Sheet Tab Dropdown Menu */}
-                    {tabMenuIndex === idx && (
-                      <div className="pjs-tab-menu" onClick={(e) => e.stopPropagation()}>
-                        <button className="pjs-tab-menu-item" onClick={() => startTabRename(idx)}>
+                    {!isDeveloper && tabMenuIndex === idx && (
+                      <div id={`pjs-tab-dropdown-${idx}`} className="pjs-tab-menu" onClick={(e) => e.stopPropagation()}>
+                        <button id={`pjs-tab-rename-opt-${idx}`} className="pjs-tab-menu-item" onClick={() => startTabRename(idx)}>
                           <Edit2 size={13} /> Rename
                         </button>
-                        <button className="pjs-tab-menu-item" onClick={() => handleDuplicateSheet(idx)}>
+                        <button id={`pjs-tab-duplicate-opt-${idx}`} className="pjs-tab-menu-item" onClick={() => handleDuplicateSheet(idx)}>
                           <Copy size={13} /> Duplicate
                         </button>
                         <div className="pjs-tab-menu-divider" />
@@ -3207,6 +3348,7 @@ export default function AdminProjectSheet() {
                           <div className="pjs-tab-colors-grid">
                             {TAB_COLORS.map((c) => (
                               <button
+                                id={`pjs-tab-color-${idx}-${c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                                 key={c.name}
                                 className="pjs-tab-color-dot"
                                 style={{ backgroundColor: c.hex || '#e2e8f0' }}
@@ -3218,6 +3360,7 @@ export default function AdminProjectSheet() {
                         </div>
                         <div className="pjs-tab-menu-divider" />
                         <button
+                          id={`pjs-tab-delete-opt-${idx}`}
                           className="pjs-tab-menu-item danger"
                           onClick={(e) => handleDeleteTab(idx, e)}
                           disabled={sheets.length <= 1}
@@ -3247,74 +3390,90 @@ export default function AdminProjectSheet() {
         {/* 6. Right-Click Context Menu (Google Sheets Style) */}
         {contextMenu && (
           <div
+            id="pjs-context-menu"
             className="pjs-context-menu"
             style={{ left: contextMenu.x, top: contextMenu.y }}
             onClick={(e) => e.stopPropagation()}
           >
-            <button className="pjs-ctx-item" onClick={() => { handleCut(); setContextMenu(null); }}>
-              <Scissors size={14} /> Cut <span className="pjs-shortcut">Ctrl+X</span>
-            </button>
-            <button className="pjs-ctx-item" onClick={() => { handleCopy(); setContextMenu(null); }}>
+            {!isDeveloper && (
+              <button id="pjs-ctx-cut-btn" className="pjs-ctx-item" onClick={() => { handleCut(); setContextMenu(null); }}>
+                <Scissors size={14} /> Cut <span className="pjs-shortcut">Ctrl+X</span>
+              </button>
+            )}
+            <button id="pjs-ctx-copy-btn" className="pjs-ctx-item" onClick={() => { handleCopy(); setContextMenu(null); }}>
               <Copy size={14} /> Copy <span className="pjs-shortcut">Ctrl+C</span>
             </button>
-            <button className="pjs-ctx-item" onClick={() => { handlePaste(); setContextMenu(null); }}>
-              <Clipboard size={14} /> Paste <span className="pjs-shortcut">Ctrl+V</span>
-            </button>
+            {!isDeveloper && (
+              <>
+                <button id="pjs-ctx-paste-btn" className="pjs-ctx-item" onClick={() => { handlePaste(); setContextMenu(null); }}>
+                  <Clipboard size={14} /> Paste <span className="pjs-shortcut">Ctrl+V</span>
+                </button>
 
-            <div className="pjs-ctx-divider" />
+                <div className="pjs-ctx-divider" />
+              </>
+            )}
 
             {/* Row specific context items */}
             {contextMenu.type === 'row' && (
               <>
-                <button className="pjs-ctx-item" onClick={() => { handleCopy(); setContextMenu(null); }}>
+                <button id="pjs-ctx-copy-row-btn" className="pjs-ctx-item" onClick={() => { handleCopy(); setContextMenu(null); }}>
                   <Copy size={14} /> Copy Entire Row
                 </button>
-                <button className="pjs-ctx-item" onClick={() => { handlePaste(); setContextMenu(null); }}>
-                  <Clipboard size={14} /> Paste Entire Row
-                </button>
-                <button className="pjs-ctx-item" onClick={() => { handleAddRow('above'); setContextMenu(null); }}>
-                  <ArrowUp size={14} /> Insert 1 row above
-                </button>
-                <button className="pjs-ctx-item" onClick={() => { handleAddRow('below'); setContextMenu(null); }}>
-                  <ArrowDown size={14} /> Insert 1 row below
-                </button>
-                <button className="pjs-ctx-item danger" onClick={() => { handleDeleteRow(); setContextMenu(null); }}>
-                  <Trash2 size={14} /> Delete row
-                </button>
+                {!isDeveloper && (
+                  <>
+                    <button id="pjs-ctx-paste-row-btn" className="pjs-ctx-item" onClick={() => { handlePaste(); setContextMenu(null); }}>
+                      <Clipboard size={14} /> Paste Entire Row
+                    </button>
+                    <button id="pjs-ctx-insert-row-above-btn" className="pjs-ctx-item" onClick={() => { handleAddRow('above'); setContextMenu(null); }}>
+                      <ArrowUp size={14} /> Insert 1 row above
+                    </button>
+                    <button id="pjs-ctx-insert-row-below-btn" className="pjs-ctx-item" onClick={() => { handleAddRow('below'); setContextMenu(null); }}>
+                      <ArrowDown size={14} /> Insert 1 row below
+                    </button>
+                    <button id="pjs-ctx-delete-row-btn" className="pjs-ctx-item danger" onClick={() => { handleDeleteRow(); setContextMenu(null); }}>
+                      <Trash2 size={14} /> Delete row
+                    </button>
+                  </>
+                )}
               </>
             )}
 
             {/* Column specific context items */}
             {contextMenu.type === 'col' && (
               <>
-                <button className="pjs-ctx-item" onClick={() => { handleCopy(); setContextMenu(null); }}>
+                <button id="pjs-ctx-copy-col-btn" className="pjs-ctx-item" onClick={() => { handleCopy(); setContextMenu(null); }}>
                   <Copy size={14} /> Copy Entire Column
                 </button>
-                <button className="pjs-ctx-item" onClick={() => { handlePaste(); setContextMenu(null); }}>
-                  <Clipboard size={14} /> Paste Entire Column
-                </button>
-                <button className="pjs-ctx-item" onClick={() => { setShowAddColModal(true); setContextMenu(null); }}>
-                  <Columns size={14} /> Insert column
-                </button>
-                <button
-                  className="pjs-ctx-item danger"
-                  onClick={() => { handleDeleteColumn(contextMenu.colId); setContextMenu(null); }}
-                >
-                  <Trash2 size={14} /> Delete column
-                </button>
+                {!isDeveloper && (
+                  <>
+                    <button id="pjs-ctx-paste-col-btn" className="pjs-ctx-item" onClick={() => { handlePaste(); setContextMenu(null); }}>
+                      <Clipboard size={14} /> Paste Entire Column
+                    </button>
+                    <button id="pjs-ctx-insert-col-btn" className="pjs-ctx-item" onClick={() => { setShowAddColModal(true); setContextMenu(null); }}>
+                      <Columns size={14} /> Insert column
+                    </button>
+                    <button
+                      id="pjs-ctx-delete-col-btn"
+                      className="pjs-ctx-item danger"
+                      onClick={() => { handleDeleteColumn(contextMenu.colId); setContextMenu(null); }}
+                    >
+                      <Trash2 size={14} /> Delete column
+                    </button>
+                  </>
+                )}
               </>
             )}
 
             {/* Cell specific items */}
-            {contextMenu.type === 'cell' && (
+            {contextMenu.type === 'cell' && !isDeveloper && (
               <>
-                <button className="pjs-ctx-item" onClick={() => { handleAddRow('below'); setContextMenu(null); }}>
+                <button id="pjs-ctx-cell-insert-row-below-btn" className="pjs-ctx-item" onClick={() => { handleAddRow('below'); setContextMenu(null); }}>
                   <ArrowDown size={14} /> Insert row below
                 </button>
-                <button className="pjs-ctx-item" onClick={() => { setShowAddColModal(true); setContextMenu(null); }}>
+                <button id="pjs-ctx-cell-insert-col-btn" className="pjs-ctx-item" onClick={() => { setShowAddColModal(true); setContextMenu(null); }}>
                   <Columns size={14} /> Insert column
                 </button>
-                <button className="pjs-ctx-item" onClick={() => { commitEdit(activeCell.rowIndex, activeCell.colId, ''); setContextMenu(null); }}>
+                <button id="pjs-ctx-cell-clear-btn" className="pjs-ctx-item" onClick={() => { commitEdit(activeCell.rowIndex, activeCell.colId, ''); setContextMenu(null); }}>
                   Clear content
                 </button>
               </>
@@ -3332,20 +3491,22 @@ export default function AdminProjectSheet() {
         {/* 8. Insert Column Modal */}
         {showAddColModal && (
           <div
+            id="pjs-add-col-modal-overlay"
             className="pjs-modal-overlay"
             onMouseDown={(e) => e.target === e.currentTarget && setShowAddColModal(false)}
           >
-            <div className="pjs-modal-box">
+            <div id="pjs-add-col-modal" className="pjs-modal-box">
               <div className="pjs-modal-header">
-                <h3 className="pjs-modal-title">Insert Column</h3>
-                <button className="pjs-modal-close" onClick={() => setShowAddColModal(false)}>
+                <h3 id="pjs-add-col-modal-title" className="pjs-modal-title">Insert Column</h3>
+                <button id="pjs-add-col-close-btn" className="pjs-modal-close" onClick={() => setShowAddColModal(false)}>
                   <X size={18} />
                 </button>
               </div>
-              <form onSubmit={handleAddColumnSubmit}>
+              <form id="pjs-add-col-form" onSubmit={handleAddColumnSubmit}>
                 <div className="pjs-form-group">
-                  <label>Column Header Name</label>
+                  <label htmlFor="pj-sheet-new-col-name">Column Header Name</label>
                   <input
+                    id="pj-sheet-new-col-name"
                     type="text"
                     placeholder="e.g. Expected Result, Jira Ticket, Build"
                     value={newColLabel}
@@ -3356,8 +3517,8 @@ export default function AdminProjectSheet() {
                 </div>
 
                 <div className="pjs-form-group">
-                  <label>Column Data Type</label>
-                  <select value={newColType} onChange={(e) => setNewColType(e.target.value)}>
+                  <label htmlFor="pj-sheet-new-col-type">Column Data Type</label>
+                  <select id="pj-sheet-new-col-type" value={newColType} onChange={(e) => setNewColType(e.target.value)}>
                     <option value="text">Text (General string)</option>
                     <option value="status">Status Badge (Pass, Fail, Blocked, Untested)</option>
                     <option value="priority">Priority Badge (Critical, High, Medium, Low)</option>
@@ -3368,10 +3529,10 @@ export default function AdminProjectSheet() {
                 </div>
 
                 <div className="pjs-modal-actions">
-                  <button type="button" className="pjs-action-pill-btn" onClick={() => setShowAddColModal(false)}>
+                  <button id="pjs-add-col-cancel-btn" type="button" className="pjs-action-pill-btn" onClick={() => setShowAddColModal(false)}>
                     Cancel
                   </button>
-                  <button type="submit" className="pjs-action-pill-btn primary">
+                  <button id="pjs-add-col-submit-btn" type="submit" className="pjs-action-pill-btn primary">
                     Insert Column
                   </button>
                 </div>
@@ -3383,19 +3544,21 @@ export default function AdminProjectSheet() {
         {/* 9. All Sheets Navigator Modal (≡) */}
         {showAllSheetsModal && (
           <div
+            id="pjs-all-sheets-modal-overlay"
             className="pjs-modal-overlay"
             onMouseDown={(e) => e.target === e.currentTarget && setShowAllSheetsModal(false)}
           >
-            <div className="pjs-modal-box sheets-nav">
+            <div id="pjs-all-sheets-modal" className="pjs-modal-box sheets-nav">
               <div className="pjs-modal-header">
-                <h3 className="pjs-modal-title">All Sheets in Workbook ({sheets.length})</h3>
-                <button className="pjs-modal-close" onClick={() => setShowAllSheetsModal(false)}>
+                <h3 id="pjs-all-sheets-modal-title" className="pjs-modal-title">All Sheets in Workbook ({sheets.length})</h3>
+                <button id="pjs-all-sheets-close-btn" className="pjs-modal-close" onClick={() => setShowAllSheetsModal(false)}>
                   <X size={18} />
                 </button>
               </div>
               <div className="pjs-all-sheets-list">
                 {sheets.map((sh, idx) => (
                   <div
+                    id={`pjs-all-sheets-item-${idx}`}
                     key={sh.id || idx}
                     className={`pjs-all-sheets-item ${activeSheetIndex === idx ? 'active' : ''}`}
                     onClick={() => {
@@ -3419,6 +3582,7 @@ export default function AdminProjectSheet() {
               </div>
               <div className="pjs-modal-actions">
                 <button
+                  id="pjs-all-sheets-add-btn"
                   type="button"
                   className="pjs-action-pill-btn primary"
                   onClick={() => {
@@ -3436,16 +3600,17 @@ export default function AdminProjectSheet() {
         {/* Conditional Formatting Modal */}
         {showConditionalModal && (
           <div
+            id="pjs-conditional-modal-overlay"
             className="pjs-modal-overlay"
             onMouseDown={(e) => e.target === e.currentTarget && setShowConditionalModal(false)}
           >
-            <div className="pjs-modal-box pjs-conditional-modal">
+            <div id="pjs-conditional-modal" className="pjs-modal-box pjs-conditional-modal">
               <div className="pjs-modal-header">
                 <div className="pjs-modal-title-with-icon">
                   <Sparkles size={18} color="#1a73e8" />
-                  <h3 className="pjs-modal-title">Conditional Formatting Rules</h3>
+                  <h3 id="pjs-conditional-modal-title" className="pjs-modal-title">Conditional Formatting Rules</h3>
                 </div>
-                <button className="pjs-modal-close" onClick={() => setShowConditionalModal(false)}>
+                <button id="pjs-conditional-close-btn" className="pjs-modal-close" onClick={() => setShowConditionalModal(false)}>
                   <X size={18} />
                 </button>
               </div>
@@ -3457,8 +3622,9 @@ export default function AdminProjectSheet() {
 
                 <div className="pjs-cond-rules-list">
                   {(currentSheet.conditionalRules || DEFAULT_CONDITIONAL_RULES).map((rule) => (
-                    <div key={rule.id} className="pjs-cond-rule-item">
+                    <div key={rule.id} id={`pjs-cond-rule-item-${rule.id}`} className="pjs-cond-rule-item">
                       <input
+                        id={`pj-sheet-cond-rule-toggle-${rule.id}`}
                         type="checkbox"
                         checked={rule.enabled}
                         onChange={() => handleToggleConditionalRule(rule.id)}
@@ -3472,6 +3638,7 @@ export default function AdminProjectSheet() {
                         "{rule.value}"
                       </span>
                       <button
+                        id={`pjs-cond-del-btn-${rule.id}`}
                         type="button"
                         className="pjs-cond-del-btn"
                         onClick={() => handleDeleteConditionalRule(rule.id)}
@@ -3483,10 +3650,11 @@ export default function AdminProjectSheet() {
                   ))}
                 </div>
 
-                <form onSubmit={handleAddConditionalRule} style={{ borderTop: '1px solid #dadce0', paddingTop: '14px', marginTop: '10px' }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: 600, color: '#202124' }}>Add Custom Rule</h4>
+                <form id="pjs-cond-add-form" onSubmit={handleAddConditionalRule} style={{ borderTop: '1px solid #dadce0', paddingTop: '14px', marginTop: '10px' }}>
+                  <h4 id="pjs-cond-add-heading" style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: 600, color: '#202124' }}>Add Custom Rule</h4>
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
                     <select
+                      id="pj-sheet-cond-new-condition"
                       value={newRuleCondition}
                       onChange={(e) => setNewRuleCondition(e.target.value)}
                       style={{ padding: '6px 8px', border: '1px solid #dadce0', borderRadius: '4px', fontSize: '12px', background: '#fff' }}
@@ -3496,6 +3664,7 @@ export default function AdminProjectSheet() {
                       <option value="starts_with">Starts with</option>
                     </select>
                     <input
+                      id="pj-sheet-cond-new-value"
                       type="text"
                       placeholder="e.g. Pass, Fail, Blocked, Done, High..."
                       value={newRuleValue}
@@ -3506,18 +3675,20 @@ export default function AdminProjectSheet() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
-                    <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <label htmlFor="pj-sheet-cond-new-bg" style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                       Bg:
                       <input
+                        id="pj-sheet-cond-new-bg"
                         type="color"
                         value={newRuleBgColor}
                         onChange={(e) => setNewRuleBgColor(e.target.value)}
                         style={{ width: '28px', height: '26px', padding: 0, border: 'none', cursor: 'pointer' }}
                       />
                     </label>
-                    <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <label htmlFor="pj-sheet-cond-new-text-color" style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                       Text:
                       <input
+                        id="pj-sheet-cond-new-text-color"
                         type="color"
                         value={newRuleColor}
                         onChange={(e) => setNewRuleColor(e.target.value)}
@@ -3540,6 +3711,7 @@ export default function AdminProjectSheet() {
                   </div>
 
                   <button
+                    id="pjs-cond-add-submit-btn"
                     type="submit"
                     className="pjs-action-pill-btn primary"
                     style={{ width: '100%', justifyContent: 'center' }}
@@ -3553,6 +3725,7 @@ export default function AdminProjectSheet() {
         )}
         {/* Hidden File Input for Image Upload */}
         <input
+          id="pj-sheet-image-upload-input"
           ref={fileInputRef}
           type="file"
           accept="image/*"
@@ -3656,23 +3829,25 @@ export default function AdminProjectSheet() {
         {/* Bulk Raise Tickets Modal */}
         {bulkRaiseModalOpen && (
           <div
+            id="pjs-bulk-raise-modal-overlay"
             className="pjs-bulk-overlay"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget && !submittingBulkTickets) setBulkRaiseModalOpen(false);
             }}
           >
-            <div className="pjs-bulk-card" role="dialog" aria-modal="true">
+            <div id="pjs-bulk-raise-modal" className="pjs-bulk-card" role="dialog" aria-modal="true">
               <div className="pjs-bulk-header">
                 <div className="pjs-bulk-title-wrap">
                   <div className="pjs-bulk-icon-box">
                     <Layers size={22} />
                   </div>
                   <div>
-                    <h3>Raise All Failed &amp; Recommended Tickets</h3>
+                    <h3 id="pjs-bulk-raise-modal-title">Raise All Failed &amp; Recommended Tickets</h3>
                     <p>Bulk convert sheet execution findings into official project tickets</p>
                   </div>
                 </div>
                 <button
+                  id="pjs-bulk-raise-close-btn"
                   type="button"
                   className="pjs-bulk-close"
                   onClick={() => !submittingBulkTickets && setBulkRaiseModalOpen(false)}
@@ -3738,6 +3913,7 @@ export default function AdminProjectSheet() {
 
               <div className="pjs-bulk-footer">
                 <button
+                  id="pjs-bulk-raise-cancel-btn"
                   type="button"
                   className="pjs-bulk-btn-secondary"
                   onClick={() => setBulkRaiseModalOpen(false)}
@@ -3746,6 +3922,7 @@ export default function AdminProjectSheet() {
                   Cancel
                 </button>
                 <button
+                  id="pjs-bulk-raise-confirm-btn"
                   type="button"
                   className="pjs-bulk-btn-primary"
                   onClick={handleBulkRaiseTickets}
@@ -3771,10 +3948,11 @@ export default function AdminProjectSheet() {
         {/* 10. Image / Screenshot Lightbox Modal */}
         {previewImageModal && (
           <div
+            id="pjs-img-lightbox-overlay"
             className="pjs-image-lightbox-overlay"
             onMouseDown={(e) => e.target === e.currentTarget && setPreviewImageModal(null)}
           >
-            <div className="pjs-image-lightbox-box">
+            <div id="pjs-img-lightbox-modal" className="pjs-image-lightbox-box">
               <div className="pjs-image-lightbox-header">
                 <div className="pjs-lightbox-title">
                   <Image size={18} color="#0F9D58" />
@@ -3782,6 +3960,7 @@ export default function AdminProjectSheet() {
                 </div>
                 <div className="pjs-lightbox-actions">
                   <a
+                    id="pjs-img-lightbox-download-link"
                     href={previewImageModal}
                     download={`screenshot-${Date.now()}.png`}
                     className="pjs-lightbox-btn download"
@@ -3791,6 +3970,7 @@ export default function AdminProjectSheet() {
                     <span>Download</span>
                   </a>
                   <button
+                    id="pjs-img-lightbox-close-btn"
                     className="pjs-lightbox-btn close"
                     onClick={() => setPreviewImageModal(null)}
                     title="Close preview"

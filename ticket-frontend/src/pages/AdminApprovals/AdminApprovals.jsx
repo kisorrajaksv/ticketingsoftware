@@ -221,23 +221,25 @@ function AdminApprovals() {
       {/* Logout Modal */}
       {showLogoutModal && (
         <div
+          id="approvals-logout-overlay"
           className="modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setShowLogoutModal(false);
           }}
         >
-          <section className="modal-content" role="dialog" aria-modal="true">
+          <section id="approvals-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon"><LogOut size={21} /></div>
-            <h2 className="modal-title">Sign out of your workspace?</h2>
+            <h2 id="approvals-logout-title" className="modal-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your account.</p>
             <div className="modal-actions">
               <button
+                id="approvals-logout-cancel-btn"
                 className="modal-btn modal-btn-cancel"
                 onClick={() => setShowLogoutModal(false)}
               >
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="approvals-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -249,19 +251,18 @@ function AdminApprovals() {
       <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Content Area */}
-      <main className="main-content">
+      <main id="approvals-main-content" className="main-content">
         <div className="dashboard-container">
           <div className="projects-layout">
             {/* Header Card */}
             <div className="projects-header-row">
               <div className="projects-header-info">
-                <h2 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.2, margin: 0 }}>
-                  Approvals & Requests
-                </h2>
+                <h2 id="approvals-page-heading">Approvals & Requests</h2>
               </div>
               {canCreateRequest && (
                 <div className="users-header-actions">
                   <button
+                    id="approvals-create-request-btn"
                     className="btn-primary-action"
                     onClick={openCreateRequestModal}
                   >
@@ -283,6 +284,7 @@ function AdminApprovals() {
               <div className="users-search-box">
                 <Search size={16} color="#64748b" />
                 <input
+                  id="approvals-search-input"
                   type="text"
                   placeholder="Search request code, project, request note, requested by..."
                   value={searchQuery}
@@ -292,6 +294,7 @@ function AdminApprovals() {
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <CustomSelect
+                  id="approvals-status-filter"
                   value={statusFilter}
                   onChange={setStatusFilter}
                   options={APPROVAL_STATUS_OPTIONS}
@@ -300,6 +303,7 @@ function AdminApprovals() {
                 />
 
                 <CustomSelect
+                  id="approvals-priority-filter"
                   value={priorityFilter}
                   onChange={setPriorityFilter}
                   options={APPROVAL_PRIORITY_OPTIONS}
@@ -311,7 +315,7 @@ function AdminApprovals() {
 
             {/* Approvals Table */}
             <div className="users-table-card approvals-table-card">
-              <table className="users-table">
+              <table id="approvals-table" className="users-table">
                 <thead>
                   <tr>
                     <th>Request Code</th>
@@ -393,6 +397,7 @@ function AdminApprovals() {
                           {a.status === 'Pending' && canReviewRequests ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <button
+                                id={`approval-approve-btn-${a.id}`}
                                 type="button"
                                 onClick={() => handleUpdateApprovalStatus(a.id, 'Approved')}
                                 disabled={updatingId === a.id}
@@ -416,6 +421,7 @@ function AdminApprovals() {
                                 <span>Approve</span>
                               </button>
                               <button
+                                id={`approval-reject-btn-${a.id}`}
                                 type="button"
                                 onClick={() => handleUpdateApprovalStatus(a.id, 'Rejected')}
                                 disabled={updatingId === a.id}
@@ -458,15 +464,17 @@ function AdminApprovals() {
       {/* Create Request Modal */}
       {canCreateRequest && isModalOpen && (
         <div
+          id="approval-create-modal-overlay"
           className="modal-overlay-user"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setIsModalOpen(false);
           }}
         >
-          <div className="modal-card-user" role="dialog" aria-modal="true">
+          <div id="approval-create-modal" className="modal-card-user" role="dialog" aria-modal="true">
             <div className="modal-header-user">
-              <h3>Create Approval Request</h3>
+              <h3 id="approval-create-modal-title">Create Approval Request</h3>
               <button
+                id="approval-create-modal-close-btn"
                 className="modal-close-btn"
                 onClick={() => setIsModalOpen(false)}
                 aria-label="Close dialog"
@@ -475,14 +483,15 @@ function AdminApprovals() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateApproval}>
+            <form id="approval-create-form" onSubmit={handleCreateApproval}>
               <div className="modal-body-user">
                 {formError && <div className="user-error-banner">{formError}</div>}
 
                 <div className="form-grid-2">
                   <div className="form-group-user">
-                    <label>Request Code</label>
+                    <label htmlFor="approval-req-code">Request Code</label>
                     <input
+                      id="approval-req-code"
                       type="text"
                       name="req_code"
                       value={formData.req_code}
@@ -492,8 +501,9 @@ function AdminApprovals() {
                   </div>
 
                   <div className="form-group-user">
-                    <label>Priority</label>
+                    <label htmlFor="approval-priority">Priority</label>
                     <CustomSelect
+                      id="approval-priority"
                       value={formData.priority}
                       onChange={(val) => setFormData((prev) => ({ ...prev, priority: val }))}
                       options={MODAL_PRIORITY_OPTIONS}
@@ -503,8 +513,9 @@ function AdminApprovals() {
                 </div>
 
                 <div className="form-group-user">
-                  <label>Project Name *</label>
+                  <label htmlFor="approval-project-name">Project Name *</label>
                   <input
+                    id="approval-project-name"
                     type="text"
                     name="title"
                     placeholder="Enter project name"
@@ -515,8 +526,9 @@ function AdminApprovals() {
                 </div>
 
                 <div className="form-group-user">
-                  <label>Notes</label>
+                  <label htmlFor="approval-notes">Notes</label>
                   <input
+                    id="approval-notes"
                     type="text"
                     name="details"
                     placeholder="Enter testing notes or request details..."
@@ -526,8 +538,9 @@ function AdminApprovals() {
                 </div>
 
                 <div className="form-group-user">
-                  <label>Requested By</label>
+                  <label htmlFor="approval-requested-by">Requested By</label>
                   <input
+                    id="approval-requested-by"
                     type="text"
                     name="requested_by"
                     value={formData.requested_by || creatorLabel}
@@ -539,6 +552,7 @@ function AdminApprovals() {
 
               <div className="modal-footer-user">
                 <button
+                  id="approval-create-cancel-btn"
                   type="button"
                   className="btn-secondary"
                   onClick={() => setIsModalOpen(false)}
@@ -546,6 +560,7 @@ function AdminApprovals() {
                   Cancel
                 </button>
                 <button
+                  id="approval-create-submit-btn"
                   type="submit"
                   className="btn-primary-action"
                   disabled={submitting}

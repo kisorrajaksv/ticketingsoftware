@@ -31,7 +31,7 @@
   padding: 0 9px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 7px;
   font-size: 12px;
   font-weight: 500;
@@ -40,6 +40,15 @@
   outline: none;
   transition: background-color 0.18s ease, color 0.18s ease;
   box-shadow: none;
+}
+
+.c-select-filter .c-select-trigger-left {
+  flex: 0 1 auto;
+  justify-content: center;
+}
+
+.c-select-filter .c-select-value {
+  text-align: center;
 }
 
 .c-select-filter .c-select-trigger:hover {

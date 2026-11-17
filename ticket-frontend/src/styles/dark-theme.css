@@ -289,7 +289,6 @@ html[data-theme='dark'] .users-page-heading,
 html[data-theme='dark'] .admin-layout .users-page-heading,
 html[data-theme='dark'] .projects-header-row,
 html[data-theme='dark'] .admin-layout .projects-header-row,
-html[data-theme='dark'] .project-workspace-header,
 html[data-theme='dark'] .overview-card,
 html[data-theme='dark'] .ticket-folder-body,
 html[data-theme='dark'] .ticket-active-folder-banner,
@@ -300,7 +299,6 @@ html[data-theme='dark'] .um-header-container,
 html[data-theme='dark'] .admin-layout .um-header-container,
 html[data-theme='dark'] .um-stat-card,
 html[data-theme='dark'] .um-table-card,
-html[data-theme='dark'] .reports-header-card,
 html[data-theme='dark'] .report-kpi-card,
 html[data-theme='dark'] .kpi-card,
 html[data-theme='dark'] .chart-card,
@@ -374,6 +372,7 @@ html[data-theme='dark'] .um-controls-bar,
 html[data-theme='dark'] .admin-layout .um-controls-bar,
 html[data-theme='dark'] .pj-controls-bar,
 html[data-theme='dark'] .qa-daily-filter-card,
+html[data-theme='dark'] .reports-header-card,
 html[data-theme='dark'] .reports-view-selector-bar {
   background: transparent !important;
   border: none !important;
@@ -431,7 +430,13 @@ html[data-theme='dark'] .ws-recipient-search,
 html[data-theme='dark'] .pjs-tb-search,
 html[data-theme='dark'] .header-search,
 html[data-theme='dark'] .um-input-box,
-html[data-theme='dark'] .um-status-readonly-box {
+html[data-theme='dark'] .um-status-readonly-box,
+html[data-theme='dark'] .tdm-input,
+html[data-theme='dark'] .tdm-textarea,
+html[data-theme='dark'] .tdm-select,
+html[data-theme='dark'] .rbt-input,
+html[data-theme='dark'] .rbt-textarea,
+html[data-theme='dark'] .rbt-select {
   background: #0f172a !important;
   border-color: #334155 !important;
   color: #f1f5f9 !important;
@@ -489,7 +494,9 @@ html[data-theme='dark'] .ws-recipient-search input,
 html[data-theme='dark'] .pjs-tb-search input,
 html[data-theme='dark'] .header-search input,
 html[data-theme='dark'] .um-input-box input,
-html[data-theme='dark'] .um-input-box select {
+html[data-theme='dark'] .um-input-box select,
+html[data-theme='dark'] .admin-layout .um-input-box input[readonly],
+html[data-theme='dark'] .um-input-box-disabled input {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -2138,7 +2145,6 @@ html[data-theme='dark'] .permission-checkbox-grid {
 
 html[data-theme='dark'] .tdm-pre,
 html[data-theme='dark'] .rbt-doc-pre,
-html[data-theme='dark'] .tdm-history-item,
 html[data-theme='dark'] .tdm-audit-pill-row span {
   background: #0f172a;
   border-color: #1e293b;
@@ -2218,6 +2224,36 @@ html[data-theme='dark'] .um-role-badge {
   background: transparent;
   border: none;
   color: #cbd5e1;
+}
+
+html[data-theme='dark'] .um-avatar-upload-row {
+  background: #162033;
+  border-color: #334155;
+}
+
+html[data-theme='dark'] .um-avatar-upload-hint,
+html[data-theme='dark'] .um-avatar-preview-placeholder {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .um-btn-remove-avatar {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+html[data-theme='dark'] .um-btn-remove-avatar:hover {
+  background: rgba(239, 68, 68, 0.28);
+}
+
+html[data-theme='dark'] .um-country-prefix {
+  background: #162033;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .um-status-readonly-text {
+  color: #f1f5f9;
 }
 
 html[data-theme='dark'] .um-auto-badge,
@@ -2334,13 +2370,218 @@ html[data-theme='dark'] .segmented-progress-track,
 html[data-theme='dark'] .accordion-chevron-circle,
 html[data-theme='dark'] .tab-count-pill {
   background: #1e293b;
+  border-color: #334155;
   color: #cbd5e1;
 }
 
+html[data-theme='dark'] .reports-live-badge {
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .report-kpi-icon {
+  background: rgba(59, 130, 246, 0.16) !important;
+  color: #60a5fa !important;
+}
+
+html[data-theme='dark'] .report-kpi-card.kpi-success .report-kpi-icon {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #34d399 !important;
+}
+
+html[data-theme='dark'] .report-kpi-card.kpi-amber .report-kpi-icon {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fbbf24 !important;
+}
+
+html[data-theme='dark'] .report-kpi-card.kpi-purple .report-kpi-icon {
+  background: rgba(168, 85, 247, 0.16) !important;
+  color: #c084fc !important;
+}
+
+html[data-theme='dark'] .report-kpi-title,
+html[data-theme='dark'] .report-kpi-sub,
+html[data-theme='dark'] .reports-view-hint,
+html[data-theme='dark'] .accordion-title-text p,
+html[data-theme='dark'] .proj-lead-sub,
+html[data-theme='dark'] .volume-subtext,
+html[data-theme='dark'] .qa-email-sub,
+html[data-theme='dark'] .segmented-legend-row,
+html[data-theme='dark'] .daily-user-info span,
+html[data-theme='dark'] .report-empty-state p {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .accordion-title-text h3,
+html[data-theme='dark'] .proj-title-text,
+html[data-theme='dark'] .qa-name-heading,
+html[data-theme='dark'] .volume-number,
+html[data-theme='dark'] .defect-count-pill,
+html[data-theme='dark'] .daily-user-info strong,
+html[data-theme='dark'] .daily-date-cell,
+html[data-theme='dark'] .report-empty-state h4 {
+  color: #f8fafc;
+}
+
+html[data-theme='dark'] .accordion-badge {
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .accordion-badge.emerald {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+}
+
+html[data-theme='dark'] .accordion-quick-stat {
+  background: #162033;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .accordion-quick-stat strong {
+  color: #f8fafc;
+}
+
 html[data-theme='dark'] .qa-today-output-banner {
-  background: rgba(16, 185, 129, 0.14);
+  background: rgba(30, 58, 138, 0.22);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #e2e8f0;
+}
+
+html[data-theme='dark'] .today-banner-text strong {
+  color: #f8fafc;
+}
+
+html[data-theme='dark'] .today-banner-text span {
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .today-chip.tested {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .today-chip.passed {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+}
+
+html[data-theme='dark'] .today-chip.bugs {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+html[data-theme='dark'] .qa-circle-avatar {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.38);
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .qa-role-pill {
+  background: rgba(148, 163, 184, 0.16);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .qa-last-active-tag {
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(59, 130, 246, 0.32);
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .qa-last-active-tag.today {
+  background: rgba(16, 185, 129, 0.16);
   border-color: rgba(16, 185, 129, 0.32);
   color: #6ee7b7;
+}
+
+html[data-theme='dark'] .pass-rate-pill.rate-high {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.38);
+  color: #6ee7b7;
+}
+
+html[data-theme='dark'] .pass-rate-pill.rate-medium {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.38);
+  color: #fcd34d;
+}
+
+html[data-theme='dark'] .pass-rate-pill.rate-low {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.38);
+  color: #fca5a5;
+}
+
+html[data-theme='dark'] .legend-stat.stat-fail,
+html[data-theme='dark'] .defect-open-highlight {
+  color: #fca5a5;
+}
+
+html[data-theme='dark'] .legend-stat.stat-rec {
+  color: #fcd34d;
+}
+
+html[data-theme='dark'] .cell-empty-dash {
+  color: #64748b;
+}
+
+html[data-theme='dark'] .dev-avatar-tiny {
+  background: rgba(59, 130, 246, 0.22);
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .dev-resolved-count {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+html[data-theme='dark'] .qa-verified-badge {
+  background: transparent;
+  border: none;
+  color: #60a5fa;
+}
+
+html[data-theme='dark'] .qa-verified-badge.none {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .btn-view-daily-log {
+  background: #162033;
+  border-color: #334155;
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .btn-view-daily-log:hover {
+  background: #1e293b;
+  border-color: rgba(96, 165, 250, 0.55);
+  color: #ffffff;
+}
+
+html[data-theme='dark'] .daily-table-container {
+  border-color: #1e293b;
+}
+
+html[data-theme='dark'] .daily-log-table tr[style*='F0FDF4'] {
+  background: rgba(16, 185, 129, 0.1) !important;
+}
+
+html[data-theme='dark'] .daily-log-table strong[style*='0F172A'] {
+  color: #f8fafc !important;
+}
+
+html[data-theme='dark'] .daily-log-table span[style*='DCFCE7'] {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
 }
 
 html[data-theme='dark'] .proj-code-tag,
@@ -2428,6 +2669,10 @@ html[data-theme='dark'] .admin-layout .approvals-table-card .status-active {
 /* ==========================================================================
    Modals, Dropdown Menus, Notification Drawer & Toasts
    ========================================================================== */
+html[data-theme='dark'] .notif-drawer-overlay {
+  background: rgba(2, 6, 23, 0.34);
+}
+
 html[data-theme='dark'] .modal-content,
 html[data-theme='dark'] .admin-layout .modal-content,
 html[data-theme='dark'] .admin-layout .modal-card-user,
@@ -2437,10 +2682,6 @@ html[data-theme='dark'] .ticket-modal-card,
 html[data-theme='dark'] .ticket-detail-card,
 html[data-theme='dark'] .daily-log-modal-content,
 html[data-theme='dark'] .pj-del-modal-card,
-html[data-theme='dark'] .notif-drawer-overlay {
-  background: rgba(2, 6, 23, 0.34);
-}
-
 html[data-theme='dark'] .pj-modal-card,
 html[data-theme='dark'] .pld-dev-modal-card,
 html[data-theme='dark'] .notif-toast {
@@ -2830,4 +3071,400 @@ html[data-theme='dark'] .admin-layout.approvals-page .users-search-box input {
 
 html[data-theme='dark'] .admin-layout.approvals-page .users-search-box input::placeholder {
   color: #64748b !important;
+}
+
+/* ==========================================================================
+   Raise Ticket & Ticket Detail Modals (Dark Mode)
+   ========================================================================== */
+html[data-theme='dark'] .ticket-modal-card .modal-header-user,
+html[data-theme='dark'] .ticket-detail-card .modal-header-user {
+  background: #0f172a;
+  border-bottom-color: #1e293b;
+}
+
+html[data-theme='dark'] .ticket-modal-card .modal-body-user,
+html[data-theme='dark'] .ticket-detail-card .modal-body-user {
+  background: #0b1120;
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .ticket-modal-card .modal-footer-user,
+html[data-theme='dark'] .ticket-detail-actions {
+  background: #0f172a !important;
+  border-top-color: #1e293b !important;
+}
+
+html[data-theme='dark'] .ticket-modal-heading h2,
+html[data-theme='dark'] .ticket-modal-heading h3,
+html[data-theme='dark'] .ticket-detail-section h3,
+html[data-theme='dark'] .ticket-detail-section h4 {
+  color: #f8fafc;
+}
+
+html[data-theme='dark'] .ticket-modal-heading p,
+html[data-theme='dark'] .ticket-form-note {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .ticket-modal-card .modal-close-btn,
+html[data-theme='dark'] .ticket-detail-card .modal-close-btn,
+html[data-theme='dark'] .rbt-close-btn,
+html[data-theme='dark'] .tdm-close-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .ticket-modal-card .modal-close-btn:hover,
+html[data-theme='dark'] .ticket-detail-card .modal-close-btn:hover,
+html[data-theme='dark'] .rbt-close-btn:hover,
+html[data-theme='dark'] .tdm-close-btn:hover {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fca5a5;
+}
+
+html[data-theme='dark'] .ticket-form-meta {
+  background: #162033 !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+html[data-theme='dark'] .ticket-form-meta span,
+html[data-theme='dark'] .ticket-form-meta strong {
+  color: #e2e8f0;
+}
+
+html[data-theme='dark'] .ticket-modal-card .form-group-user label,
+html[data-theme='dark'] .rbt-field-group label,
+html[data-theme='dark'] .tdm-form-group label {
+  color: #e2e8f0;
+}
+
+html[data-theme='dark'] .ticket-modal-card .form-group-user input,
+html[data-theme='dark'] .ticket-modal-card .form-group-user textarea,
+html[data-theme='dark'] .ticket-modal-card .form-group-user select {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+html[data-theme='dark'] .ticket-modal-card .form-group-user input::placeholder,
+html[data-theme='dark'] .ticket-modal-card .form-group-user textarea::placeholder,
+html[data-theme='dark'] .rbt-input::placeholder,
+html[data-theme='dark'] .rbt-textarea::placeholder,
+html[data-theme='dark'] .tdm-input::placeholder,
+html[data-theme='dark'] .tdm-textarea::placeholder {
+  color: #64748b !important;
+}
+
+html[data-theme='dark'] .tdm-select,
+html[data-theme='dark'] .rbt-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+html[data-theme='dark'] .ticket-upload-box {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+html[data-theme='dark'] .ticket-upload-box:hover {
+  border-color: #3b82f6 !important;
+  background: #162033 !important;
+}
+
+html[data-theme='dark'] .ticket-upload-box span,
+html[data-theme='dark'] .ticket-upload-box p,
+html[data-theme='dark'] .ticket-upload-hint {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .ticket-modal-card .btn-cancel-user,
+html[data-theme='dark'] .ticket-detail-actions .btn-cancel-user,
+html[data-theme='dark'] .rbt-btn-cancel {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .ticket-modal-card .btn-cancel-user:hover,
+html[data-theme='dark'] .ticket-detail-actions .btn-cancel-user:hover,
+html[data-theme='dark'] .rbt-btn-cancel:hover {
+  background: #334155;
+  color: #f8fafc;
+}
+
+/* Legacy Ticket Detail Card */
+html[data-theme='dark'] .ticket-detail-field {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+html[data-theme='dark'] .ticket-detail-field span,
+html[data-theme='dark'] .ticket-detail-field label {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .ticket-detail-field strong,
+html[data-theme='dark'] .ticket-detail-field p {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .ticket-detail-description {
+  background: #0f172a;
+  border-color: #1e293b;
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .ticket-detail-attachment {
+  background: #162033 !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+/* RaiseBugTicketModal Dark Mode */
+html[data-theme='dark'] .rbt-header-badge {
+  background: rgba(37, 99, 235, 0.16);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .rbt-tc-pill,
+html[data-theme='dark'] .tdm-tc-id-pill {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #bfdbfe;
+}
+
+html[data-theme='dark'] .rbt-warning-banner {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fde68a;
+}
+
+html[data-theme='dark'] .rbt-error-alert {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+}
+
+html[data-theme='dark'] .rbt-autofill-header,
+html[data-theme='dark'] .rbt-doc-section-title,
+html[data-theme='dark'] .rbt-doc-title-lead {
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .rbt-autofill-tag {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .rbt-af-item label,
+html[data-theme='dark'] .rbt-sublabel,
+html[data-theme='dark'] .rbt-drop-hint,
+html[data-theme='dark'] .rbt-thumb-name {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .rbt-fields-grid {
+  background: #111827;
+  border-color: #1e293b;
+}
+
+html[data-theme='dark'] .rbt-upload-trigger-btn,
+html[data-theme='dark'] .tdm-upload-proof-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+html[data-theme='dark'] .rbt-upload-trigger-btn:hover,
+html[data-theme='dark'] .tdm-upload-proof-btn:hover {
+  background: #334155;
+  border-color: #475569;
+  color: #f8fafc;
+}
+
+html[data-theme='dark'] .rbt-doc-banner {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .rbt-doc-badge,
+html[data-theme='dark'] .rbt-btn-preview {
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .rbt-btn-preview:hover {
+  background: rgba(59, 130, 246, 0.28);
+}
+
+html[data-theme='dark'] .rbt-doc-grid-2,
+html[data-theme='dark'] .rbt-doc-grid-3,
+html[data-theme='dark'] .rbt-doc-meta-footer {
+  border-color: #1e293b;
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .rbt-doc-grid-2 label,
+html[data-theme='dark'] .rbt-doc-grid-3 label,
+html[data-theme='dark'] .rbt-doc-meta-footer label {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .rbt-doc-grid-2 strong,
+html[data-theme='dark'] .rbt-doc-grid-3 strong,
+html[data-theme='dark'] .rbt-doc-meta-footer strong {
+  color: #f1f5f9;
+}
+
+/* TicketDetailModal Dark Mode */
+html[data-theme='dark'] .tdm-meta-tags,
+html[data-theme='dark'] .tdm-meta-tags span,
+html[data-theme='dark'] .tdm-tc-row label,
+html[data-theme='dark'] .tdm-res-field label,
+html[data-theme='dark'] .tdm-meta-list span,
+html[data-theme='dark'] .tdm-side-subtext,
+html[data-theme='dark'] .tdm-evidence-label,
+html[data-theme='dark'] .tdm-lock-note,
+html[data-theme='dark'] .tdm-history-time,
+html[data-theme='dark'] .tdm-history-details {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .tdm-meta-tags strong,
+html[data-theme='dark'] .tdm-tc-row strong,
+html[data-theme='dark'] .tdm-res-field p,
+html[data-theme='dark'] .tdm-meta-list strong,
+html[data-theme='dark'] .tdm-evidence-name {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .tdm-section-title,
+html[data-theme='dark'] .tdm-side-title-row {
+  color: #93c5fd;
+  border-bottom-color: #1e293b;
+}
+
+html[data-theme='dark'] .tdm-res-field code {
+  background: #0f172a;
+  border-color: #334155;
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .tdm-res-badge {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+}
+
+html[data-theme='dark'] .tdm-closed-audit-body,
+html[data-theme='dark'] .tdm-closed-audit-body p {
+  color: #d1fae5;
+}
+
+html[data-theme='dark'] .tdm-reopen-card {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fde68a;
+}
+
+html[data-theme='dark'] .tdm-assigned-info {
+  background: #162033;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .tdm-status-notice {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #bfdbfe;
+}
+
+html[data-theme='dark'] .tdm-btn-qa-reopen {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fcd34d;
+}
+
+html[data-theme='dark'] .tdm-btn-qa-reopen:hover {
+  background: rgba(245, 158, 11, 0.26);
+}
+
+html[data-theme='dark'] .tdm-history-item {
+  background: transparent;
+  border-left-color: #334155;
+}
+
+html[data-theme='dark'] .tdm-evidence-view-btn,
+html[data-theme='dark'] .tdm-evidence-download-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .tdm-evidence-view-btn:hover,
+html[data-theme='dark'] .tdm-evidence-download-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .tdm-lock-alert-banner {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(248, 113, 113, 0.38);
+  color: #fecaca;
+}
+
+html[data-theme='dark'] .tdm-typing-indicator-banner {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #bfdbfe;
+}
+
+html[data-theme='dark'] .tdm-btn-locked {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #64748b !important;
+}
+
+/* ==========================================================================
+   Fixed (Sticky) Module Headers Across All Modules (Dark Mode, Excludes Settings)
+   ========================================================================== */
+html[data-theme='dark'] .admin-layout .ws-settings-page .ws-header-row {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.85) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='dark'] .admin-layout .pj-page-container .pj-subheader,
+html[data-theme='dark'] .admin-layout.users-page .um-header-container,
+html[data-theme='dark'] .admin-layout .projects-header-row,
+html[data-theme='dark'] .admin-layout .reports-header-card,
+html[data-theme='dark'] .admin-layout .users-page-heading,
+html[data-theme='dark'] .admin-layout .project-workspace-header {
+  background: rgba(11, 17, 32, 0.94) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: none !important;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.85) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='dark'] .admin-layout .pj-title-text h1,
+html[data-theme='dark'] .admin-layout.users-page .um-header-titles h1,
+html[data-theme='dark'] .admin-layout .projects-header-info h2,
+html[data-theme='dark'] .admin-layout .reports-header-text h2,
+html[data-theme='dark'] .admin-layout .ws-settings-page .ws-header-row h1,
+html[data-theme='dark'] .admin-layout .users-page-heading h1 {
+  color: #f8fafc !important;
 }

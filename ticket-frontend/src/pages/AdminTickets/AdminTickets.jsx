@@ -600,23 +600,25 @@ function AdminTickets() {
 
       {showLogoutModal && (
         <div
+          id="tickets-logout-overlay"
           className="modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setShowLogoutModal(false);
           }}
         >
-          <section className="modal-content" role="dialog" aria-modal="true">
+          <section id="tickets-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon"><LogOut size={21} /></div>
-            <h2 className="modal-title">Sign out of your workspace?</h2>
+            <h2 id="tickets-logout-title" className="modal-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your account.</p>
             <div className="modal-actions">
               <button
+                id="tickets-logout-cancel-btn"
                 className="modal-btn modal-btn-cancel"
                 onClick={() => setShowLogoutModal(false)}
               >
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="tickets-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -626,13 +628,13 @@ function AdminTickets() {
 
       <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
 
-      <main className="main-content">
+      <main id="tickets-main-content" className="main-content">
         <div className="dashboard-container">
           <div className="projects-layout">
             {!activeFolder && (
               <div className="projects-header-row">
                 <div className="projects-header-info">
-                  <h2>{isDeveloper ? 'Assigned Defects & Project Tickets' : isProjectLead ? 'Project Defect Tickets' : 'Tickets Workspace'}</h2>
+                  <h2 id="tickets-page-heading">{isDeveloper ? 'Assigned Defects & Project Tickets' : isProjectLead ? 'Project Defect Tickets' : 'Tickets Workspace'}</h2>
                   {!isShowingFoldersGrid && (
                     <p>
                       {isDeveloper
@@ -642,8 +644,9 @@ function AdminTickets() {
                   )}
                 </div>
                 <div className="users-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div className="ticket-view-toggle" role="group" aria-label="Ticket workspace view">
+                  <div id="tickets-view-toggle" className="ticket-view-toggle" role="group" aria-label="Ticket workspace view">
                     <button
+                      id="tickets-view-folders-btn"
                       type="button"
                       className={`ticket-view-toggle-btn ${viewMode === 'folders' ? 'active' : ''}`}
                       onClick={() => {
@@ -654,6 +657,7 @@ function AdminTickets() {
                       <span>Project Folders</span>
                     </button>
                     <button
+                      id="tickets-view-all-btn"
                       type="button"
                       className={`ticket-view-toggle-btn ${viewMode === 'all' ? 'active' : ''}`}
                       onClick={() => {
@@ -668,6 +672,7 @@ function AdminTickets() {
 
                   {!isDeveloper && (
                     <button
+                      id="tickets-raise-btn"
                       className="btn-primary-action"
                       onClick={handleOpenRaiseModal}
                     >
@@ -680,9 +685,10 @@ function AdminTickets() {
             )}
 
             {activeFolder && viewMode === 'folders' && (
-              <div className="ticket-active-folder-banner">
+              <div id="tickets-active-folder-banner" className="ticket-active-folder-banner">
                 <div className="ticket-active-folder-left">
                   <button
+                    id="tickets-back-folders-btn"
                     type="button"
                     className="ticket-back-folders-btn"
                     onClick={handleCloseFolder}
@@ -695,7 +701,7 @@ function AdminTickets() {
                   <div className="ticket-active-folder-identity">
                     <div>
                       <div className="ticket-active-folder-title-row">
-                        <h3>{activeFolder.projectName}</h3>
+                        <h3 id="tickets-active-folder-heading">{activeFolder.projectName}</h3>
                         {activeFolder.status && (
                           <span className={`pj-status-badge ${(activeFolder.status || 'active').toLowerCase().replace(/\s+/g, '-')}`}>
                             {activeFolder.status}
@@ -714,6 +720,7 @@ function AdminTickets() {
 
                 {!isDeveloper && (
                   <button
+                    id="tickets-folder-raise-btn"
                     type="button"
                     className="btn-primary-action"
                     onClick={handleOpenRaiseModal}
@@ -766,6 +773,7 @@ function AdminTickets() {
               <div className="users-search-box">
                 <Search size={16} color="#64748b" />
                 <input
+                  id="tickets-search-input"
                   type="text"
                   placeholder={
                     isShowingFoldersGrid
@@ -780,6 +788,7 @@ function AdminTickets() {
               {!isShowingFoldersGrid && (
                 <div className="tickets-filter-dropdowns">
                   <CustomSelect
+                    id="tickets-status-filter"
                     value={statusFilter}
                     onChange={setStatusFilter}
                     options={TICKET_STATUS_OPTIONS}
@@ -788,6 +797,7 @@ function AdminTickets() {
                   />
 
                   <CustomSelect
+                    id="tickets-priority-filter"
                     value={priorityFilter}
                     onChange={setPriorityFilter}
                     options={TICKET_PRIORITY_OPTIONS}
@@ -796,6 +806,7 @@ function AdminTickets() {
                   />
 
                   <CustomSelect
+                    id="tickets-type-filter"
                     value={typeFilter}
                     onChange={setTypeFilter}
                     options={TICKET_TYPE_OPTIONS}
@@ -841,6 +852,7 @@ function AdminTickets() {
 
                       return (
                         <div
+                          id={`tickets-folder-card-${folder.key}`}
                           key={folder.key}
                           className={`ticket-folder-card folder-accent-${folder.folderColor || 'blue'}`}
                           role="button"
@@ -871,7 +883,7 @@ function AdminTickets() {
                               </span>
                             </div>
 
-                            <h3 className="ticket-folder-name" title={folder.projectName}>
+                            <h3 id={`tickets-folder-name-${folder.key}`} className="ticket-folder-name" title={folder.projectName}>
                               {folder.projectName}
                             </h3>
                             <p className="ticket-folder-sub">
@@ -910,7 +922,7 @@ function AdminTickets() {
               </div>
             ) : (
               <div className="users-table-card">
-                <table className="users-table">
+                <table id="tickets-table" className="users-table">
                   <thead>
                     <tr>
                       <th>Ticket Code</th>
@@ -945,6 +957,7 @@ function AdminTickets() {
                     ) : (
                       filteredTickets.map((t) => (
                         <tr
+                          id={`tickets-row-${t.id}`}
                           key={t.id}
                           className="ticket-table-row"
                           onClick={() => {
@@ -1007,6 +1020,7 @@ function AdminTickets() {
                           </td>
                           <td>
                             <button
+                              id={`tickets-view-btn-${t.id}`}
                               type="button"
                               className="ticket-view-button"
                               onClick={(event) => {
@@ -1032,12 +1046,13 @@ function AdminTickets() {
 
       {isModalOpen && (
         <div
+          id="raise-ticket-modal-overlay"
           className="ticket-modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setIsModalOpen(false);
           }}
         >
-          <div className="ticket-modal-card" role="dialog" aria-modal="true" aria-labelledby="raise-ticket-title">
+          <div id="raise-ticket-modal-card" className="ticket-modal-card" role="dialog" aria-modal="true" aria-labelledby="raise-ticket-title">
             <div className="modal-header-user">
               <div className="ticket-modal-heading">
                 <span className="ticket-modal-heading-icon"><Ticket size={18} /></span>
@@ -1047,6 +1062,7 @@ function AdminTickets() {
                 </div>
               </div>
               <button
+                id="raise-ticket-modal-close-btn"
                 className="modal-close-btn"
                 onClick={() => setIsModalOpen(false)}
                 aria-label="Close dialog"
@@ -1055,7 +1071,7 @@ function AdminTickets() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateTicket}>
+            <form id="raise-ticket-form" onSubmit={handleCreateTicket}>
               <div className="modal-body-user">
                 {formError && <div className="user-error-banner">{formError}</div>}
 
@@ -1068,8 +1084,9 @@ function AdminTickets() {
 
                 <div className="form-grid-2">
                   <div className="form-group-user">
-                    <label>Issue Type</label>
+                    <label htmlFor="raise-ticket-type">Issue Type</label>
                     <CustomSelect
+                      id="raise-ticket-type"
                       value={formData.type}
                       onChange={(val) => setFormData((prev) => ({ ...prev, type: val }))}
                       options={MODAL_TYPE_OPTIONS}
@@ -1078,8 +1095,9 @@ function AdminTickets() {
                   </div>
 
                   <div className="form-group-user">
-                    <label>Severity</label>
+                    <label htmlFor="raise-ticket-priority">Severity</label>
                     <CustomSelect
+                      id="raise-ticket-priority"
                       value={formData.priority}
                       onChange={(val) => setFormData((prev) => ({ ...prev, priority: val }))}
                       options={MODAL_PRIORITY_OPTIONS}
@@ -1089,8 +1107,9 @@ function AdminTickets() {
                 </div>
 
                 <div className="form-group-user">
-                  <label>Title *</label>
+                  <label htmlFor="raise-ticket-title-input">Title *</label>
                   <input
+                    id="raise-ticket-title-input"
                     type="text"
                     name="title"
                     placeholder="Short summary of the issue or requirement"
@@ -1101,8 +1120,9 @@ function AdminTickets() {
                 </div>
 
                 <div className="form-group-user">
-                  <label>Description</label>
+                  <label htmlFor="raise-ticket-description">Description</label>
                   <textarea
+                    id="raise-ticket-description"
                     name="description"
                     placeholder="Steps to reproduce, expected vs actual behavior..."
                     value={formData.description}
@@ -1113,8 +1133,9 @@ function AdminTickets() {
 
                 <div className="form-grid-2">
                   <div className="form-group-user">
-                    <label>Related Project</label>
+                    <label htmlFor="raise-ticket-project">Related Project</label>
                     <CustomSelect
+                      id="raise-ticket-project"
                       value={formData.project_code}
                       onChange={(val) => setFormData((prev) => ({ ...prev, project_code: val }))}
                       options={projectOptions}
@@ -1123,8 +1144,9 @@ function AdminTickets() {
                   </div>
 
                   <div className="form-group-user">
-                    <label>Assign To</label>
+                    <label htmlFor="raise-ticket-assignee">Assign To</label>
                     <CustomSelect
+                      id="raise-ticket-assignee"
                       value={formData.assigned_to}
                       onChange={(val) => setFormData((prev) => ({ ...prev, assigned_to: val }))}
                       options={userOptions}
@@ -1134,11 +1156,11 @@ function AdminTickets() {
                 </div>
 
                 <div className="form-group-user">
-                  <label>Attachments</label>
-                  <label className="ticket-upload-box">
+                  <label htmlFor="raise-ticket-attachments">Attachments</label>
+                  <label className="ticket-upload-box" htmlFor="raise-ticket-attachments">
                     <Upload size={16} />
                     <span>Upload image or video</span>
-                    <input type="file" accept="image/*,video/*" multiple onChange={handleAttachmentChange} />
+                    <input id="raise-ticket-attachments" type="file" accept="image/*,video/*" multiple onChange={handleAttachmentChange} />
                   </label>
 
                   {(formData.attachments || []).length > 0 && (
@@ -1147,7 +1169,7 @@ function AdminTickets() {
                         <div className="attachment-chip" key={`${attachment.name}-${index}`}>
                           {attachment.mediaType === 'image' ? <ImageIcon size={14} /> : attachment.mediaType === 'video' ? <Video size={14} /> : <FileText size={14} />}
                           <span>{attachment.name}</span>
-                          <button type="button" aria-label={`Remove ${attachment.name}`} onClick={() => removeAttachment(index)}>
+                          <button id={`raise-ticket-remove-att-${index}`} type="button" aria-label={`Remove ${attachment.name}`} onClick={() => removeAttachment(index)}>
                             <X size={12} />
                           </button>
                         </div>
@@ -1159,6 +1181,7 @@ function AdminTickets() {
 
               <div className="modal-footer-user">
                 <button
+                  id="raise-ticket-cancel-btn"
                   type="button"
                   className="btn-secondary"
                   onClick={() => setIsModalOpen(false)}
@@ -1166,6 +1189,7 @@ function AdminTickets() {
                   Cancel
                 </button>
                 <button
+                  id="raise-ticket-submit-btn"
                   type="submit"
                   className="btn-primary-action"
                   disabled={submitting}

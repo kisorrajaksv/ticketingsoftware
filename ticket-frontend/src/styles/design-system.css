@@ -274,6 +274,10 @@ body {
   margin-bottom: 4px !important;
 }
 
+.reports-header-text h2 {
+  font-size: 1.5625rem !important;
+}
+
 .header-titles p,
 .um-header-titles p,
 .pj-title-text p,
@@ -2196,7 +2200,7 @@ body:has(.login-container) #root {
 }
 
 .admin-layout .pj-page-container {
-  gap: 18px;
+  gap: 20px;
 }
 
 .admin-layout .pj-subheader {
@@ -2560,6 +2564,16 @@ body:has(.login-container) #root {
 .admin-layout .um-modal-body {
   gap: 10px;
   padding: 14px 18px;
+  transition: padding-bottom 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-layout .um-modal-card:has(.c-select-container.is-open) .um-modal-body {
+  padding-bottom: 210px;
+}
+
+.admin-layout .um-modal-card .um-form-grid-3 > .um-form-group:last-child .c-select-menu {
+  left: auto;
+  right: 0;
 }
 
 .admin-layout .um-avatar-upload-row {
@@ -2984,44 +2998,44 @@ body:has(.login-container) #root {
 
 .admin-layout .pj-cards-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
 }
 
 .admin-layout .pj-card {
   min-width: 0;
-  padding: 12px;
-  border-radius: 12px;
+  padding: 15px 16px;
+  border-radius: 14px;
 }
 
 .admin-layout .pj-card-top {
   align-items: center;
-  margin-bottom: 7px;
+  margin-bottom: 10px;
 }
 
 .admin-layout .pj-card-top-right {
   min-width: 0;
-  gap: 4px;
+  gap: 6px;
 }
 
 .admin-layout .pj-status-badge {
   max-width: 130px;
   overflow: hidden;
-  padding: 2px 7px;
-  font-size: 9.5px;
+  padding: 3px 9px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .admin-layout .pj-card-titles {
   min-width: 0;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .admin-layout .pj-card-name {
   display: -webkit-box;
   overflow: hidden;
   overflow-wrap: anywhere;
-  font-size: 13.5px;
+  font-size: 15px;
   line-height: 1.3;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -3029,19 +3043,19 @@ body:has(.login-container) #root {
 
 .admin-layout .pj-card-code {
   overflow-wrap: anywhere;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .admin-layout .pj-card-meta-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px 8px;
-  margin-bottom: 10px;
+  gap: 8px 10px;
+  margin-bottom: 12px;
 }
 
 .admin-layout .pj-meta-item {
   min-width: 0;
-  gap: 5px;
-  font-size: 10px;
+  gap: 6px;
+  font-size: 11.5px;
   white-space: normal;
 }
 
@@ -3056,20 +3070,20 @@ body:has(.login-container) #root {
 }
 
 .admin-layout .pj-card-metrics-row {
-  gap: 6px;
+  gap: 8px;
 }
 
 .admin-layout .pj-sub-metric {
   min-width: 0;
-  min-height: 34px;
-  gap: 5px;
-  padding: 5px;
-  border-radius: 7px;
+  min-height: 40px;
+  gap: 6px;
+  padding: 6px 7px;
+  border-radius: 9px;
 }
 
 .admin-layout .pj-sub-metric-icon svg {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
 }
 
 .admin-layout .pj-sub-metric-content {
@@ -3078,13 +3092,13 @@ body:has(.login-container) #root {
 
 .admin-layout .pj-sub-metric-label {
   overflow: hidden;
-  font-size: 8px;
+  font-size: 9.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .admin-layout .pj-sub-metric-val {
-  font-size: 12px;
+  font-size: 13.5px;
 }
 
 .admin-layout .users-table-card th,
@@ -3749,5 +3763,132 @@ body:has(.login-container) #root {
   .admin-layout.approvals-page .users-filter-bar {
     padding: 4px 0;
     border-radius: 0;
+  }
+}
+
+/* ==========================================================================
+   Fixed (Sticky) Module Headers & Uniform Projects Directory Parity
+   (All modules share Projects Directory size, padding, margin & typography;
+    Settings header stays non-sticky.)
+   ========================================================================== */
+.admin-layout .dashboard-container,
+.admin-layout .ws-settings-page,
+.admin-layout .pj-page-container {
+  width: 100%;
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: clamp(24px, 2.7vw, 38px) clamp(18px, 2.7vw, 38px) 44px;
+  box-sizing: border-box;
+}
+
+.admin-layout .pj-page-container .pj-subheader,
+.admin-layout.users-page .um-header-container,
+.admin-layout .projects-header-row,
+.admin-layout .reports-header-card,
+.admin-layout .ws-settings-page .ws-header-row,
+.admin-layout .users-page-heading {
+  width: 100%;
+  min-height: 64px;
+  margin: 0;
+  padding: 12px 0 14px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(203, 213, 225, 0.65);
+  border-radius: 0;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+.admin-layout .pj-page-container .pj-subheader,
+.admin-layout.users-page .um-header-container,
+.admin-layout .projects-header-row,
+.admin-layout .reports-header-card,
+.admin-layout .users-page-heading,
+.admin-layout .project-workspace-header {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(241, 245, 249, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: none;
+  border-bottom: 1px solid rgba(203, 213, 225, 0.65);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 12px 0 14px;
+  margin: 0;
+}
+
+.admin-layout.users-page .um-header-container,
+.admin-layout.tickets-page .projects-header-row {
+  align-self: start;
+}
+
+.admin-layout .pj-title-text h1,
+.admin-layout.users-page .um-header-titles h1,
+.admin-layout .projects-header-info h2,
+.admin-layout .reports-header-text h2,
+.admin-layout .ws-settings-page .ws-header-row h1,
+.admin-layout .users-page-heading h1 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+  font-size: 29px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.15 !important;
+  color: var(--color-ink, #0f172a) !important;
+  margin: 0 !important;
+}
+
+.admin-layout .pj-btn-create-primary,
+.admin-layout .um-btn-create,
+.admin-layout .projects-header-row .btn-primary-action {
+  height: 38px !important;
+  padding: 0 16px !important;
+  border-radius: 9px !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+}
+
+.admin-layout .project-workspace-header {
+  max-width: 1180px;
+  margin: 0 auto 32px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.admin-layout.tickets-page .ticket-active-folder-banner {
+  position: sticky;
+  top: 8px;
+  z-index: 15;
+  width: 100%;
+  box-sizing: border-box;
+  align-self: start;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.pjs-header {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+}
+
+@media (max-width: 760px) {
+  .admin-layout .pj-page-container .pj-subheader,
+  .admin-layout.users-page .um-header-container,
+  .admin-layout .projects-header-row,
+  .admin-layout .reports-header-card,
+  .admin-layout .ws-settings-page .ws-header-row,
+  .admin-layout .project-workspace-header,
+  .admin-layout.tickets-page .ticket-active-folder-banner,
+  .admin-layout .users-page-heading {
+    padding-left: 52px;
   }
 }
