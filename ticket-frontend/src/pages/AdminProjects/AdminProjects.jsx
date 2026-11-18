@@ -31,6 +31,7 @@ import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import FolderEmblem from './FolderEmblem';
 import ProjectSpreadsheetView from './ProjectSpreadsheetView';
 import { formatIndianDate } from '../../utils/dateFormat';
+import { getValidToken } from '../../utils/auth';
 import '../../styles/admin.css';
 import './AdminProjects.css';
 
@@ -249,7 +250,7 @@ function AdminProjects() {
   const [projectLeads, setProjectLeads] = useState([]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = getValidToken();
     if (!token) return;
 
     axios.get('http://localhost:5000/api/admin/project-leads', {
@@ -304,7 +305,7 @@ function AdminProjects() {
 
   // Fetch projects from backend
   const fetchProjects = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = getValidToken();
     if (!token) return;
 
     setLoading(true);
@@ -938,6 +939,7 @@ function AdminProjects() {
                   <input
                     id="pj-search-input"
                     type="text"
+                    autoComplete="off"
                     placeholder="Search by project name, code, project type..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -1331,6 +1333,7 @@ function AdminProjects() {
                       id="pj-modal-name"
                       type="text"
                       name="name"
+                      autoComplete="off"
                       placeholder="e.g. Customer Support Portal"
                       value={formData.name}
                       onChange={handleInputChange}
@@ -1347,6 +1350,7 @@ function AdminProjects() {
                       id="pj-modal-code"
                       type="text"
                       name="project_code"
+                      autoComplete="off"
                       placeholder="e.g. PRJ-CSP-0001"
                       value={formData.project_code}
                       readOnly
@@ -1382,6 +1386,7 @@ function AdminProjects() {
                       id="pj-modal-client"
                       type="text"
                       name="client_name"
+                      autoComplete="off"
                       placeholder="e.g. Acme Health Corp"
                       value={formData.client_name || ''}
                       onChange={handleInputChange}
@@ -1446,6 +1451,7 @@ function AdminProjects() {
                         id="pj-modal-team-members"
                         type="number"
                         name="team_members"
+                        autoComplete="off"
                         min="1"
                         max="9"
                         placeholder="Team size (1 - 9)"
@@ -1467,6 +1473,7 @@ function AdminProjects() {
                       value={formData.start_date}
                       min={isEditing ? undefined : getTodayDateString()}
                       onChange={handleInputChange}
+                      autoComplete="off"
                       required
                     />
                   </div>
@@ -1482,6 +1489,7 @@ function AdminProjects() {
                       value={formData.end_date || ''}
                       min={getMinTargetDate(formData.start_date)}
                       onChange={handleInputChange}
+                      autoComplete="off"
                     />
                   </div>
 

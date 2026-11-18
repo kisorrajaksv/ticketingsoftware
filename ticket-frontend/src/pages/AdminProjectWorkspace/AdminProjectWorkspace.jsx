@@ -51,7 +51,7 @@ const WORKSPACE_FOLDERS = [
   { id: 'sheet', label: 'Sheet', detail: 'Project test sheets', icon: FileSpreadsheet },
   { id: 'tickets', label: 'Tickets', detail: 'Issues for this project', icon: Ticket },
   { id: 'lead', label: 'Project Lead', detail: 'Lead allocation & history', icon: ShieldCheck },
-  { id: 'developers', label: 'Developers', detail: 'Assigned engineering devs', icon: Users },
+  { id: 'developers', label: 'Team', detail: 'Developers & QA Members', icon: Users },
   { id: 'documents', label: 'Documents', detail: 'Project document record', icon: FileText },
   { id: 'testing-request', label: 'Testing Request', detail: 'Start testing approval', icon: Send, restrictedToLeadAndManager: true },
   { id: 'details', label: 'Details', detail: 'Project information', icon: Folder }
@@ -79,8 +79,8 @@ export default function AdminProjectWorkspace() {
   const isQAMember = currentUserRole === 'QA Member';
   const isManager = currentUserRole === 'Manager' || currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
 
-  // Access rules: Only Manager & QA Lead (plus Super Admin, Admin) can assign Project Leads & Developers
-  const canAssignLeadAndDevs = ['Manager', 'QA Lead', 'Super Admin', 'Admin'].includes(currentUserRole);
+  // Access rules: Manager, QA Lead, Project Lead (plus Super Admin, Admin) can assign Project Leads & Team Members
+  const canAssignLeadAndDevs = ['Manager', 'QA Lead', 'Project Lead', 'Super Admin', 'Admin'].includes(currentUserRole);
   // Everyone EXCEPT QA Members and Developers can upload documents and edit Application URL / GitHub Link
   const canEditDocsAndLinks = !isQAMember && !isDeveloper;
   // Only Project Lead and Manager can lock/unlock files & link fields and access Testing Request page
@@ -697,11 +697,11 @@ export default function AdminProjectWorkspace() {
   const handleAssignDevelopers = async (e) => {
     e.preventDefault();
     if (!canAssignLeadAndDevs) {
-      setDevAssignMsg({ text: 'Access Denied: Only Manager and QA Lead can assign developers.', type: 'error' });
+      setDevAssignMsg({ text: 'Access Denied: Only Manager, QA Lead, and Project Lead can assign team members.', type: 'error' });
       return;
     }
     if (selectedDevIds.length === 0) {
-      setDevAssignMsg({ text: 'Please select at least one developer.', type: 'error' });
+      setDevAssignMsg({ text: 'Please select at least one team member.', type: 'error' });
       return;
     }
 
@@ -715,7 +715,7 @@ export default function AdminProjectWorkspace() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setDevAssignMsg({ text: 'Developers assigned successfully!', type: 'success' });
+      setDevAssignMsg({ text: 'Team members assigned successfully!', type: 'success' });
       await Promise.all([fetchDevsAndHistory(), fetchProjectData()]);
       setSelectedDevIds([]);
       setTimeout(() => {
@@ -723,7 +723,7 @@ export default function AdminProjectWorkspace() {
         setDevAssignMsg({ text: '', type: '' });
       }, 1000);
     } catch (err) {
-      setDevAssignMsg({ text: err.response?.data?.error || 'Failed to assign developers.', type: 'error' });
+      setDevAssignMsg({ text: err.response?.data?.error || 'Failed to assign team members.', type: 'error' });
     } finally {
       setDevAssignLoading(false);
     }
@@ -731,10 +731,10 @@ export default function AdminProjectWorkspace() {
 
   const handleRemoveDeveloper = async (developerId) => {
     if (!canAssignLeadAndDevs) {
-      alert('Access Denied: Only Manager and QA Lead can remove developers.');
+      alert('Access Denied: Only Manager, QA Lead, and Project Lead can remove team members.');
       return;
     }
-    if (!window.confirm('Are you sure you want to remove this developer from the project?')) return;
+    if (!window.confirm('Are you sure you want to remove this team member from the project?')) return;
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`http://localhost:5000/api/admin/projects/${projectId}/developers/${developerId}`, {
@@ -1013,11 +1013,11 @@ export default function AdminProjectWorkspace() {
             </section>
           )}
 
-          {/* Tab 4: Developer Assignment (Section 4) */}
+          {/* Tab 4: Team Allocation (Section 4) */}
           {activeFolder === 'developers' && (
             <section id="pw-developers-section" className="project-workspace-content">
               <div className="project-content-heading">
-                <div><span>ENGINEERING ALLOCATION</span><h2 id="pw-developers-heading">Assigned Developers</h2></div>
+                <div><span>TEAM ALLOCATION</span><h2 id="pw-developers-heading">Assigned Team Members</h2></div>
                 {canAssignLeadAndDevs && (
                   <button
                     id="pw-add-devs-btn"
@@ -1028,23 +1028,23 @@ export default function AdminProjectWorkspace() {
                     }}
                   >
                     <UserPlus size={15} />
-                    <span>Add Developers</span>
+                    <span>Add Team Members</span>
                   </button>
                 )}
               </div>
 
-              {/* List of currently assigned devs */}
+              {/* List of currently assigned devs / team members */}
               {assignedDevs.length === 0 ? (
                 <div className="pw-empty-box">
                   <Users size={32} color="#94A3B8" />
-                  <p>No engineering developers assigned to this project yet.</p>
+                  <p>No team members assigned to this project yet.</p>
                 </div>
               ) : (
                 <div className="pw-devs-grid">
                   {assignedDevs.map((d) => (
                     <div key={d.developer_id} id={`pw-dev-card-${d.developer_id}`} className="pw-dev-card">
                       <div className="pw-dev-avatar">
-                        {d.developer_name ? d.developer_name.charAt(0).toUpperCase() : 'D'}
+                        {d.developer_name ? d.developer_name.charAt(0).toUpperCase() : 'T'}
                       </div>
                       <div className="pw-dev-info">
                         <strong>{d.developer_name}</strong>
@@ -1057,7 +1057,7 @@ export default function AdminProjectWorkspace() {
                           type="button"
                           className="pw-btn-remove"
                           onClick={() => handleRemoveDeveloper(d.developer_id)}
-                          title="Remove developer from project"
+                          title="Remove team member from project"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -1071,7 +1071,7 @@ export default function AdminProjectWorkspace() {
               <div className="pw-section-sub" style={{ marginTop: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showDevHistory ? 12 : 0 }}>
                   <h3 id="pw-dev-history-heading" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <History size={15} /> Developer Assignment History ({devHistory.length})
+                    <History size={15} /> Team Assignment History ({devHistory.length})
                   </h3>
                   <button
                     id="pw-dev-history-toggle-btn"
@@ -1268,6 +1268,7 @@ export default function AdminProjectWorkspace() {
                         type="url"
                         className={`pw-input${!canEditDocsAndLinks || linksMeta.links_locked ? ' pw-input-readonly' : ''}`}
                         placeholder="https://app.example.com"
+                        autoComplete="url"
                         value={applicationUrl}
                         onChange={(e) => setApplicationUrl(e.target.value)}
                         readOnly={!canEditDocsAndLinks || linksMeta.links_locked}
@@ -1299,6 +1300,7 @@ export default function AdminProjectWorkspace() {
                         type="url"
                         className={`pw-input${!canEditDocsAndLinks || linksMeta.links_locked ? ' pw-input-readonly' : ''}`}
                         placeholder="https://github.com/organization/repository"
+                        autoComplete="url"
                         value={applicationGithubLink}
                         onChange={(e) => setApplicationGithubLink(e.target.value)}
                         readOnly={!canEditDocsAndLinks || linksMeta.links_locked}
@@ -1614,6 +1616,7 @@ export default function AdminProjectWorkspace() {
                         type="text"
                         className="pw-input"
                         placeholder="e.g. Build v1.0 deployed on staging, credentials & test scope in Documents..."
+                        autoComplete="off"
                         value={testingNotes}
                         onChange={(e) => setTestingNotes(e.target.value)}
                       />
@@ -1759,7 +1762,7 @@ export default function AdminProjectWorkspace() {
         <div id="pw-dev-modal-overlay" className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setIsDevModalOpen(false)}>
           <div id="pw-dev-modal" className="pw-modal-box" style={{ maxWidth: 580 }}>
             <div className="pw-modal-header">
-              <h3 id="pw-dev-modal-title">Add Developers to Project</h3>
+              <h3 id="pw-dev-modal-title">Add Team Members to Project</h3>
               <button id="pw-dev-modal-close-btn" className="pw-modal-close" onClick={() => setIsDevModalOpen(false)}><X size={18} /></button>
             </div>
             <form id="pw-assign-devs-form" onSubmit={handleAssignDevelopers}>
@@ -1770,7 +1773,7 @@ export default function AdminProjectWorkspace() {
                     <span>{devAssignMsg.text}</span>
                   </div>
                 )}
-                <label style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>Select Developers</label>
+                <label style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>Select Team Members (Developers & QA)</label>
                 <div className="pw-dev-select-grid">
                   {availableDevs.map((dev) => {
                     const isAlready = assignedDevs.some((d) => d.developer_id === dev.id);
@@ -1786,7 +1789,12 @@ export default function AdminProjectWorkspace() {
                           {isSelected && <Check size={14} color="#fff" />}
                         </div>
                         <div className="pw-dev-pick-info">
-                          <strong>{dev.full_name}</strong>
+                          <strong style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {dev.full_name}
+                            <span style={{ fontSize: 11, fontWeight: 600, color: dev.role === 'QA Member' ? '#0284C7' : '#4F46E5', background: dev.role === 'QA Member' ? '#E0F2FE' : '#EEF2FF', padding: '1px 6px', borderRadius: 4 }}>
+                              {dev.role || 'Member'}
+                            </span>
+                          </strong>
                           <span>{dev.email}</span>
                           {isAlready && <span className="pw-tag-already">Already on Project</span>}
                         </div>
@@ -1800,7 +1808,7 @@ export default function AdminProjectWorkspace() {
                   Cancel
                 </button>
                 <button id="pw-dev-modal-submit-btn" type="submit" className="pw-btn-primary" disabled={devAssignLoading || selectedDevIds.length === 0}>
-                  {devAssignLoading ? 'Adding...' : `Add Developers (${selectedDevIds.length})`}
+                  {devAssignLoading ? 'Adding...' : `Add Team Members (${selectedDevIds.length})`}
                 </button>
               </div>
             </form>

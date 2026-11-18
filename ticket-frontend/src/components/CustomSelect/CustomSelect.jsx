@@ -92,16 +92,18 @@ export default function CustomSelect({
   return (
     <div
       ref={containerRef}
-      id={id}
+      id={id ? `${id}-container` : undefined}
       className={`c-select-container c-select-${variant} ${isOpen ? 'is-open' : ''} ${hasError ? 'has-error' : ''} ${disabled ? 'is-disabled' : ''} ${className}`}
     >
       {/* Hidden input for HTML form accessibility/autocomplete compatibility */}
-      <input id={id ? `${id}-input` : undefined} type="hidden" value={value || ''} />
+      <input id={id ? `${id}-input` : undefined} type="hidden" autoComplete="off" value={value || ''} />
 
-      {/* Dropdown Trigger Button */}
+      {/* Dropdown Trigger Button (Receives id so <label for="..."> binds to this form button) */}
       <button
-        id={id ? `${id}-trigger` : undefined}
+        id={id}
         type="button"
+        role="combobox"
+        aria-controls={id ? `${id}-menu` : undefined}
         className="c-select-trigger"
         onClick={toggleDropdown}
         disabled={disabled}

@@ -287,6 +287,7 @@ function AdminApprovals() {
                   id="approvals-search-input"
                   type="text"
                   placeholder="Search request code, project, request note, requested by..."
+                  autoComplete="off"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -496,6 +497,7 @@ function AdminApprovals() {
                       name="req_code"
                       value={formData.req_code}
                       readOnly
+                      autoComplete="off"
                       style={{ background: '#F8FAFC', color: '#475569', cursor: 'not-allowed' }}
                     />
                   </div>
@@ -519,6 +521,7 @@ function AdminApprovals() {
                     type="text"
                     name="title"
                     placeholder="Enter project name"
+                    autoComplete="off"
                     required
                     value={formData.title}
                     onChange={handleInputChange}
@@ -532,6 +535,7 @@ function AdminApprovals() {
                     type="text"
                     name="details"
                     placeholder="Enter testing notes or request details..."
+                    autoComplete="off"
                     value={formData.details}
                     onChange={handleInputChange}
                   />
@@ -543,6 +547,7 @@ function AdminApprovals() {
                     id="approval-requested-by"
                     type="text"
                     name="requested_by"
+                    autoComplete="name"
                     value={formData.requested_by || creatorLabel}
                     readOnly
                     style={{ background: '#F8FAFC', color: '#475569', cursor: 'not-allowed' }}

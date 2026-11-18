@@ -20,6 +20,7 @@ const CubeLogo = () => (
 
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { getValidToken } from '../../utils/auth';
 
 // Helper to route each role to its dedicated dashboard
 export const getRoleHomeRoute = (role) => {
@@ -52,11 +53,18 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Check if already logged in and redirect to their specific dashboard
+  // Check if session expired query param is set, or redirect if already logged in with valid token
   React.useEffect(() => {
-    const token = localStorage.getItem('token');
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('sessionExpired')) {
+      setServerError('Your session has expired. Please sign in again.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+
+    const token = getValidToken();
     const role = localStorage.getItem('userRole');
-    if (token) {
+    if (token && role) {
       navigate(getRoleHomeRoute(role), { replace: true });
     }
   }, [navigate]);

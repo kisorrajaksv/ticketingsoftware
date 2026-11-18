@@ -341,6 +341,7 @@ export default function QAMemberDashboard() {
                     <input
                       id="qa-ticket-search"
                       type="text"
+                      autoComplete="off"
                       placeholder="Search ticket code, title..."
                       value={ticketSearch}
                       onChange={(e) => setTicketSearch(e.target.value)}

@@ -4,11 +4,15 @@ import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 import pool from '../db.js';
 import { getWrittenTestCaseRows } from './sheetMetrics.js';
+import { sendProjectAssignmentEmail } from './emailService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey_change_in_production';
+
+// Global reference to Socket.IO instance for real-time notifications
+let _workflowIo = null;
 
 // Ensure uploads/tickets folder exists
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -92,7 +96,7 @@ export const logTicketHistory = async (ticketId, action, prevStatus, newStatus, 
   }
 };
 
-// Helper: Send in-app notification
+// Helper: Send in-app notification and broadcast in real-time
 export const sendInAppNotification = async (userId, title, message, type = 'info', link = '', meta = {}) => {
   if (!userId) return null;
   const {
@@ -108,7 +112,12 @@ export const sendInAppNotification = async (userId, title, message, type = 'info
        RETURNING *`,
       [userId, title, message, type, link, senderId, senderName, senderRole, audience]
     );
-    return res.rows[0] || null;
+    const notif = res.rows[0] || null;
+    if (notif && _workflowIo) {
+      _workflowIo.to(`user_${userId}`).emit('new_notification', notif);
+      _workflowIo.emit(`notification_user_${userId}`, notif);
+    }
+    return notif;
   } catch (err) {
     console.error('Error sending in-app notification:', err);
     return null;
@@ -116,6 +125,7 @@ export const sendInAppNotification = async (userId, title, message, type = 'info
 };
 
 export function registerWorkflowRoutes(app, io) {
+  _workflowIo = io;
   // ==========================================
   // 1. IMAGE UPLOAD
   // ==========================================
@@ -233,10 +243,23 @@ export function registerWorkflowRoutes(app, io) {
       await sendInAppNotification(
         leadUser.id,
         'Project Assigned',
-        `You have been assigned as Project Lead for "${project.name}" (${project.project_code}).`,
+        `A new project has been assigned to you by ${user.full_name || 'Manager'}. Project: "${project.name}" (${project.project_code}).`,
         'project_assigned',
         `/admin/projects/${projectId}`
       );
+
+      // Send email notification to Project Lead
+      try {
+        await sendProjectAssignmentEmail({
+          to: leadUser.email,
+          userName: leadUser.full_name,
+          managerName: user.full_name || 'Manager',
+          projectName: project.name,
+          projectCode: project.project_code
+        });
+      } catch (mailErr) {
+        console.warn('Failed to send project assignment email to lead:', mailErr.message);
+      }
 
       res.json({
         message: 'Project Lead assigned successfully.',
@@ -277,7 +300,7 @@ export function registerWorkflowRoutes(app, io) {
   // ==========================================
   // 3. DEVELOPER ASSIGNMENTS TO PROJECT
   // ==========================================
-  // List all available Developers
+  // List all available Developers and QA Members for project assignment
   app.get('/api/admin/developers', async (req, res) => {
     const user = await getUserFromReq(req);
     if (!user) return res.status(401).json({ error: 'Authentication required' });
@@ -286,8 +309,8 @@ export function registerWorkflowRoutes(app, io) {
       const result = await pool.query(
         `SELECT id, emp_id, full_name, email, department, role, status
          FROM users 
-         WHERE role = 'Developer' AND status = 'Active'
-         ORDER BY full_name ASC`
+         WHERE role IN ('Developer', 'QA Member') AND status = 'Active'
+         ORDER BY role ASC, full_name ASC`
       );
       res.json(result.rows);
     } catch (err) {
@@ -339,15 +362,15 @@ export function registerWorkflowRoutes(app, io) {
       }
       const project = projRes.rows[0];
 
-      // Permission check: Only Manager and QA Lead (plus Super Admin, Admin) can assign developers
-      const allowedRoles = ['Manager', 'QA Lead', 'Super Admin', 'Admin'];
+      // Permission check: Manager, QA Lead, Project Lead, Super Admin, Admin can assign team members
+      const allowedRoles = ['Manager', 'QA Lead', 'Project Lead', 'Super Admin', 'Admin'];
       if (!allowedRoles.includes(user.role)) {
-        return res.status(403).json({ error: 'Only Managers and QA Leads can assign developers to this project.' });
+        return res.status(403).json({ error: 'Only Managers, QA Leads, and Project Leads can assign team members to this project.' });
       }
 
       const assignedDevs = [];
       for (const devId of developer_ids) {
-        const devUserRes = await pool.query('SELECT id, full_name, email FROM users WHERE id = $1', [devId]);
+        const devUserRes = await pool.query('SELECT id, full_name, email, role FROM users WHERE id = $1', [devId]);
         if (devUserRes.rows.length === 0) continue;
         const devUser = devUserRes.rows[0];
 
@@ -362,14 +385,28 @@ export function registerWorkflowRoutes(app, io) {
         );
         assignedDevs.push(insertRes.rows[0]);
 
-        // Send notification to developer
+        // Send in-app notification to assigned user
+        const targetRoute = devUser.role === 'QA Member' ? '/qa-member' : '/developer';
         await sendInAppNotification(
           devUser.id,
-          'Assigned to Project',
-          `You have been added as an engineering developer on "${project.name}" (${project.project_code}).`,
+          'Project Assigned',
+          `A new project has been assigned to you by ${user.full_name || 'Manager'}. Project: "${project.name}" (${project.project_code}).`,
           'project_assigned',
-          `/developer`
+          targetRoute
         );
+
+        // Send email notification to assigned team member
+        try {
+          await sendProjectAssignmentEmail({
+            to: devUser.email,
+            userName: devUser.full_name,
+            managerName: user.full_name || 'Manager',
+            projectName: project.name,
+            projectCode: project.project_code
+          });
+        } catch (mailErr) {
+          console.warn('Failed to send project assignment email to member:', mailErr.message);
+        }
       }
 
       res.status(201).json({
@@ -394,10 +431,10 @@ export function registerWorkflowRoutes(app, io) {
       if (projRes.rows.length === 0) return res.status(404).json({ error: 'Project not found.' });
       const project = projRes.rows[0];
 
-      // Permission check: Only Manager and QA Lead (plus Super Admin, Admin) can remove developers
-      const allowedRoles = ['Manager', 'QA Lead', 'Super Admin', 'Admin'];
+      // Permission check: Manager, QA Lead, Project Lead, Super Admin, Admin can remove team members
+      const allowedRoles = ['Manager', 'QA Lead', 'Project Lead', 'Super Admin', 'Admin'];
       if (!allowedRoles.includes(user.role)) {
-        return res.status(403).json({ error: 'Only Managers and QA Leads can remove developers from this project.' });
+        return res.status(403).json({ error: 'Only Managers, QA Leads, and Project Leads can remove team members from this project.' });
       }
 
       await pool.query(
@@ -1676,10 +1713,35 @@ export function registerWorkflowRoutes(app, io) {
     if (!user) return res.status(401).json({ error: 'Authentication required' });
 
     try {
+      const userName = (user.full_name || '').trim();
+      const userEmail = (user.email || '').trim();
+      let leadFilter = '1=1';
+      const params = [];
+
       // Find all projects where this user is the Project Lead (or all projects if manager)
-      const leadFilter = (user.role === 'Manager' || user.role === 'QA Lead' || user.role === 'Super Admin')
-        ? '1=1'
-        : `(p.project_lead_id = ${user.id} OR LOWER(p.lead_name) = '${user.full_name.toLowerCase().replace(/'/g, "''")}')`;
+      if (user.role !== 'Manager' && user.role !== 'QA Lead' && user.role !== 'Super Admin') {
+        params.push(user.id, userName, userEmail);
+        leadFilter = `(
+          p.project_lead_id = $1
+          OR LOWER(TRIM(p.lead_name)) = LOWER(TRIM($2))
+          OR LOWER(TRIM(p.lead_name)) = LOWER(TRIM($3))
+          OR p.id IN (
+            SELECT project_id FROM project_lead_assignments 
+            WHERE (project_lead_id = $1 OR LOWER(TRIM(lead_email)) = LOWER(TRIM($3)) OR LOWER(TRIM(lead_name)) = LOWER(TRIM($2))) 
+            AND status != 'Removed'
+          )
+          OR p.id IN (
+            SELECT project_id FROM project_developer_assignments 
+            WHERE (developer_id = $1 OR LOWER(TRIM(developer_email)) = LOWER(TRIM($3)) OR LOWER(TRIM(developer_name)) = LOWER(TRIM($2))) 
+            AND status = 'Active'
+          )
+          OR p.id IN (
+            SELECT project_id FROM tickets 
+            WHERE (assigned_developer_id = $1 OR LOWER(TRIM(assigned_to)) = LOWER(TRIM($2)) OR LOWER(TRIM(assigned_to)) = LOWER(TRIM($3)))
+            AND project_id IS NOT NULL
+          )
+        )`;
+      }
 
       const projectsRes = await pool.query(
         `SELECT p.id, p.project_code, p.name, p.status, p.progress, p.priority, p.lead_name,
@@ -1693,7 +1755,8 @@ export function registerWorkflowRoutes(app, io) {
                 COALESCE((SELECT COUNT(*) FROM tickets WHERE project_id = p.id AND status = 'Reopened'), 0) as reopened_tickets
          FROM projects p
          WHERE ${leadFilter}
-         ORDER BY p.id ASC`
+         ORDER BY p.id ASC`,
+        params
       );
 
       const projects = projectsRes.rows;
@@ -1766,15 +1829,24 @@ export function registerWorkflowRoutes(app, io) {
     if (!user) return res.status(401).json({ error: 'Authentication required' });
 
     try {
-      // 1. Projects assigned to developer
+      // 1. Projects assigned to developer (via project_developer_assignments by id/name/email OR tickets assigned to developer)
       const projectsRes = await pool.query(
-        `SELECT p.id, p.project_code, p.name, p.status, p.progress, p.lead_name, p.lead_name as project_lead_name,
-                pda.assigned_at
+        `SELECT DISTINCT p.id, p.project_code, p.name, p.status, p.progress, p.lead_name, p.lead_name as project_lead_name,
+                COALESCE(pda.assigned_at, p.created_at) as assigned_at
          FROM projects p
-         JOIN project_developer_assignments pda ON pda.project_id = p.id
-         WHERE pda.developer_id = $1 AND pda.status = 'Active'
-         ORDER BY pda.assigned_at DESC`,
-        [user.id]
+         LEFT JOIN project_developer_assignments pda ON pda.project_id = p.id 
+           AND (pda.developer_id = $1 OR LOWER(TRIM(pda.developer_email)) = LOWER(TRIM($3)) OR LOWER(TRIM(pda.developer_name)) = LOWER(TRIM($2))) 
+           AND pda.status = 'Active'
+         WHERE (
+            pda.id IS NOT NULL
+            OR p.id IN (
+              SELECT project_id FROM tickets 
+              WHERE (assigned_developer_id = $1 OR LOWER(TRIM(assigned_to)) = LOWER(TRIM($2)) OR LOWER(TRIM(assigned_to)) = LOWER(TRIM($3)))
+              AND project_id IS NOT NULL
+            )
+         )
+         ORDER BY assigned_at DESC`,
+        [user.id, user.full_name || '', user.email || '']
       );
 
       // 2. Tickets assigned to developer OR for projects developer is allocated to

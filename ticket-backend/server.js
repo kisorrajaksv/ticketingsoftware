@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pool from './db.js';
-import { sendWelcomeEmail, generateTemporaryPassword } from './services/emailService.js';
+import { sendWelcomeEmail, sendProjectAssignmentEmail, generateTemporaryPassword } from './services/emailService.js';
 import { initDatabase } from './init-db.js';
 import path from 'path';
 import fs from 'fs';
@@ -79,11 +79,11 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Incorrect password. Please try again.' });
     }
 
-    // 3. Generate the JWT Token
+    // 3. Generate the JWT Token (valid for 7 days)
     const token = jwt.sign(
       { userId: user.id, email: user.email }, // Data packed inside the token
       JWT_SECRET,                 // The secret key to sign it
-      { expiresIn: '24h' }                    // Token expires in 24 hours
+      { expiresIn: '7d' }                     // Token expires in 7 days
     );
 
     // 4. Send the token and user details back to React
@@ -715,14 +715,78 @@ app.get('/api/admin/projects', async (req, res) => {
       FROM projects p
     `;
     const params = [];
+    const userName = (user.full_name || '').trim();
+    const userEmail = (user.email || '').trim();
 
     if (user.role === 'Project Lead') {
-      params.push(user.id);
-      params.push(user.full_name);
-      query += ` WHERE (p.project_lead_id = $1 OR LOWER(p.lead_name) = LOWER($2))`;
+      params.push(user.id, userName, userEmail);
+      query += ` WHERE (
+        p.project_lead_id = $1
+        OR LOWER(TRIM(p.lead_name)) = LOWER(TRIM($2))
+        OR LOWER(TRIM(p.lead_name)) = LOWER(TRIM($3))
+        OR p.id IN (
+          SELECT project_id FROM project_lead_assignments 
+          WHERE (project_lead_id = $1 OR LOWER(TRIM(lead_email)) = LOWER(TRIM($3)) OR LOWER(TRIM(lead_name)) = LOWER(TRIM($2))) 
+          AND status != 'Removed'
+        )
+        OR p.id IN (
+          SELECT project_id FROM project_developer_assignments 
+          WHERE (developer_id = $1 OR LOWER(TRIM(developer_email)) = LOWER(TRIM($3)) OR LOWER(TRIM(developer_name)) = LOWER(TRIM($2))) 
+          AND status = 'Active'
+        )
+        OR p.id IN (
+          SELECT project_id FROM tickets 
+          WHERE (assigned_developer_id = $1 OR LOWER(TRIM(assigned_to)) = LOWER(TRIM($2)) OR LOWER(TRIM(assigned_to)) = LOWER(TRIM($3)))
+          AND project_id IS NOT NULL
+        )
+      )`;
     } else if (user.role === 'Developer') {
-      params.push(user.id);
-      query += ` WHERE p.id IN (SELECT project_id FROM project_developer_assignments WHERE developer_id = $1 AND status = 'Active')`;
+      params.push(user.id, userName, userEmail);
+      query += ` WHERE (
+        p.id IN (
+          SELECT project_id FROM project_developer_assignments 
+          WHERE (developer_id = $1 OR LOWER(TRIM(developer_email)) = LOWER(TRIM($3)) OR LOWER(TRIM(developer_name)) = LOWER(TRIM($2))) 
+          AND status = 'Active'
+        )
+        OR p.id IN (
+          SELECT project_id FROM tickets 
+          WHERE (assigned_developer_id = $1 OR LOWER(TRIM(assigned_to)) = LOWER(TRIM($2)) OR LOWER(TRIM(assigned_to)) = LOWER(TRIM($3)))
+          AND project_id IS NOT NULL
+        )
+      )`;
+    } else if (user.role === 'QA Member') {
+      params.push(user.id, userName, userEmail);
+      query += ` WHERE (
+        -- Tagged in project test sheet (col_assigned or tester)
+        p.id IN (
+          SELECT project_id FROM project_sheets 
+          WHERE (rows::text ILIKE '%' || $2 || '%' OR rows::text ILIKE '%' || $3 || '%')
+        )
+        -- Tagged via bug tickets raised or assigned
+        OR p.id IN (
+          SELECT project_id FROM tickets 
+          WHERE (raised_by_id = $1 OR LOWER(TRIM(raised_by)) = LOWER(TRIM($2)) OR LOWER(TRIM(raised_by)) = LOWER(TRIM($3)) OR assigned_developer_id = $1 OR LOWER(TRIM(assigned_to)) = LOWER(TRIM($2)) OR LOWER(TRIM(assigned_to)) = LOWER(TRIM($3)))
+          AND project_id IS NOT NULL
+        )
+        -- Tagged via project developer / team assignments
+        OR p.id IN (
+          SELECT project_id FROM project_developer_assignments 
+          WHERE (developer_id = $1 OR LOWER(TRIM(developer_email)) = LOWER(TRIM($3)) OR LOWER(TRIM(developer_name)) = LOWER(TRIM($2))) 
+          AND status = 'Active'
+        )
+        -- Tagged as project lead / tester
+        OR p.project_lead_id = $1
+        OR LOWER(TRIM(p.lead_name)) = LOWER(TRIM($2))
+        OR LOWER(TRIM(p.lead_name)) = LOWER(TRIM($3))
+        -- Fallback: If this QA member is not yet tagged to any specific project, show all active projects so their workspace is ready
+        OR NOT EXISTS (
+          SELECT 1 FROM project_sheets WHERE (rows::text ILIKE '%' || $2 || '%' OR rows::text ILIKE '%' || $3 || '%')
+          UNION
+          SELECT 1 FROM tickets WHERE (raised_by_id = $1 OR LOWER(TRIM(raised_by)) = LOWER(TRIM($2)) OR LOWER(TRIM(raised_by)) = LOWER(TRIM($3))) AND project_id IS NOT NULL
+          UNION
+          SELECT 1 FROM project_developer_assignments WHERE (developer_id = $1 OR LOWER(TRIM(developer_email)) = LOWER(TRIM($3)) OR LOWER(TRIM(developer_name)) = LOWER(TRIM($2))) AND status = 'Active'
+        )
+      )`;
     }
 
     query += ` ORDER BY p.id ASC`;
@@ -826,8 +890,9 @@ app.post('/api/admin/projects', async (req, res) => {
 
     if (leadId) {
       try {
-        const leadUserRes = await pool.query('SELECT full_name, email FROM users WHERE id = $1', [leadId]);
+        const leadUserRes = await pool.query('SELECT id, full_name, email FROM users WHERE id = $1', [leadId]);
         const leadUser = leadUserRes.rows[0];
+        const assignedByName = user?.full_name || user?.email || 'Manager';
         await pool.query(
           `INSERT INTO project_lead_assignments (project_id, project_lead_id, lead_name, lead_email, project_lead_name, project_lead_email, assigned_by, notes)
            VALUES ($1, $2, $3, $4, $3, $4, $5, $6)`,
@@ -836,12 +901,36 @@ app.post('/api/admin/projects', async (req, res) => {
             leadId,
             leadUser?.full_name || resolvedLeadName,
             leadUser?.email || '',
-            'Admin',
+            assignedByName,
             'Assigned during project creation'
           ]
         );
+
+        // Send in-app notification to lead
+        await sendInAppNotification(
+          leadId,
+          'Project Assigned',
+          `A new project has been assigned to you by ${assignedByName}. Project: "${createdProject.name}" (${createdProject.project_code}).`,
+          'project_assigned',
+          `/admin/projects/${createdProject.id}`
+        );
+
+        // Send email to lead
+        if (leadUser?.email) {
+          try {
+            await sendProjectAssignmentEmail({
+              to: leadUser.email,
+              userName: leadUser.full_name,
+              managerName: assignedByName,
+              projectName: createdProject.name,
+              projectCode: createdProject.project_code
+            });
+          } catch (mailErr) {
+            console.warn('Failed to send project assignment email to lead:', mailErr.message);
+          }
+        }
       } catch (histErr) {
-        console.warn('Could not record initial lead assignment history:', histErr.message);
+        console.warn('Could not record initial lead assignment history or email:', histErr.message);
       }
     }
 
@@ -978,9 +1067,9 @@ app.put('/api/admin/projects/:id', async (req, res) => {
     // If project lead changed, log assignment in project_lead_assignments
     if (leadId && leadId !== cur.project_lead_id) {
       try {
-        const leadUserRes = await pool.query('SELECT full_name, email FROM users WHERE id = $1', [leadId]);
+        const leadUserRes = await pool.query('SELECT id, full_name, email FROM users WHERE id = $1', [leadId]);
         const leadUser = leadUserRes.rows[0];
-        const assignedByName = user?.full_name || user?.email || 'Admin';
+        const assignedByName = user?.full_name || user?.email || 'Manager';
         await pool.query(
           `INSERT INTO project_lead_assignments (project_id, project_lead_id, lead_name, lead_email, project_lead_name, project_lead_email, assigned_by)
            VALUES ($1, $2, $3, $4, $3, $4, $5)`,
@@ -996,6 +1085,30 @@ app.put('/api/admin/projects/:id', async (req, res) => {
           `UPDATE projects SET lead_assigned_at = CURRENT_TIMESTAMP, lead_assigned_by = $1 WHERE id = $2`,
           [assignedByName, id]
         );
+
+        // Send in-app notification to new lead
+        await sendInAppNotification(
+          leadId,
+          'Project Assigned',
+          `A new project has been assigned to you by ${assignedByName}. Project: "${cur.name}" (${cur.project_code}).`,
+          'project_assigned',
+          `/admin/projects/${id}`
+        );
+
+        // Send email to new lead
+        if (leadUser?.email) {
+          try {
+            await sendProjectAssignmentEmail({
+              to: leadUser.email,
+              userName: leadUser.full_name,
+              managerName: assignedByName,
+              projectName: cur.name,
+              projectCode: cur.project_code
+            });
+          } catch (mailErr) {
+            console.warn('Failed to send project assignment email to lead:', mailErr.message);
+          }
+        }
       } catch (leadAssignErr) {
         console.warn('Could not record lead assignment history during project update:', leadAssignErr.message);
       }

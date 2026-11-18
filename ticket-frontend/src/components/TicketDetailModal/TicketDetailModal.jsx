@@ -698,6 +698,7 @@ export default function TicketDetailModal({
                           onChange={(e) => setRootCause(e.target.value)}
                           onKeyDown={() => notifyTyping('root_cause')}
                           placeholder="e.g. Unhandled null response from auth token service"
+                          autoComplete="off"
                           required
                         />
                       </div>
@@ -724,6 +725,7 @@ export default function TicketDetailModal({
                           onChange={(e) => setFilesChanged(e.target.value)}
                           onKeyDown={() => notifyTyping('files_changed')}
                           placeholder="e.g. src/auth/loginService.js, src/components/LoginForm.jsx"
+                          autoComplete="off"
                         />
                       </div>
                       <div className="tdm-form-group">
@@ -749,6 +751,7 @@ export default function TicketDetailModal({
                           onChange={(e) => setResRemarks(e.target.value)}
                           onKeyDown={() => notifyTyping('remarks')}
                           placeholder="e.g. Verified locally on build v1.4.0 with regression tests passing"
+                          autoComplete="off"
                           required
                         />
                       </div>

@@ -6,6 +6,7 @@ import { Bell, Check, CheckCheck, Globe, UserCheck, X, Clock } from 'lucide-reac
 import { formatIndianDateTime } from '../../utils/dateFormat';
 import './NotificationCenter.css';
 import { SOCKET_URL } from '../../utils/apiConfig';
+import { getValidToken } from '../../utils/auth';
 
 function NotificationDrawerPortal({ isOpen, onClose, children }) {
   const onCloseRef = useRef(onClose);
@@ -51,8 +52,52 @@ function NotificationCenter({ collapsed = false }) {
   const [filterTab, setFilterTab] = useState('all');
   const [loading, setLoading] = useState(false);
   const [liveToast, setLiveToast] = useState(null);
+  const [osPermission, setOsPermission] = useState(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'denied'
+  );
 
   const unreadCount = notifications.filter((item) => !item.is_read).length;
+
+  // Check and proactively request OS desktop notification permission
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setOsPermission(Notification.permission);
+      if (Notification.permission === 'default') {
+        Notification.requestPermission()
+          .then((perm) => setOsPermission(perm))
+          .catch(() => {});
+      }
+    }
+  }, []);
+
+  // Helper to trigger real OS Desktop Notification outside of browser/site
+  const triggerOsNotification = useCallback((incoming) => {
+    if (!incoming || typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    try {
+      const title = incoming.title || 'QA Software Workspace';
+      const body = incoming.message || 'You have received a new notification.';
+      const iconUrl = '/vite.svg';
+
+      const osNotif = new window.Notification(title, {
+        body,
+        icon: iconUrl,
+        badge: iconUrl,
+        tag: `qa-notif-${incoming.id || Date.now()}`,
+        renotify: true
+      });
+
+      osNotif.onclick = () => {
+        window.focus();
+        if (incoming.link) {
+          window.location.href = incoming.link;
+        }
+      };
+    } catch (err) {
+      console.warn('Could not display OS notification:', err);
+    }
+  }, []);
 
   useEffect(() => {
     window.dispatchEvent(
@@ -61,7 +106,7 @@ function NotificationCenter({ collapsed = false }) {
   }, [unreadCount]);
 
   const fetchNotifications = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = getValidToken();
     if (!token) return;
     setLoading(true);
     try {
@@ -72,7 +117,9 @@ function NotificationCenter({ collapsed = false }) {
         setNotifications(data);
       }
     } catch (err) {
-      console.warn('Could not load notifications:', err.message);
+      if (err.response?.status !== 401) {
+        console.warn('Could not load notifications:', err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -98,7 +145,7 @@ function NotificationCenter({ collapsed = false }) {
   }, [fetchNotifications]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = getValidToken();
     if (!token) return undefined;
 
     let socket = null;
@@ -128,7 +175,7 @@ function NotificationCenter({ collapsed = false }) {
         socket.emit('join_user_room', { userId });
       });
 
-      socket.on('new_notification', (incoming) => {
+      const handleIncomingNotification = (incoming) => {
         if (!incoming) return;
         setNotifications((prev) => {
           if (prev.some((n) => n.id === incoming.id)) return prev;
@@ -138,7 +185,13 @@ function NotificationCenter({ collapsed = false }) {
         setLiveToast(incoming);
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => setLiveToast(null), 6000);
-      });
+
+        // Display outside of browser via OS Notification
+        triggerOsNotification(incoming);
+      };
+
+      socket.on('new_notification', handleIncomingNotification);
+      socket.on(`notification_user_${userId}`, handleIncomingNotification);
     };
 
     connectSocket();
@@ -293,6 +346,46 @@ function NotificationCenter({ collapsed = false }) {
               </div>
             )}
           </header>
+
+          {/* OS Desktop Notification Status Banner */}
+          {osPermission !== 'granted' && typeof window !== 'undefined' && 'Notification' in window ? (
+            <div id="notif-os-permission-banner" className="notif-os-banner">
+              <div className="notif-os-banner-icon">
+                <Globe size={15} />
+              </div>
+              <div className="notif-os-banner-text">
+                <strong>OS Desktop Notifications</strong>
+                <span>Get alerts outside the browser when minimized</span>
+              </div>
+              <button
+                id="notif-enable-os-btn"
+                type="button"
+                className="notif-enable-os-btn"
+                onClick={async () => {
+                  try {
+                    const perm = await Notification.requestPermission();
+                    setOsPermission(perm);
+                    if (perm === 'granted') {
+                      new window.Notification('OS Notifications Enabled! 🎉', {
+                        body: 'You will now receive desktop alerts for projects and tickets outside the site.',
+                        icon: '/vite.svg'
+                      });
+                    }
+                  } catch (e) {
+                    console.warn('Could not request notification permission:', e);
+                  }
+                }}
+              >
+                Enable
+              </button>
+            </div>
+          ) : (
+            <div style={{ padding: '0 20px', marginTop: 6, marginBottom: 2 }}>
+              <span className="notif-os-active-tag">
+                <Check size={11} /> OS Desktop Alerts Active
+              </span>
+            </div>
+          )}
 
             <div className="notif-drawer-tabs">
               <button

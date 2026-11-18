@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import axios from 'axios';
+import { getValidToken } from '../../utils/auth';
 import {
   BarChart3,
   CheckSquare,
@@ -148,7 +149,7 @@ function AdminSidebar({
     window.addEventListener('storage', syncFromStorage);
 
     let active = true;
-    const token = window.localStorage.getItem('token');
+    const token = getValidToken();
     if (token) {
       axios
         .get('http://localhost:5000/api/auth/me', {
