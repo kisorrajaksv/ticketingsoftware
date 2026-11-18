@@ -17,9 +17,7 @@ import {
   Search,
   Filter,
   Eye,
-  RefreshCw,
   LogOut,
-  ChevronDown,
   Layers,
   ArrowRight,
   ExternalLink,
@@ -170,7 +168,6 @@ export default function DeveloperDashboard() {
   };
 
   const displayName = userName || (userEmail ? userEmail.split('@')[0] : 'Developer');
-  const avatarLabel = displayName.charAt(0).toUpperCase();
 
   const assignedProjects = stats?.projects || [];
 
@@ -257,16 +254,16 @@ export default function DeveloperDashboard() {
     <div className="admin-layout">
       {/* Sign Out Modal */}
       {showLogoutModal && (
-        <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowLogoutModal(false)}>
-          <section className="modal-content" role="dialog" aria-modal="true">
+        <div id="dev-logout-overlay" className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowLogoutModal(false)}>
+          <section id="dev-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon"><LogOut size={21} /></div>
-            <h2 className="modal-title">Sign out of your workspace?</h2>
+            <h2 id="dev-logout-title" className="modal-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your developer credentials.</p>
             <div className="modal-actions">
-              <button className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
+              <button id="dev-logout-cancel-btn" className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="dev-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -281,44 +278,16 @@ export default function DeveloperDashboard() {
         onLogout={() => setShowLogoutModal(true)}
       />
 
-      <main className="main-content">
-        {/* Top Navbar */}
-        <header className="header">
-          <div className="breadcrumb">
-            <span>Workspace</span>
-            <span className="breadcrumb-divider">&gt;</span>
-            <strong>Developer Dashboard</strong>
-          </div>
-          <div className="header-right">
-            <button
-              className="notification-bell"
-              onClick={() => { fetchStats(); fetchTickets(); }}
-              title="Refresh dashboard data"
-              aria-label="Refresh data"
-            >
-              <RefreshCw size={17} className={loading ? 'dev-spin' : ''} />
-            </button>
-            <div className="profile-divider" />
-            <div className="user-profile">
-              <div className="avatar" style={{ background: '#EFF6FF', color: '#1E3A8A' }}>{avatarLabel}</div>
-              <div className="user-info">
-                <span className="user-name">{displayName}</span>
-                <span className="user-role">Developer</span>
-              </div>
-              <ChevronDown size={14} className="profile-chevron" />
-            </div>
-          </div>
-        </header>
-
+      <main id="dev-main-content" className="main-content">
         {/* Developer Dashboard Container */}
         <div className="dev-container">
           {/* Welcome Banner */}
-          <section className="dev-welcome-banner">
+          <section id="dev-welcome-banner" className="dev-welcome-banner">
             <div className="dev-welcome-content">
               <div className="dev-eyebrow">
                 <Code2 size={13} /> Developer Engineering Console
               </div>
-              <h1>Welcome back, Developer {displayName}!</h1>
+              <h1 id="dev-welcome-heading">Welcome back, Developer {displayName}!</h1>
               <p>
                 Inspect assigned defect tickets raised from failed QA test executions, investigate root causes, apply code fixes, and submit resolution reports for verification.
               </p>
@@ -373,10 +342,10 @@ export default function DeveloperDashboard() {
 
           {/* Section A: Assigned Projects */}
           {assignedProjects.length > 0 && (
-            <section className="dev-section">
+            <section id="dev-projects-section" className="dev-section">
               <div className="dev-section-header">
                 <div>
-                  <h2>My Assigned Projects</h2>
+                  <h2 id="dev-projects-heading">My Assigned Projects</h2>
                   <p>Select a project folder to filter your bug tickets below, or open its dedicated Ticket Folder workspace.</p>
                 </div>
               </div>
@@ -388,6 +357,7 @@ export default function DeveloperDashboard() {
 
                   return (
                     <div
+                      id={`dev-proj-card-${proj.id}`}
                       key={proj.id}
                       className={`dev-proj-card ${isSelected ? 'is-selected' : ''}`}
                       role="button"
@@ -409,7 +379,7 @@ export default function DeveloperDashboard() {
                           {proj.status || 'Active'}
                         </span>
                       </div>
-                      <h4>{proj.name}</h4>
+                      <h4 id={`dev-proj-name-${proj.id}`}>{proj.name}</h4>
                       <div className="dev-proj-lead-info">
                         <span>Project Lead:</span>
                         <strong>{proj.project_lead_name || proj.lead_name || 'Unassigned'}</strong>
@@ -419,6 +389,7 @@ export default function DeveloperDashboard() {
                           <Ticket size={12} /> {projTickets.length} Ticket{projTickets.length === 1 ? '' : 's'}
                         </span>
                         <button
+                          id={`dev-proj-open-folder-btn-${proj.id}`}
                           type="button"
                           className="dev-proj-open-folder-btn"
                           onClick={(e) => {
@@ -438,10 +409,10 @@ export default function DeveloperDashboard() {
           )}
 
           {/* Section B: Assigned Bug Tickets Queue */}
-          <section className="dev-section">
+          <section id="dev-tickets-section" className="dev-section">
             <div className="dev-section-header">
               <div>
-                <h2>My Assigned Bug Tickets</h2>
+                <h2 id="dev-tickets-heading">My Assigned Bug Tickets</h2>
                 <p>
                   Defects organized by project folder. Select a project folder tab or open any ticket to review steps and submit your resolution.
                 </p>
@@ -451,8 +422,9 @@ export default function DeveloperDashboard() {
 
             {/* Project Folder Tabs */}
             {projectFolderTabs.length > 0 && (
-              <div className="dev-folder-tabs" role="tablist" aria-label="Filter tickets by project folder">
+              <div id="dev-folder-tabs" className="dev-folder-tabs" role="tablist" aria-label="Filter tickets by project folder">
                 <button
+                  id="dev-folder-tab-all"
                   type="button"
                   role="tab"
                   aria-selected={projectFilter === 'All'}
@@ -467,6 +439,7 @@ export default function DeveloperDashboard() {
                   const isActive = projectFilter === pf.key;
                   return (
                     <button
+                      id={`dev-folder-tab-${pf.key}`}
                       key={pf.key}
                       type="button"
                       role="tab"
@@ -489,7 +462,9 @@ export default function DeveloperDashboard() {
               <div className="dev-search-box">
                 <Search size={15} />
                 <input
+                  id="dev-search-input"
                   type="text"
+                  autoComplete="off"
                   placeholder="Search by ticket ID, defect title, module, test case, project..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -498,6 +473,7 @@ export default function DeveloperDashboard() {
 
               <div className="dev-filter-selects" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <CustomSelect
+                  id="dev-status-filter"
                   value={statusFilter}
                   onChange={setStatusFilter}
                   options={DEV_STATUS_OPTIONS}
@@ -506,6 +482,7 @@ export default function DeveloperDashboard() {
                 />
 
                 <CustomSelect
+                  id="dev-severity-filter"
                   value={severityFilter}
                   onChange={setSeverityFilter}
                   options={DEV_SEVERITY_OPTIONS}
@@ -515,6 +492,7 @@ export default function DeveloperDashboard() {
 
                 {projectFolderTabs.length > 1 && (
                   <CustomSelect
+                    id="dev-project-filter"
                     value={projectFilter}
                     onChange={setProjectFilter}
                     options={devProjectOptions}
@@ -529,7 +507,7 @@ export default function DeveloperDashboard() {
             {filteredTickets.length === 0 ? (
               <div className="dev-empty-card">
                 <Ticket size={36} color="#94A3B8" />
-                <h3>No Defect Tickets Assigned</h3>
+                <h3 id="dev-empty-heading">No Defect Tickets Assigned</h3>
                 <p>
                   {searchQuery || statusFilter !== 'All' || severityFilter !== 'All'
                     ? 'No tickets match the selected filters.'
@@ -538,7 +516,7 @@ export default function DeveloperDashboard() {
               </div>
             ) : (
               <div className="dev-table-wrap">
-                <table className="dev-table">
+                <table id="dev-tickets-table" className="dev-table">
                   <thead>
                     <tr>
                       <th>Ticket ID</th>
@@ -613,6 +591,7 @@ export default function DeveloperDashboard() {
                           </td>
                           <td style={{ textAlign: 'right' }}>
                             <button
+                              id={`dev-ticket-action-btn-${ticket.id}`}
                               type="button"
                               className={`dev-btn-action-ticket ${isPendingFix ? 'action-work' : 'action-view'}`}
                               onClick={() => setSelectedTicketId(ticket.id)}

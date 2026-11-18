@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import CustomSelect from '../CustomSelect/CustomSelect';
+import { formatIndianDate, formatIndianDateTime, formatIndianTime } from '../../utils/dateFormat';
 import './TicketDetailModal.css';
 import { API_BASE, SOCKET_URL } from '../../utils/apiConfig';
 
@@ -403,8 +404,8 @@ export default function TicketDetailModal({
   const resolutionAttachmentsList = Array.isArray(ticket?.resolution_attachments) ? ticket.resolution_attachments : [];
 
   return (
-    <div className="tdm-overlay" onMouseDown={(e) => e.target === e.currentTarget && handleSafeClose()}>
-      <div className="tdm-card">
+    <div id="tdm-overlay" className="tdm-overlay" onMouseDown={(e) => e.target === e.currentTarget && handleSafeClose()}>
+      <div id="tdm-card" className="tdm-card">
         {/* Modal Top Header */}
         <div className="tdm-header">
           <div className="tdm-header-left">
@@ -416,7 +417,7 @@ export default function TicketDetailModal({
               {ticket?.severity || 'Medium'} Severity
             </span>
           </div>
-          <button type="button" className="tdm-close-btn" onClick={handleSafeClose} aria-label="Close dialog">
+          <button id="tdm-close-btn" type="button" className="tdm-close-btn" onClick={handleSafeClose} aria-label="Close dialog">
             <X size={18} />
           </button>
         </div>
@@ -451,7 +452,7 @@ export default function TicketDetailModal({
                     </div>
                     {ticket.locked_at && (
                       <span className="tdm-lock-time-tag">
-                        Active since {new Date(ticket.locked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        Active since {formatIndianTime(ticket.locked_at)}
                       </span>
                     )}
                   </div>
@@ -480,7 +481,7 @@ export default function TicketDetailModal({
 
                 {/* Bug Title & Scope */}
                 <div className="tdm-title-block">
-                  <h1>{ticket.title}</h1>
+                  <h1 id="tdm-ticket-title">{ticket.title}</h1>
                   <div className="tdm-meta-tags">
                     <span><FolderKanban size={13} /> {ticket.project_name || ticket.project_code}</span>
                     <span>&bull; Module: <strong>{ticket.module || 'General'}</strong></span>
@@ -542,8 +543,8 @@ export default function TicketDetailModal({
                       {attachmentsList.map((url, idx) => {
                         const fullUrl = getFullImageUrl(url);
                         return (
-                          <div key={idx} className="tdm-evidence-card">
-                            <div className="tdm-evidence-preview-wrap" onClick={() => setZoomImage(fullUrl)}>
+                          <div id={`tdm-evidence-card-${idx}`} key={idx} className="tdm-evidence-card">
+                            <div id={`tdm-evidence-preview-${idx}`} className="tdm-evidence-preview-wrap" onClick={() => setZoomImage(fullUrl)}>
                               <img src={fullUrl} alt={`Evidence ${idx + 1}`} className="tdm-evidence-img" />
                               <div className="tdm-evidence-overlay">
                                 <Maximize2 size={16} />
@@ -554,6 +555,7 @@ export default function TicketDetailModal({
                               <span className="tdm-evidence-label">Proof Screenshot #{idx + 1}</span>
                               <div className="tdm-evidence-actions">
                                 <button
+                                  id={`tdm-evidence-view-btn-${idx}`}
                                   type="button"
                                   className="tdm-evidence-view-btn"
                                   onClick={() => setZoomImage(fullUrl)}
@@ -563,6 +565,7 @@ export default function TicketDetailModal({
                                   <span>View</span>
                                 </button>
                                 <a
+                                  id={`tdm-evidence-open-link-${idx}`}
                                   href={fullUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
@@ -586,7 +589,7 @@ export default function TicketDetailModal({
                     <div className="tdm-section-title">
                       <CheckCircle2 size={15} color="#16A34A" />
                       <span>Engineering Resolution Details</span>
-                      <span className="tdm-res-badge">Resolved by {ticket.resolved_by || 'Developer'}{ticket.resolved_at ? ` on ${new Date(ticket.resolved_at).toLocaleDateString()}` : ''}</span>
+                      <span className="tdm-res-badge">Resolved by {ticket.resolved_by || 'Developer'}{ticket.resolved_at ? ` on ${formatIndianDate(ticket.resolved_at)}` : ''}</span>
                     </div>
                     <div className="tdm-resolution-view">
                       <div className="tdm-res-field">
@@ -614,8 +617,8 @@ export default function TicketDetailModal({
                             {resolutionAttachmentsList.map((url, idx) => {
                               const fullUrl = getFullImageUrl(url);
                               return (
-                                <div key={idx} className="tdm-evidence-card">
-                                  <div className="tdm-evidence-preview-wrap" onClick={() => setZoomImage(fullUrl)}>
+                                <div id={`tdm-res-evidence-card-${idx}`} key={idx} className="tdm-evidence-card">
+                                  <div id={`tdm-res-evidence-preview-${idx}`} className="tdm-evidence-preview-wrap" onClick={() => setZoomImage(fullUrl)}>
                                     <img src={fullUrl} alt="Fix Evidence" className="tdm-evidence-img" />
                                     <div className="tdm-evidence-overlay">
                                       <Maximize2 size={16} />
@@ -626,6 +629,7 @@ export default function TicketDetailModal({
                                     <span className="tdm-evidence-label">Fix Evidence #{idx + 1}</span>
                                     <div className="tdm-evidence-actions">
                                       <button
+                                        id={`tdm-res-evidence-view-btn-${idx}`}
                                         type="button"
                                         className="tdm-evidence-view-btn"
                                         onClick={() => setZoomImage(fullUrl)}
@@ -635,6 +639,7 @@ export default function TicketDetailModal({
                                         <span>View</span>
                                       </button>
                                       <a
+                                        id={`tdm-res-evidence-open-link-${idx}`}
                                         href={fullUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
@@ -667,9 +672,9 @@ export default function TicketDetailModal({
                       <p>This defect was re-tested and marked as resolved by QA.</p>
                       <div className="tdm-audit-pill-row">
                         <span><strong>Resolved by:</strong> {ticket.resolved_by || 'Developer'}</span>
-                        {ticket.resolved_at && <span><strong>Resolved Date:</strong> {new Date(ticket.resolved_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>}
+                        {ticket.resolved_at && <span><strong>Resolved Date:</strong> {formatIndianDateTime(ticket.resolved_at)}</span>}
                         <span><strong>Closed by:</strong> {ticket.closed_by || 'QA Member'}</span>
-                        {ticket.closed_at && <span><strong>Closed Date:</strong> {new Date(ticket.closed_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>}
+                        {ticket.closed_at && <span><strong>Closed Date:</strong> {formatIndianDateTime(ticket.closed_at)}</span>}
                       </div>
                     </div>
                   </div>
@@ -682,22 +687,25 @@ export default function TicketDetailModal({
                       <Code2 size={15} color="#2563EB" />
                       <span>Submit Resolution Details (Mandatory)</span>
                     </div>
-                    <form onSubmit={handleSubmitResolution} className="tdm-resolution-form">
+                    <form id="tdm-resolution-form" onSubmit={handleSubmitResolution} className="tdm-resolution-form">
                       <div className="tdm-form-group">
-                        <label>Root Cause *</label>
+                        <label htmlFor="tdm-root-cause">Root Cause *</label>
                         <input
+                          id="tdm-root-cause"
                           type="text"
                           className="tdm-input"
                           value={rootCause}
                           onChange={(e) => setRootCause(e.target.value)}
                           onKeyDown={() => notifyTyping('root_cause')}
                           placeholder="e.g. Unhandled null response from auth token service"
+                          autoComplete="off"
                           required
                         />
                       </div>
                       <div className="tdm-form-group">
-                        <label>Fix Implemented *</label>
+                        <label htmlFor="tdm-fix-implemented">Fix Implemented *</label>
                         <textarea
+                          id="tdm-fix-implemented"
                           rows={2}
                           className="tdm-textarea"
                           value={fixImplemented}
@@ -708,19 +716,22 @@ export default function TicketDetailModal({
                         />
                       </div>
                       <div className="tdm-form-group">
-                        <label>Files / Components Changed</label>
+                        <label htmlFor="tdm-files-changed">Files / Components Changed</label>
                         <input
+                          id="tdm-files-changed"
                           type="text"
                           className="tdm-input"
                           value={filesChanged}
                           onChange={(e) => setFilesChanged(e.target.value)}
                           onKeyDown={() => notifyTyping('files_changed')}
                           placeholder="e.g. src/auth/loginService.js, src/components/LoginForm.jsx"
+                          autoComplete="off"
                         />
                       </div>
                       <div className="tdm-form-group">
-                        <label>Resolution Description & Verification Instructions *</label>
+                        <label htmlFor="tdm-res-description">Resolution Description & Verification Instructions *</label>
                         <textarea
+                          id="tdm-res-description"
                           rows={2}
                           className="tdm-textarea"
                           value={resDescription}
@@ -731,20 +742,23 @@ export default function TicketDetailModal({
                         />
                       </div>
                       <div className="tdm-form-group">
-                        <label>Resolution Remarks *</label>
+                        <label htmlFor="tdm-res-remarks">Resolution Remarks *</label>
                         <input
+                          id="tdm-res-remarks"
                           type="text"
                           className="tdm-input"
                           value={resRemarks}
                           onChange={(e) => setResRemarks(e.target.value)}
                           onKeyDown={() => notifyTyping('remarks')}
                           placeholder="e.g. Verified locally on build v1.4.0 with regression tests passing"
+                          autoComplete="off"
                           required
                         />
                       </div>
                       <div className="tdm-form-group">
-                        <label>Resolution Screenshot (Optional)</label>
+                        <label htmlFor="tdm-res-screenshot-input">Resolution Screenshot (Optional)</label>
                         <input
+                          id="tdm-res-screenshot-input"
                           type="file"
                           ref={resFileInputRef}
                           multiple
@@ -753,6 +767,7 @@ export default function TicketDetailModal({
                           onChange={handleResFileUpload}
                         />
                         <button
+                          id="tdm-upload-proof-btn"
                           type="button"
                           className="tdm-upload-proof-btn"
                           onClick={() => resFileInputRef.current?.click()}
@@ -770,6 +785,7 @@ export default function TicketDetailModal({
                       </div>
                       <div className="tdm-form-actions">
                         <button
+                          id="tdm-cancel-resolution-btn"
                           type="button"
                           className="tdm-btn-secondary"
                           onClick={handleCancelResolution}
@@ -778,6 +794,7 @@ export default function TicketDetailModal({
                           Cancel &amp; Release Lock
                         </button>
                         <button
+                          id="tdm-submit-resolution-btn"
                           type="submit"
                           className="tdm-btn-primary"
                           disabled={submittingResolution}
@@ -792,13 +809,14 @@ export default function TicketDetailModal({
 
                 {/* QA ACTION: Reopen Comment Box */}
                 {isQA && ticket.status === 'Resolved' && showReopenBox && (
-                  <div className="tdm-section-card tdm-reopen-card">
+                  <div id="tdm-reopen-card" className="tdm-section-card tdm-reopen-card">
                     <div className="tdm-section-title">
                       <RotateCcw size={15} color="#DC2626" />
                       <span>Reopen Ticket (Provide Verification Failure Details)</span>
                     </div>
                     <div className="tdm-reopen-form">
                       <textarea
+                        id="tdm-reopen-comments"
                         rows={3}
                         className="tdm-textarea"
                         value={reopenComments}
@@ -807,6 +825,7 @@ export default function TicketDetailModal({
                       />
                       <div className="tdm-form-actions">
                         <button
+                          id="tdm-reopen-cancel-btn"
                           type="button"
                           className="tdm-btn-secondary"
                           onClick={() => setShowReopenBox(false)}
@@ -814,6 +833,7 @@ export default function TicketDetailModal({
                           Cancel
                         </button>
                         <button
+                          id="tdm-reopen-confirm-btn"
                           type="button"
                           className="tdm-btn-danger"
                           onClick={() => handleQAVerify('reopen')}
@@ -832,11 +852,12 @@ export default function TicketDetailModal({
               <div className="tdm-side-col">
                 {/* 1. Developer Assignment Panel (Project Lead / Manager) */}
                 {!isDeveloper && (
-                  <div className="tdm-side-card">
-                    <h3>Assigned Developer</h3>
+                  <div id="tdm-assign-card" className="tdm-side-card">
+                    <h3 id="tdm-assign-heading">Assigned Developer</h3>
                     <div className="tdm-assign-box">
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <CustomSelect
+                          id="tdm-assign-developer"
                           value={selectedDevId}
                           onChange={setSelectedDevId}
                           options={[
@@ -846,11 +867,12 @@ export default function TicketDetailModal({
                               label: `${dev.full_name} (${dev.email})`
                             }))
                           ]}
-                          variant="filter"
+                          variant="form"
                           placeholder="Unassigned"
                         />
                       </div>
                       <button
+                        id="tdm-assign-btn"
                         type="button"
                         className="tdm-btn-assign"
                         onClick={handleAssignDeveloper}
@@ -870,11 +892,12 @@ export default function TicketDetailModal({
 
                 {/* 2. Actions Card for Developer */}
                 {isDeveloper && (
-                  <div className="tdm-side-card">
-                    <h3>Developer Actions</h3>
+                  <div id="tdm-dev-actions-card" className="tdm-side-card">
+                    <h3 id="tdm-dev-actions-heading">Developer Actions</h3>
                     {isLockedByOther ? (
                       <div>
                         <button
+                          id="tdm-dev-locked-btn"
                           type="button"
                           className="tdm-btn-locked"
                           disabled
@@ -889,6 +912,7 @@ export default function TicketDetailModal({
                       </div>
                     ) : ticket.status === 'Open' || ticket.status === 'Reopened' ? (
                       <button
+                        id="tdm-start-resolving-btn"
                         type="button"
                         className="tdm-btn-action-primary"
                         onClick={handleStartResolving}
@@ -899,6 +923,7 @@ export default function TicketDetailModal({
                     ) : ticket.status === 'In Progress' ? (
                       !showResolutionForm && (
                         <button
+                          id="tdm-mark-resolved-btn"
                           type="button"
                           className="tdm-btn-action-resolve"
                           onClick={handleStartResolving}
@@ -915,7 +940,7 @@ export default function TicketDetailModal({
                     ) : (
                       <div className="tdm-status-notice closed">
                         <CheckCircle2 size={16} color="#16A34A" />
-                        <span>This defect is verified and closed{ticket.closed_by ? ` by ${ticket.closed_by}` : ''}{ticket.closed_at ? ` on ${new Date(ticket.closed_at).toLocaleDateString()}` : ''}.</span>
+                        <span>This defect is verified and closed{ticket.closed_by ? ` by ${ticket.closed_by}` : ''}{ticket.closed_at ? ` on ${formatIndianDate(ticket.closed_at)}` : ''}.</span>
                       </div>
                     )}
                   </div>
@@ -923,8 +948,8 @@ export default function TicketDetailModal({
 
                 {/* 2b. Non-Developer View: Read-only Defect Status Notice */}
                 {!isDeveloper && (
-                  <div className="tdm-side-card">
-                    <h3>Defect Status</h3>
+                  <div id="tdm-defect-status-card" className="tdm-side-card">
+                    <h3 id="tdm-defect-status-heading">Defect Status</h3>
                     {ticket.status === 'Open' ? (
                       <div className="tdm-status-notice">
                         <Clock size={16} color="#2563EB" />
@@ -953,11 +978,12 @@ export default function TicketDetailModal({
 
                 {/* 3. Actions Card for QA (Verification) */}
                 {isQA && ticket.status === 'Resolved' && (
-                  <div className="tdm-side-card tdm-qa-card">
-                    <h3>QA Verification Actions</h3>
+                  <div id="tdm-qa-verify-card" className="tdm-side-card tdm-qa-card">
+                    <h3 id="tdm-qa-verify-heading">QA Verification Actions</h3>
                     <p className="tdm-side-subtext">The developer submitted a fix. Re-test and sign off.</p>
                     <div className="tdm-qa-btn-group">
                       <button
+                        id="tdm-qa-approve-btn"
                         type="button"
                         className="tdm-btn-qa-approve"
                         onClick={() => handleQAVerify('approve')}
@@ -967,6 +993,7 @@ export default function TicketDetailModal({
                         <span>{verifyingQA ? 'Verifying...' : 'Approve & Close Ticket'}</span>
                       </button>
                       <button
+                        id="tdm-qa-reopen-btn"
                         type="button"
                         className="tdm-btn-qa-reopen"
                         onClick={() => setShowReopenBox(true)}
@@ -980,26 +1007,26 @@ export default function TicketDetailModal({
                 )}
 
                 {/* 4. Ticket Metadata Card */}
-                <div className="tdm-side-card">
-                  <h3>Ticket Metadata</h3>
+                <div id="tdm-metadata-card" className="tdm-side-card">
+                  <h3 id="tdm-metadata-heading">Ticket Metadata</h3>
                   <div className="tdm-meta-list">
                     <div><span>Project:</span> <strong>{ticket.project_name || ticket.project_code}</strong></div>
                     <div><span>Reported By:</span> <strong>{ticket.raised_by || ticket.reporter || 'QA Member'}</strong></div>
-                    <div><span>Reported Date:</span> <strong>{new Date(ticket.created_at).toLocaleDateString()}</strong></div>
+                    <div><span>Reported Date:</span> <strong>{formatIndianDate(ticket.created_at)}</strong></div>
                     <div><span>Priority:</span> <strong>{ticket.priority || 'Medium'}</strong></div>
                     <div><span>Severity:</span> <strong>{ticket.severity || 'Medium'}</strong></div>
                     {ticket.resolved_by && <div><span>Resolved By:</span> <strong>{ticket.resolved_by}</strong></div>}
-                    {ticket.resolved_at && <div><span>Resolved Date:</span> <strong>{new Date(ticket.resolved_at).toLocaleDateString()}</strong></div>}
+                    {ticket.resolved_at && <div><span>Resolved Date:</span> <strong>{formatIndianDate(ticket.resolved_at)}</strong></div>}
                     {ticket.closed_by && <div><span>Closed By:</span> <strong>{ticket.closed_by}</strong></div>}
-                    {ticket.closed_at && <div><span>Closed Date:</span> <strong>{new Date(ticket.closed_at).toLocaleDateString()}</strong></div>}
+                    {ticket.closed_at && <div><span>Closed Date:</span> <strong>{formatIndianDate(ticket.closed_at)}</strong></div>}
                   </div>
                 </div>
 
                 {/* 5. Ticket Activity / History Timeline */}
-                <div className="tdm-side-card">
+                <div id="tdm-history-card" className="tdm-side-card">
                   <div className="tdm-side-title-row">
                     <History size={14} />
-                    <h3>Activity & History ({ticket.history?.length || 0})</h3>
+                    <h3 id="tdm-history-heading">Activity & History ({ticket.history?.length || 0})</h3>
                   </div>
                   <div className="tdm-history-timeline">
                     {ticket.history?.length ? (
@@ -1008,7 +1035,7 @@ export default function TicketDetailModal({
                           <span className="tdm-history-dot" />
                           <div className="tdm-history-body">
                             <span className="tdm-history-action">{h.action}</span>
-                            <span className="tdm-history-user">{h.performed_by} &bull; {new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span className="tdm-history-user">{h.performed_by} &bull; {formatIndianDateTime(h.created_at)}</span>
                             {h.details && <p className="tdm-history-details">{h.details}</p>}
                           </div>
                         </div>
@@ -1026,10 +1053,11 @@ export default function TicketDetailModal({
 
       {/* High-Resolution Evidence Lightbox */}
       {zoomImage && (
-        <div className="tdm-zoom-lightbox" onClick={() => setZoomImage(null)}>
-          <div className="tdm-zoom-content" onClick={(e) => e.stopPropagation()}>
+        <div id="tdm-zoom-lightbox" className="tdm-zoom-lightbox" onClick={() => setZoomImage(null)}>
+          <div id="tdm-zoom-content" className="tdm-zoom-content" onClick={(e) => e.stopPropagation()}>
             <div className="tdm-zoom-toolbar">
               <a
+                id="tdm-zoom-open-link"
                 href={zoomImage}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -1039,6 +1067,7 @@ export default function TicketDetailModal({
                 <ExternalLink size={16} />
               </a>
               <a
+                id="tdm-zoom-download-link"
                 href={zoomImage}
                 download="defect-screenshot.png"
                 className="tdm-zoom-tool-btn"
@@ -1047,6 +1076,7 @@ export default function TicketDetailModal({
                 <Download size={16} />
               </a>
               <button
+                id="tdm-zoom-close-btn"
                 type="button"
                 className="tdm-zoom-tool-btn tdm-zoom-close"
                 onClick={() => setZoomImage(null)}

@@ -18,9 +18,10 @@ import {
   Clock
 } from 'lucide-react';
 import CustomSelect from '../CustomSelect/CustomSelect';
+import { formatIndianDate } from '../../utils/dateFormat';
 import './RaiseBugTicketModal.css';
 
-const SEVERITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
+const SEVERITY_OPTIONS = ['Critical', 'Block', 'High', 'Medium', 'Low'];
 const PRIORITY_OPTIONS = ['Urgent', 'High', 'Medium', 'Low'];
 const CATEGORY_OPTIONS = [
   'Functional Bug',
@@ -229,8 +230,8 @@ export default function RaiseBugTicketModal({
   if (!isOpen) return null;
 
   return (
-    <div className="rbt-modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`rbt-modal-card ${isPreviewMode ? 'rbt-preview-card' : ''}`}>
+    <div id="rbt-modal-overlay" className="rbt-modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div id="rbt-modal-card" className={`rbt-modal-card ${isPreviewMode ? 'rbt-preview-card' : ''}`}>
         {/* Modal Header */}
         <div className="rbt-modal-header">
           <div className="rbt-header-title-box">
@@ -238,13 +239,13 @@ export default function RaiseBugTicketModal({
               <AlertCircle size={17} />
               <span>{isPreviewMode ? 'BUG REPORT PREVIEW' : 'RAISE PROJECT BUG TICKET'}</span>
             </div>
-            <h2>{isPreviewMode ? 'Review Bug Report Before Submission' : 'Log Defect from Failed Test Case'}</h2>
+            <h2 id="rbt-modal-heading">{isPreviewMode ? 'Review Bug Report Before Submission' : 'Log Defect from Failed Test Case'}</h2>
             <p className="rbt-header-subtitle">
               Project: <strong>{project?.name || 'Selected Project'}</strong> ({project?.project_code}) &bull; Linked to Test Case:{' '}
               <span className="rbt-tc-pill">{testCaseData?.col_id || testCaseData?.id || 'TC-001'}</span>
             </p>
           </div>
-          <button type="button" className="rbt-close-btn" onClick={onClose} aria-label="Close dialog">
+          <button id="rbt-close-btn" type="button" className="rbt-close-btn" onClick={onClose} aria-label="Close dialog">
             <X size={18} />
           </button>
         </div>
@@ -275,7 +276,7 @@ export default function RaiseBugTicketModal({
                ======================================================= */
             <div className="rbt-form-container">
               {/* 1. Auto-Populated Test Case Summary Box */}
-              <div className="rbt-tc-autofill-card">
+              <div id="rbt-autofill-card" className="rbt-tc-autofill-card">
                 <div className="rbt-autofill-header">
                   <FileSpreadsheet size={15} color="#2563EB" />
                   <span>Auto-Retrieved Test Case Details</span>
@@ -301,22 +302,25 @@ export default function RaiseBugTicketModal({
               <div className="rbt-fields-grid">
                 {/* Bug Title */}
                 <div className="rbt-field-group rbt-field-full">
-                  <label className="rbt-label">
+                  <label className="rbt-label" htmlFor="rbt-bug-title">
                     Bug Title <span className="rbt-req">*</span>
                   </label>
                   <input
+                    id="rbt-bug-title"
                     type="text"
                     className="rbt-input"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Concise defect title..."
+                    autoComplete="off"
                   />
                 </div>
 
                 {/* Severity, Priority, Category Row */}
                 <div className="rbt-field-group">
-                  <label className="rbt-label">Severity <span className="rbt-req">*</span></label>
+                  <label className="rbt-label" htmlFor="rbt-severity">Severity <span className="rbt-req">*</span></label>
                   <CustomSelect
+                    id="rbt-severity"
                     value={severity}
                     onChange={setSeverity}
                     options={SEVERITY_OPTIONS}
@@ -325,8 +329,9 @@ export default function RaiseBugTicketModal({
                 </div>
 
                 <div className="rbt-field-group">
-                  <label className="rbt-label">Priority <span className="rbt-req">*</span></label>
+                  <label className="rbt-label" htmlFor="rbt-priority">Priority <span className="rbt-req">*</span></label>
                   <CustomSelect
+                    id="rbt-priority"
                     value={priority}
                     onChange={setPriority}
                     options={PRIORITY_OPTIONS}
@@ -335,8 +340,9 @@ export default function RaiseBugTicketModal({
                 </div>
 
                 <div className="rbt-field-group">
-                  <label className="rbt-label">Bug Category <span className="rbt-req">*</span></label>
+                  <label className="rbt-label" htmlFor="rbt-category">Bug Category <span className="rbt-req">*</span></label>
                   <CustomSelect
+                    id="rbt-category"
                     value={category}
                     onChange={setCategory}
                     options={CATEGORY_OPTIONS}
@@ -346,10 +352,11 @@ export default function RaiseBugTicketModal({
 
                 {/* Actual Result Observed */}
                 <div className="rbt-field-group rbt-field-full">
-                  <label className="rbt-label">
+                  <label className="rbt-label" htmlFor="rbt-actual-result">
                     Actual Result Observed <span className="rbt-req">*</span>
                   </label>
                   <textarea
+                    id="rbt-actual-result"
                     rows={2}
                     className="rbt-textarea"
                     value={actualResult}
@@ -360,8 +367,9 @@ export default function RaiseBugTicketModal({
 
                 {/* Detailed Steps to Reproduce */}
                 <div className="rbt-field-group rbt-field-full">
-                  <label className="rbt-label">Steps to Reproduce</label>
+                  <label className="rbt-label" htmlFor="rbt-steps-to-reproduce">Steps to Reproduce</label>
                   <textarea
+                    id="rbt-steps-to-reproduce"
                     rows={3}
                     className="rbt-textarea"
                     value={stepsToReproduce}
@@ -372,8 +380,9 @@ export default function RaiseBugTicketModal({
 
                 {/* Additional Description & Technical Details */}
                 <div className="rbt-field-group rbt-field-full">
-                  <label className="rbt-label">Additional Description & Notes</label>
+                  <label className="rbt-label" htmlFor="rbt-description">Additional Description & Notes</label>
                   <textarea
+                    id="rbt-description"
                     rows={2}
                     className="rbt-textarea"
                     value={description}
@@ -385,7 +394,7 @@ export default function RaiseBugTicketModal({
                 {/* 3. Image Attachments Section */}
                 <div className="rbt-field-group rbt-field-full">
                   <div className="rbt-attach-header">
-                    <label className="rbt-label">
+                    <label className="rbt-label" htmlFor="rbt-attachments-input">
                       Screenshot & Evidence Attachments
                       <span className="rbt-badge-count">{attachments.length}</span>
                     </label>
@@ -396,6 +405,7 @@ export default function RaiseBugTicketModal({
 
                   <div className="rbt-attach-box">
                     <input
+                      id="rbt-attachments-input"
                       type="file"
                       ref={fileInputRef}
                       multiple
@@ -404,6 +414,7 @@ export default function RaiseBugTicketModal({
                       onChange={handleFileUpload}
                     />
                     <button
+                      id="rbt-upload-trigger-btn"
                       type="button"
                       className="rbt-upload-trigger-btn"
                       onClick={() => fileInputRef.current?.click()}
@@ -419,8 +430,9 @@ export default function RaiseBugTicketModal({
                   {attachments.length > 0 && (
                     <div className="rbt-thumbs-grid">
                       {attachments.map((att, idx) => (
-                        <div key={idx} className="rbt-thumb-card">
+                        <div id={`rbt-thumb-card-${idx}`} key={idx} className="rbt-thumb-card">
                           <img
+                            id={`rbt-thumb-img-${idx}`}
                             src={att.url}
                             alt={att.name || `Screenshot ${idx + 1}`}
                             className="rbt-thumb-img"
@@ -428,6 +440,7 @@ export default function RaiseBugTicketModal({
                           />
                           <div className="rbt-thumb-overlay">
                             <button
+                              id={`rbt-thumb-zoom-btn-${idx}`}
                               type="button"
                               className="rbt-thumb-zoom-btn"
                               onClick={() => setZoomImage(att.url)}
@@ -436,6 +449,7 @@ export default function RaiseBugTicketModal({
                               <Maximize2 size={12} />
                             </button>
                             <button
+                              id={`rbt-thumb-remove-btn-${idx}`}
                               type="button"
                               className="rbt-thumb-remove-btn"
                               onClick={() => removeAttachment(idx)}
@@ -525,6 +539,7 @@ export default function RaiseBugTicketModal({
                   <div className="rbt-doc-evidence-gallery">
                     <div className="rbt-gallery-main-view">
                       <img
+                        id="rbt-gallery-main-img"
                         src={attachments[activeImageIndex]?.url}
                         alt="Evidence Full View"
                         className="rbt-gallery-main-img"
@@ -533,6 +548,7 @@ export default function RaiseBugTicketModal({
                       {attachments.length > 1 && (
                         <>
                           <button
+                            id="rbt-gallery-prev-btn"
                             type="button"
                             className="rbt-gallery-nav prev"
                             onClick={() => setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : attachments.length - 1))}
@@ -541,6 +557,7 @@ export default function RaiseBugTicketModal({
                             <ChevronLeft size={18} />
                           </button>
                           <button
+                            id="rbt-gallery-next-btn"
                             type="button"
                             className="rbt-gallery-nav next"
                             onClick={() => setActiveImageIndex((prev) => (prev < attachments.length - 1 ? prev + 1 : 0))}
@@ -559,6 +576,7 @@ export default function RaiseBugTicketModal({
                       <div className="rbt-gallery-strip">
                         {attachments.map((att, idx) => (
                           <img
+                            id={`rbt-gallery-thumb-${idx}`}
                             key={idx}
                             src={att.url}
                             alt="thumb"
@@ -575,7 +593,7 @@ export default function RaiseBugTicketModal({
               {/* Reporter Metadata */}
               <div className="rbt-doc-meta-footer">
                 <div><span>Reported By:</span> <strong>{currentUser}</strong></div>
-                <div><span>Reported Date:</span> <strong>{new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</strong></div>
+                <div><span>Reported Date:</span> <strong>{formatIndianDate(new Date())}</strong></div>
                 <div><span>Project Ownership:</span> <strong>{project?.name}</strong></div>
               </div>
             </div>
@@ -586,10 +604,11 @@ export default function RaiseBugTicketModal({
         <div className="rbt-modal-footer">
           {!isPreviewMode ? (
             <>
-              <button type="button" className="rbt-btn-cancel" onClick={onClose} disabled={isSubmitting}>
+              <button id="rbt-cancel-btn" type="button" className="rbt-btn-cancel" onClick={onClose} disabled={isSubmitting}>
                 Cancel
               </button>
               <button
+                id="rbt-preview-btn"
                 type="button"
                 className="rbt-btn-preview"
                 onClick={() => setIsPreviewMode(true)}
@@ -599,6 +618,7 @@ export default function RaiseBugTicketModal({
                 <span>Preview Bug Report</span>
               </button>
               <button
+                id="rbt-submit-btn"
                 type="button"
                 className="rbt-btn-submit"
                 onClick={() => handleSubmit(false)}
@@ -611,6 +631,7 @@ export default function RaiseBugTicketModal({
           ) : (
             <>
               <button
+                id="rbt-back-to-edit-btn"
                 type="button"
                 className="rbt-btn-cancel"
                 onClick={() => setIsPreviewMode(false)}
@@ -620,6 +641,7 @@ export default function RaiseBugTicketModal({
                 <span>Back to Edit</span>
               </button>
               <button
+                id="rbt-confirm-submit-btn"
                 type="button"
                 className="rbt-btn-submit"
                 onClick={() => handleSubmit(Boolean(existingWarning))}
@@ -635,10 +657,10 @@ export default function RaiseBugTicketModal({
 
       {/* Lightbox Full Zoom View */}
       {zoomImage && (
-        <div className="rbt-zoom-lightbox" onClick={() => setZoomImage(null)}>
-          <div className="rbt-zoom-content" onClick={(e) => e.stopPropagation()}>
+        <div id="rbt-zoom-lightbox" className="rbt-zoom-lightbox" onClick={() => setZoomImage(null)}>
+          <div id="rbt-zoom-content" className="rbt-zoom-content" onClick={(e) => e.stopPropagation()}>
             <img src={zoomImage} alt="Full Resolution" className="rbt-zoom-img" />
-            <button type="button" className="rbt-zoom-close" onClick={() => setZoomImage(null)}>
+            <button id="rbt-zoom-close-btn" type="button" className="rbt-zoom-close" onClick={() => setZoomImage(null)}>
               <X size={20} />
             </button>
           </div>

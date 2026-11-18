@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
+import axios from 'axios';
+import { getValidToken } from '../../utils/auth';
 import {
-  Activity,
   BarChart3,
   CheckSquare,
   ChevronLeft,
@@ -35,7 +36,6 @@ const mainMenuNav = MAIN_ADMIN_NAV;
 export const QA_MEMBER_NAV = [
   { label: 'Dashboard', to: '/qa-member', icon: LayoutDashboard, end: true },
   { label: 'Projects', to: '/admin/projects', icon: FolderKanban },
-  { label: 'Users', to: '/admin/users', icon: Users, end: true },
   { label: 'Tickets', to: '/admin/tickets', icon: Ticket },
   { label: 'Reports', to: '/admin/reports', icon: BarChart3 },
   { label: 'Application Settings', to: '/admin/settings', icon: Settings, end: true }
@@ -111,6 +111,80 @@ function AdminSidebar({
       : window.matchMedia('(max-width: 1100px) and (min-width: 761px)').matches);
   });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profile, setProfile] = useState(() => ({
+    name: typeof window !== 'undefined' ? (window.localStorage.getItem('userName') || '') : '',
+    email: typeof window !== 'undefined' ? (window.localStorage.getItem('userEmail') || '') : '',
+    avatar: typeof window !== 'undefined' ? (window.localStorage.getItem('userAvatar') || '') : ''
+  }));
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [profile.avatar]);
+
+  useEffect(() => {
+    const syncFromStorage = () => {
+      setProfile({
+        name: window.localStorage.getItem('userName') || '',
+        email: window.localStorage.getItem('userEmail') || '',
+        avatar: window.localStorage.getItem('userAvatar') || ''
+      });
+    };
+
+    const handleProfileUpdated = (event) => {
+      const updated = event?.detail?.user;
+      if (updated) {
+        setProfile({
+          name: updated.full_name || window.localStorage.getItem('userName') || '',
+          email: updated.email || window.localStorage.getItem('userEmail') || '',
+          avatar: updated.avatar || ''
+        });
+      } else {
+        syncFromStorage();
+      }
+    };
+
+    window.addEventListener('workspace-profile-updated', handleProfileUpdated);
+    window.addEventListener('storage', syncFromStorage);
+
+    let active = true;
+    const token = getValidToken();
+    if (token) {
+      axios
+        .get('http://localhost:5000/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(({ data }) => {
+          if (!active || !data?.user) return;
+          const u = data.user;
+          if (u.id) window.localStorage.setItem('userId', String(u.id));
+          if (u.full_name) window.localStorage.setItem('userName', u.full_name);
+          if (u.email) window.localStorage.setItem('userEmail', u.email);
+          if (u.avatar) window.localStorage.setItem('userAvatar', u.avatar);
+          else window.localStorage.removeItem('userAvatar');
+          setProfile({
+            name: u.full_name || '',
+            email: u.email || '',
+            avatar: u.avatar || ''
+          });
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      active = false;
+      window.removeEventListener('workspace-profile-updated', handleProfileUpdated);
+      window.removeEventListener('storage', syncFromStorage);
+    };
+  }, []);
+
+  const profileName =
+    profile.name.trim() ||
+    (profile.email ? profile.email.split('@')[0] : '') ||
+    currentRole ||
+    'User';
+  const profileEmail = profile.email.trim() || effectiveWorkspaceRole;
+  const profileInitial = profileName.charAt(0).toUpperCase();
 
   useEffect(() => {
     if (!mobileOpen) return undefined;
@@ -131,6 +205,7 @@ function AdminSidebar({
   return (
     <>
       <button
+        id="sidebar-mobile-open-btn"
         type="button"
         className="mobile-nav-toggle"
         onClick={() => setMobileOpen(true)}
@@ -142,6 +217,7 @@ function AdminSidebar({
       </button>
       {mobileOpen && (
         <button
+          id="sidebar-mobile-backdrop-btn"
           type="button"
           className="sidebar-backdrop"
           onClick={() => setMobileOpen(false)}
@@ -153,7 +229,7 @@ function AdminSidebar({
         id="workspace-sidebar"
       >
         <div className="sidebar-brand-row">
-          <Link className="sidebar-brand" to={effectiveHomeRoute} aria-label="QA Software dashboard">
+          <Link id="sidebar-brand-link" className="sidebar-brand" to={effectiveHomeRoute} aria-label="QA Software dashboard">
             <SmallCubeLogo />
             <div className="brand-text-col">
               <span className="brand-name"><span>QA</span> Software</span>
@@ -161,6 +237,7 @@ function AdminSidebar({
             </div>
           </Link>
           <button
+            id="sidebar-collapse-toggle-btn"
             type="button"
             className="sidebar-toggle"
             onClick={() => setCollapsed((current) => {
@@ -175,6 +252,7 @@ function AdminSidebar({
             {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
           <button
+            id="sidebar-mobile-close-btn"
             type="button"
             className="sidebar-mobile-close"
             onClick={() => setMobileOpen(false)}
@@ -184,10 +262,10 @@ function AdminSidebar({
           </button>
         </div>
 
-        <div className="sidebar-section-label">MAIN MENU</div>
-        <nav className="sidebar-nav" aria-label="Main navigation">
+        <nav id="sidebar-nav-menu" className="sidebar-nav" aria-label="Main navigation">
           {effectiveNavItems.map(({ label, to, icon: Icon, end }) => (
             <NavLink
+              id={`sidebar-nav-${to.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')}`}
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
               end={end}
               key={label}
@@ -204,15 +282,34 @@ function AdminSidebar({
 
         <div className="sidebar-footer">
           <NotificationCenter collapsed={collapsed} />
-          <div className="workspace-card">
-            <div className="workspace-card-icon"><Activity size={17} /></div>
-            <div>
-              <strong>QA Workspace</strong>
-              <span>{effectiveWorkspaceRole}</span>
+          <Link
+            id="sidebar-profile-link"
+            className="workspace-card workspace-profile-card"
+            to="/admin/settings"
+            title={profile.email ? `${profileName} (${profile.email})` : profileName}
+            onClick={() => setMobileOpen(false)}
+          >
+            <div className="workspace-profile-avatar">
+              {profile.avatar && !avatarLoadFailed ? (
+                <img
+                  src={profile.avatar}
+                  alt={profileName}
+                  onError={() => setAvatarLoadFailed(true)}
+                />
+              ) : (
+                <span className="workspace-profile-initial">{profileInitial}</span>
+              )}
             </div>
-            <span className={`connection-dot${hasConnectionError ? ' connection-dot-error' : ''}`} />
-          </div>
-          <button className="nav-item nav-logout" onClick={onLogout}>
+            <div className="workspace-profile-info">
+              <strong>{profileName}</strong>
+              <span className="workspace-profile-email">{profileEmail}</span>
+            </div>
+            <span
+              className={`connection-dot${hasConnectionError ? ' connection-dot-error' : ''}`}
+              aria-hidden="true"
+            />
+          </Link>
+          <button id="sidebar-logout-btn" className="nav-item nav-logout" onClick={onLogout}>
             <LogOut className="nav-icon" /> <span className="nav-label">Sign out</span>
           </button>
         </div>

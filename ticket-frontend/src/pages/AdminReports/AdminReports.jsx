@@ -21,13 +21,13 @@ import {
   X,
   FileSpreadsheet,
   Layers,
-  Sparkles,
   Calendar,
   History,
   Eye,
   CalendarDays
 } from 'lucide-react';
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import { formatIndianDate } from '../../utils/dateFormat';
 import '../../styles/admin.css';
 import './AdminReports.css';
 
@@ -36,8 +36,6 @@ export default function AdminReports() {
 
   // Role and Identity
   const [userRole] = useState(() => localStorage.getItem('userRole') || 'Administrator');
-  const [userEmail] = useState(() => localStorage.getItem('userEmail') || '');
-  const [userName] = useState(() => localStorage.getItem('userName') || '');
 
   // Strict RBAC: Only Manager, QA Lead, and QA Member can view QA Member execution report
   const canViewQAReport = useMemo(() => {
@@ -136,9 +134,6 @@ export default function AdminReports() {
     localStorage.clear();
     navigate('/', { replace: true });
   };
-
-  const displayName = userName || (userEmail ? userEmail.split('@')[0] : 'Member');
-  const avatarLabel = displayName.charAt(0).toUpperCase();
 
   // Exclusive Toggle Handler: Opening one report closes the other
   const handleToggleReport = (reportKey) => {
@@ -269,7 +264,7 @@ export default function AdminReports() {
       m.today_pass,
       m.today_bugs,
       m.total_tested,
-      `"${m.last_active_date || 'N/A'}"`
+      `"${m.last_active_date ? formatIndianDate(m.last_active_date) : 'N/A'}"`
     ]);
 
     const csvContent =
@@ -303,7 +298,7 @@ export default function AdminReports() {
     ];
 
     const rows = (qaMember.daily_work || []).map((d) => [
-      `"${d.date}"`,
+      `"${formatIndianDate(d.date, d.date)}"`,
       `"${qaMember.full_name}"`,
       `"${qaMember.email}"`,
       d.cases_tested,
@@ -333,20 +328,21 @@ export default function AdminReports() {
       {/* Logout Confirmation Dialog */}
       {showLogoutModal && (
         <div
+          id="reports-logout-modal-overlay"
           className="modal-overlay"
           onMouseDown={(e) => e.target === e.currentTarget && setShowLogoutModal(false)}
         >
-          <section className="modal-content" role="dialog" aria-modal="true">
+          <section id="reports-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon">
               <LogOut size={21} />
             </div>
-            <h2 className="modal-title">Sign out of your workspace?</h2>
+            <h2 id="reports-logout-modal-title" className="modal-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your credentials.</p>
             <div className="modal-actions">
-              <button className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
+              <button id="reports-logout-cancel-btn" className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="reports-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -357,16 +353,18 @@ export default function AdminReports() {
       {/* Daily Activity History Modal for Specific QA Member */}
       {activeDailyLogMember && (
         <div
+          id="reports-daily-log-modal-overlay"
           className="daily-log-modal-overlay"
           onMouseDown={(e) => e.target === e.currentTarget && setActiveDailyLogMember(null)}
         >
-          <div className="daily-log-modal-content" role="dialog" aria-modal="true">
+          <div id="reports-daily-log-modal" className="daily-log-modal-content" role="dialog" aria-modal="true">
             <div className="daily-modal-header">
               <div className="daily-modal-title-stack">
-                <h3>Daily Work &amp; Execution Activity Log</h3>
+                <h3 id="reports-daily-log-modal-title">Daily Work &amp; Execution Activity Log</h3>
                 <p>Day-by-day record of test cases tested and bug tickets raised.</p>
               </div>
               <button
+                id="reports-daily-log-close-btn"
                 type="button"
                 className="daily-modal-close-btn"
                 onClick={() => setActiveDailyLogMember(null)}
@@ -407,7 +405,7 @@ export default function AdminReports() {
                     <p style={{ margin: 0 }}>No daily execution history recorded yet for this QA Member.</p>
                   </div>
                 ) : (
-                  <table className="daily-log-table">
+                  <table id="reports-daily-log-table" className="daily-log-table">
                     <thead>
                       <tr>
                         <th>Date</th>
@@ -432,7 +430,7 @@ export default function AdminReports() {
                             <td>
                               <span className="daily-date-cell">
                                 <Calendar size={13} color={isToday ? '#16A34A' : '#64748B'} />
-                                <span>{dw.date}</span>
+                                <span>{formatIndianDate(dw.date, dw.date)}</span>
                                 {isToday && (
                                   <span style={{ fontSize: '0.68rem', background: '#DCFCE7', color: '#15803D', padding: '1px 5px', borderRadius: '4px', fontWeight: '800' }}>
                                     Today
@@ -487,6 +485,7 @@ export default function AdminReports() {
 
             <div className="daily-modal-footer">
               <button
+                id="reports-daily-log-export-btn"
                 type="button"
                 className="report-btn-export"
                 onClick={() => handleExportMemberDailyHistoryCSV(activeDailyLogMember)}
@@ -495,6 +494,7 @@ export default function AdminReports() {
                 <span>Export Member Daily History CSV</span>
               </button>
               <button
+                id="reports-daily-log-footer-close-btn"
                 type="button"
                 className="modal-btn modal-btn-cancel"
                 onClick={() => setActiveDailyLogMember(null)}
@@ -511,54 +511,21 @@ export default function AdminReports() {
       <RoleSidebar roleName={userRole} onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Content Viewport */}
-      <main className="main-content">
-        {/* Top Header Navbar */}
-        <header className="header">
-          <div className="breadcrumb">
-            <span>Workspace</span>
-            <span className="breadcrumb-divider">&gt;</span>
-            <strong>Quality &amp; Defect Analytics</strong>
-          </div>
-          <div className="header-right">
-            <button
-              className="notification-bell"
-              onClick={fetchReportsData}
-              title="Refresh reports data"
-              aria-label="Refresh data"
-            >
-              <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />
-            </button>
-            <div className="profile-divider" />
-            <div className="user-profile">
-              <div className="avatar" style={{ background: '#EFF6FF', color: '#1E3A8A' }}>
-                {avatarLabel}
-              </div>
-              <div className="user-info">
-                <span className="user-name">{displayName}</span>
-                <span className="user-role">{userRole}</span>
-              </div>
-              <ChevronDown size={14} className="profile-chevron" />
-            </div>
-          </div>
-        </header>
-
+      <main id="reports-main-content" className="main-content">
         {/* Dashboard Body */}
         <div className="dashboard-container">
           <div className="reports-layout">
             {/* Executive Summary Header */}
-            <div className="reports-header-card">
+            <header id="reports-header-section" className="reports-header-card">
               <div className="reports-header-text">
-                <h2>Quality Assurance &amp; Defect Resolution Reports</h2>
-                <p>
-                  Executive metrics covering project test execution progress, defect resolutions, and QA daily performance.
-                </p>
+                <h2 id="reports-page-heading">Quality Assurance &amp; Defect Resolution Reports</h2>
               </div>
               <div className="reports-header-meta">
                 <span className="reports-live-badge">
                   <span className="reports-pulse-dot" /> Live Data Synced
                 </span>
               </div>
-            </div>
+            </header>
 
             {/* Top Workspace KPI Grid */}
             <div className="reports-kpi-grid">
@@ -634,6 +601,7 @@ export default function AdminReports() {
             <div className="reports-view-selector-bar">
               <div className="reports-tab-group">
                 <button
+                  id="reports-tab-projects-btn"
                   type="button"
                   className={`report-nav-tab ${activeReport === 'projects' ? 'active' : ''}`}
                   onClick={() => handleToggleReport('projects')}
@@ -645,6 +613,7 @@ export default function AdminReports() {
 
                 {canViewQAReport && (
                   <button
+                    id="reports-tab-qa-btn"
                     type="button"
                     className={`report-nav-tab ${activeReport === 'qa' ? 'active' : ''}`}
                     onClick={() => handleToggleReport('qa')}
@@ -655,19 +624,15 @@ export default function AdminReports() {
                   </button>
                 )}
               </div>
-
-              <div className="reports-view-hint">
-                <Sparkles size={14} color="#3B82F6" />
-                <span>Clicking a report opens it and closes the other view</span>
-              </div>
             </div>
 
             {/* ======================================================== */}
             {/* REPORT 1: PROJECT-WISE QUALITY & DEFECT OVERVIEW         */}
             {/* Collapsible card: opening this closes Report 2 below     */}
             {/* ======================================================== */}
-            <div className={`report-accordion-card ${activeReport === 'projects' ? 'is-expanded' : ''}`}>
+            <section id="reports-projects-section" className={`report-accordion-card ${activeReport === 'projects' ? 'is-expanded' : ''}`}>
               <div
+                id="reports-projects-accordion-toggle"
                 className="report-accordion-header"
                 onClick={() => handleToggleReport('projects')}
                 role="button"
@@ -679,7 +644,7 @@ export default function AdminReports() {
                     <FolderKanban size={18} />
                   </div>
                   <div className="accordion-title-text">
-                    <h3>
+                    <h3 id="reports-projects-heading">
                       Project-Wise Quality &amp; Defect Overview
                       <span className="accordion-badge">{filteredProjects.length} Projects</span>
                     </h3>
@@ -709,13 +674,16 @@ export default function AdminReports() {
                     <div className="report-search-box">
                       <Search size={15} color="#94A3B8" />
                       <input
+                        id="reports-project-search"
                         type="text"
                         placeholder="Search project code, name, lead..."
+                        autoComplete="off"
                         value={projectSearch}
                         onChange={(e) => setProjectSearch(e.target.value)}
                       />
                       {projectSearch && (
                         <button
+                          id="reports-project-search-clear-btn"
                           type="button"
                           className="report-search-clear"
                           onClick={() => setProjectSearch('')}
@@ -728,6 +696,7 @@ export default function AdminReports() {
 
                     <div className="report-actions-group">
                       <button
+                        id="reports-export-projects-csv-btn"
                         type="button"
                         className="report-btn-export"
                         onClick={handleExportProjectCSV}
@@ -743,7 +712,7 @@ export default function AdminReports() {
                     {filteredProjects.length === 0 ? (
                       <div className="report-empty-state">
                         <FolderKanban size={36} color="#94A3B8" />
-                        <h4>No Projects Found</h4>
+                        <h4 id="reports-projects-empty-heading">No Projects Found</h4>
                         <p>
                           {projectSearch
                             ? 'No projects match your search keywords.'
@@ -751,7 +720,7 @@ export default function AdminReports() {
                         </p>
                       </div>
                     ) : (
-                      <table className="report-modern-table">
+                      <table id="reports-projects-table" className="report-modern-table">
                         <thead>
                           <tr>
                             <th>Project</th>
@@ -916,7 +885,7 @@ export default function AdminReports() {
                                   <div>
                                     {tk.closed > 0 ? (
                                       <span className="qa-verified-badge">
-                                        <ShieldCheck size={13} color="#2563EB" />
+                                        <ShieldCheck size={13} />
                                         <span>{tk.closed} Verified</span>
                                       </span>
                                     ) : (
@@ -933,7 +902,7 @@ export default function AdminReports() {
                   </div>
                 </div>
               )}
-            </div>
+            </section>
 
             {/* ======================================================== */}
             {/* REPORT 2: QA MEMBER TEST EXECUTION & DAILY WORK REPORT    */}
@@ -942,8 +911,9 @@ export default function AdminReports() {
             {/* Collapsible card: opening this closes Report 1 above     */}
             {/* ======================================================== */}
             {canViewQAReport && (
-              <div className={`report-accordion-card ${activeReport === 'qa' ? 'is-expanded' : ''}`}>
+              <section id="reports-qa-section" className={`report-accordion-card ${activeReport === 'qa' ? 'is-expanded' : ''}`}>
                 <div
+                  id="reports-qa-accordion-toggle"
                   className="report-accordion-header"
                   onClick={() => handleToggleReport('qa')}
                   role="button"
@@ -955,7 +925,7 @@ export default function AdminReports() {
                       <UsersRound size={18} />
                     </div>
                     <div className="accordion-title-text">
-                      <h3>
+                      <h3 id="reports-qa-heading">
                         QA Member Test Execution &amp; Daily Work Report
                         <span className="accordion-badge emerald">{filteredQAMembers.length} QA Members</span>
                       </h3>
@@ -995,6 +965,7 @@ export default function AdminReports() {
                           { key: '30days', label: 'Last 30 Days' }
                         ].map((t) => (
                           <button
+                            id={`reports-qa-period-${t.key}-btn`}
                             key={t.key}
                             type="button"
                             className={`qa-period-btn ${selectedPeriod === t.key ? 'active' : ''}`}
@@ -1012,7 +983,9 @@ export default function AdminReports() {
                         <div className="qa-date-picker-wrap">
                           <CalendarDays size={14} color="#64748B" />
                           <input
+                            id="reports-qa-date"
                             type="date"
+                            autoComplete="off"
                             value={customDate}
                             onChange={(e) => {
                               setCustomDate(e.target.value);
@@ -1023,9 +996,9 @@ export default function AdminReports() {
                         </div>
                         {selectedPeriod !== 'all' && (
                           <button
+                            id="reports-qa-period-reset-btn"
                             type="button"
-                            className="qa-period-btn"
-                            style={{ background: '#F1F5F9' }}
+                            className="qa-period-btn qa-period-reset-btn"
                             onClick={() => {
                               setSelectedPeriod('all');
                               setCustomDate('');
@@ -1047,7 +1020,7 @@ export default function AdminReports() {
                           </div>
                           <div className="today-banner-text">
                             <strong>Today&apos;s QA Team Work Output:</strong>
-                            <span>Live execution metrics for {new Date().toISOString().split('T')[0]}</span>
+                            <span>Live execution metrics for {formatIndianDate(new Date())}</span>
                           </div>
                         </div>
 
@@ -1070,13 +1043,16 @@ export default function AdminReports() {
                       <div className="report-search-box">
                         <Search size={15} color="#94A3B8" />
                         <input
+                          id="reports-qa-search"
                           type="text"
                           placeholder="Search QA member name, email..."
+                          autoComplete="off"
                           value={qaSearch}
                           onChange={(e) => setQaSearch(e.target.value)}
                         />
                         {qaSearch && (
                           <button
+                            id="reports-qa-search-clear-btn"
                             type="button"
                             className="report-search-clear"
                             onClick={() => setQaSearch('')}
@@ -1089,6 +1065,7 @@ export default function AdminReports() {
 
                       <div className="report-actions-group">
                         <button
+                          id="reports-export-qa-csv-btn"
                           type="button"
                           className="report-btn-export"
                           onClick={handleExportQACSV}
@@ -1104,11 +1081,11 @@ export default function AdminReports() {
                       {filteredQAMembers.length === 0 ? (
                         <div className="report-empty-state">
                           <UsersRound size={36} color="#94A3B8" />
-                          <h4>No QA Members Found</h4>
+                          <h4 id="reports-qa-empty-heading">No QA Members Found</h4>
                           <p>No active QA Members match your search keyword.</p>
                         </div>
                       ) : (
-                        <table className="report-modern-table">
+                        <table id="reports-qa-table" className="report-modern-table">
                           <thead>
                             <tr>
                               <th>QA Member</th>
@@ -1162,7 +1139,7 @@ export default function AdminReports() {
                                         {qa.last_active_date && (
                                           <span className={`qa-last-active-tag ${isTodayActive ? 'today' : ''}`}>
                                             <Calendar size={10} />
-                                            {isTodayActive ? 'Active Today' : `Last active: ${qa.last_active_date}`}
+                                            {isTodayActive ? 'Active Today' : `Last active: ${formatIndianDate(qa.last_active_date, qa.last_active_date)}`}
                                           </span>
                                         )}
                                       </div>
@@ -1268,6 +1245,7 @@ export default function AdminReports() {
 
                                   <td>
                                     <button
+                                      id={`reports-qa-daily-log-btn-${qa.id}`}
                                       type="button"
                                       className="btn-view-daily-log"
                                       onClick={() => setActiveDailyLogMember(qa)}
@@ -1286,7 +1264,7 @@ export default function AdminReports() {
                     </div>
                   </div>
                 )}
-              </div>
+              </section>
             )}
           </div>
         </div>

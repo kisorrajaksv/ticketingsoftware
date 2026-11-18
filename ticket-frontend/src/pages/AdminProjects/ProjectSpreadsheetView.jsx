@@ -12,6 +12,7 @@ import {
   Filter,
   RefreshCw
 } from 'lucide-react';
+import { formatIndianDate } from '../../utils/dateFormat';
 import './ProjectSpreadsheetView.css';
 
 // Column configurations matching Google Sheets / Excel coordinates
@@ -46,7 +47,8 @@ export default function ProjectSpreadsheetView({
   onOpenProjectSheet,
   searchQuery = '',
   departmentFilter = 'All Departments',
-  statusFilter = 'All Statuses'
+  statusFilter = 'All Statuses',
+  readOnly = false
 }) {
   // Navigation & Active Cell state
   // rowIndex is index in the visible table, colKey is key in SHEET_COLUMNS
@@ -128,6 +130,10 @@ export default function ProjectSpreadsheetView({
   // Commit edit changes
   const commitEdit = useCallback(
     async (rowIndex, colKey, newValue) => {
+      if (readOnly) {
+        setEditingCell(null);
+        return;
+      }
       const targetProj = filteredProjects[rowIndex];
       if (!targetProj) return;
 
@@ -150,12 +156,13 @@ export default function ProjectSpreadsheetView({
         setEditingCell(null);
       }
     },
-    [filteredProjects, onUpdateProject]
+    [filteredProjects, onUpdateProject, readOnly]
   );
 
   // Start cell editing
   const startEditing = useCallback(
     (rowIndex, colKey) => {
+      if (readOnly) return;
       const col = SHEET_COLUMNS.find((c) => c.key === colKey);
       if (col && col.type === 'action') return; // Actions are buttons
 
@@ -167,7 +174,7 @@ export default function ProjectSpreadsheetView({
       setEditingCell({ rowIndex, colKey });
       setActiveCell({ rowIndex, colKey });
     },
-    [filteredProjects]
+    [filteredProjects, readOnly]
   );
 
   // Handle cell click
@@ -238,8 +245,9 @@ export default function ProjectSpreadsheetView({
       }
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      startEditing(rowIndex, colKey);
+      if (!readOnly) startEditing(rowIndex, colKey);
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (readOnly) return;
       // Clear cell value
       const col = SHEET_COLUMNS.find((c) => c.key === colKey);
       if (col && col.type !== 'action') {
@@ -250,6 +258,7 @@ export default function ProjectSpreadsheetView({
 
   // Formula bar commit
   const handleFormulaKeyDown = (e) => {
+    if (readOnly) return;
     if (e.key === 'Enter') {
       e.preventDefault();
       commitEdit(activeCell.rowIndex, activeCell.colKey, formulaValue);
@@ -265,7 +274,8 @@ export default function ProjectSpreadsheetView({
 
     filteredProjects.forEach((proj) => {
       const row = SHEET_COLUMNS.filter((c) => c.type !== 'action').map((c) => {
-        const val = proj[c.key] ?? '';
+        const raw = proj[c.key] ?? '';
+        const val = c.type === 'date' && raw ? formatIndianDate(raw, '') : raw;
         return `"${String(val).replace(/"/g, '""')}"`;
       });
       csvRows.push(row.join(','));
@@ -316,7 +326,7 @@ export default function ProjectSpreadsheetView({
   }, [filteredProjects]);
 
   return (
-    <section className="pj-sheet-wrapper" onKeyDown={handleKeyDown} tabIndex={0} ref={tableContainerRef}>
+    <section id="pjs-view-section" className="pj-sheet-wrapper" onKeyDown={handleKeyDown} tabIndex={0} ref={tableContainerRef}>
       {/* 1. Ribbon / Toolbar */}
       <div className="pj-sheet-ribbon">
         <div className="pj-sheet-ribbon-left">
@@ -330,10 +340,15 @@ export default function ProjectSpreadsheetView({
 
           <div
             className={`pj-sheet-save-status ${
-              saveStatus === 'saving' ? 'saving' : 'saved'
+              readOnly ? 'saved' : saveStatus === 'saving' ? 'saving' : 'saved'
             }`}
           >
-            {saveStatus === 'saving' ? (
+            {readOnly ? (
+              <>
+                <CheckCircle2 size={13} />
+                <span>Read-only project view</span>
+              </>
+            ) : saveStatus === 'saving' ? (
               <>
                 <Clock size={13} />
                 <span>Autosaving...</span>
@@ -348,25 +363,28 @@ export default function ProjectSpreadsheetView({
         </div>
 
         <div className="pj-sheet-ribbon-actions">
-          {/* Add Row Button */}
-          <button className="pj-sheet-action-btn success" onClick={onAddRow} title="Add new project row into sheet">
-            <Plus size={15} strokeWidth={2.5} />
-            <span>Add Row</span>
-          </button>
+          {/* Add Row & Delete Row Buttons (hidden in readOnly mode) */}
+          {!readOnly && (
+            <>
+              <button id="pjs-view-add-row-btn" className="pj-sheet-action-btn success" onClick={onAddRow}>
+                <Plus size={15} strokeWidth={2.5} />
+                <span>Add Row</span>
+              </button>
 
-          {/* Delete Row Button */}
-          <button
-            className="pj-sheet-action-btn"
-            onClick={handleDeleteSelected}
-            disabled={!filteredProjects.length}
-            title="Delete selected row"
-          >
-            <Trash2 size={14} />
-            <span>Delete Row</span>
-          </button>
+              <button
+                id="pjs-view-delete-row-btn"
+                className="pj-sheet-action-btn"
+                onClick={handleDeleteSelected}
+                disabled={!filteredProjects.length}
+              >
+                <Trash2 size={14} />
+                <span>Delete Row</span>
+              </button>
+            </>
+          )}
 
           {/* Export to CSV */}
-          <button className="pj-sheet-action-btn" onClick={handleExportCSV} title="Download sheet as CSV file">
+          <button id="pjs-view-export-csv-btn" className="pj-sheet-action-btn" onClick={handleExportCSV}>
             <Download size={14} />
             <span>Export CSV</span>
           </button>
@@ -374,9 +392,9 @@ export default function ProjectSpreadsheetView({
           {/* Jump to Project Sheets Workspace for Active Row */}
           {filteredProjects[activeCell.rowIndex] && (
             <button
+              id="pjs-view-open-sheet-btn"
               className="pj-sheet-action-btn primary"
               onClick={() => onOpenProjectSheet && onOpenProjectSheet(filteredProjects[activeCell.rowIndex])}
-              title="Open full dedicated test cases & project sheet workspace"
             >
               <ExternalLink size={14} />
               <span>Open Project Sheet</span>
@@ -387,24 +405,31 @@ export default function ProjectSpreadsheetView({
 
       {/* 2. Formula Bar (fx) */}
       <div className="pj-sheet-formulabar">
-        <div className="pj-sheet-coord-box" title="Active Cell Coordinate">
+        <div className="pj-sheet-coord-box">
           {activeCellCoord}
         </div>
         <div className="pj-sheet-fx-symbol">fx</div>
         <input
+          id="pjs-view-formula-input"
           type="text"
           className="pj-sheet-formula-input"
-          placeholder="Enter text, formula or cell value..."
+          placeholder={readOnly ? 'Read-only cell value...' : 'Enter text, formula or cell value...'}
+          autoComplete="off"
           value={formulaValue}
-          onChange={(e) => setFormulaValue(e.target.value)}
+          onChange={(e) => {
+            if (!readOnly) setFormulaValue(e.target.value);
+          }}
           onKeyDown={handleFormulaKeyDown}
-          onBlur={() => commitEdit(activeCell.rowIndex, activeCell.colKey, formulaValue)}
+          onBlur={() => {
+            if (!readOnly) commitEdit(activeCell.rowIndex, activeCell.colKey, formulaValue);
+          }}
+          readOnly={readOnly}
         />
       </div>
 
       {/* 3. Spreadsheet Grid Table */}
       <div className="pj-sheet-table-container">
-        <table className="pj-sheet-grid">
+        <table id="pjs-view-grid-table" className="pj-sheet-grid">
           <thead>
             {/* Top Column Letter Headers (A, B, C...) */}
             <tr className="pj-sheet-letter-row">
@@ -437,6 +462,7 @@ export default function ProjectSpreadsheetView({
                 >
                   {/* Row Index Number Header (1, 2, 3...) */}
                   <td
+                    id={`pjs-view-row-header-${rIdx}`}
                     className="pj-sheet-row-header"
                     onClick={() => {
                       setSelectedRowId(project.id);
@@ -454,6 +480,7 @@ export default function ProjectSpreadsheetView({
 
                     return (
                       <td
+                        id={`pjs-view-cell-${rIdx}-${col.key}`}
                         key={col.key}
                         className={`pj-sheet-cell ${isActive ? 'active-cell' : ''}`}
                         onClick={(e) => handleCellClick(rIdx, col.key, e)}
@@ -463,6 +490,7 @@ export default function ProjectSpreadsheetView({
                         {isEditing ? (
                           col.type === 'select-status' ? (
                             <select
+                              id={`pjs-view-cell-status-${rIdx}-${col.key}`}
                               ref={cellInputRef}
                               className="pj-sheet-cell-select"
                               value={editValue}
@@ -480,6 +508,7 @@ export default function ProjectSpreadsheetView({
                             </select>
                           ) : col.type === 'select-dept' ? (
                             <select
+                              id={`pjs-view-cell-dept-${rIdx}-${col.key}`}
                               ref={cellInputRef}
                               className="pj-sheet-cell-select"
                               value={editValue}
@@ -497,9 +526,11 @@ export default function ProjectSpreadsheetView({
                             </select>
                           ) : (
                             <input
+                              id={`pjs-view-cell-editor-${rIdx}-${col.key}`}
                               ref={cellInputRef}
                               type={col.type === 'number' ? 'number' : col.type === 'date' ? 'date' : 'text'}
                               className="pj-sheet-cell-editor"
+                              autoComplete="off"
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
                               onBlur={() => commitEdit(rIdx, col.key, editValue)}
@@ -508,12 +539,13 @@ export default function ProjectSpreadsheetView({
                         ) : col.type === 'action' ? (
                           <div className="pj-sheet-cell-inner" style={{ justifyContent: 'center' }}>
                             <button
+                              id={`pjs-view-open-sheet-btn-${rIdx}`}
                               className="pj-sheet-open-btn"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (onOpenProjectSheet) onOpenProjectSheet(project);
                               }}
-                              title="Open dedicated project sheet"
+                              aria-label="Open dedicated project sheet"
                             >
                               <FileSpreadsheet size={13} />
                               <span>Open Sheet</span>
@@ -536,7 +568,7 @@ export default function ProjectSpreadsheetView({
                             {col.type === 'number'
                               ? rawVal
                               : col.type === 'date' && rawVal
-                              ? String(rawVal).slice(0, 10)
+                              ? formatIndianDate(rawVal, '—')
                               : String(rawVal)}
                           </div>
                         )}
@@ -550,7 +582,9 @@ export default function ProjectSpreadsheetView({
             {filteredProjects.length === 0 && (
               <tr>
                 <td colSpan={SHEET_COLUMNS.length + 1} style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
-                  No matching projects found in spreadsheet. Click <strong>Add Row</strong> above to create one.
+                  {readOnly
+                    ? 'No assigned projects found.'
+                    : <>No matching projects found in spreadsheet. Click <strong>Add Row</strong> above to create one.</>}
                 </td>
               </tr>
             )}
@@ -561,32 +595,37 @@ export default function ProjectSpreadsheetView({
       {/* 4. Bottom Sheet Tabs & Real-time Formulas Summary Bar */}
       <div className="pj-sheet-bottom-bar">
         {/* Google Sheets Bottom Tabs */}
-        <div className="pj-sheet-tabs" role="tablist">
+        <div id="pjs-view-sheet-tabs" className="pj-sheet-tabs" role="tablist">
           <button
+            id="pjs-view-tab-all"
             className={`pj-sheet-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
             onClick={() => setActiveTab('all')}
           >
             All Projects ({projects.length})
           </button>
           <button
+            id="pjs-view-tab-active"
             className={`pj-sheet-tab-btn ${activeTab === 'active' ? 'active' : ''}`}
             onClick={() => setActiveTab('active')}
           >
             Active Projects
           </button>
           <button
+            id="pjs-view-tab-website"
             className={`pj-sheet-tab-btn ${activeTab === 'website' ? 'active' : ''}`}
             onClick={() => setActiveTab('website')}
           >
             Website
           </button>
           <button
+            id="pjs-view-tab-mobile"
             className={`pj-sheet-tab-btn ${activeTab === 'mobile' ? 'active' : ''}`}
             onClick={() => setActiveTab('mobile')}
           >
             Mobile App
           </button>
           <button
+            id="pjs-view-tab-completed"
             className={`pj-sheet-tab-btn ${activeTab === 'completed' ? 'active' : ''}`}
             onClick={() => setActiveTab('completed')}
           >
@@ -595,7 +634,7 @@ export default function ProjectSpreadsheetView({
         </div>
 
         {/* Live Formulas Status Summary Bar */}
-        <div className="pj-sheet-calc-bar" title="Calculated summary of currently visible sheet rows">
+        <div className="pj-sheet-calc-bar">
           <div className="pj-sheet-calc-item">
             <span className="pj-sheet-calc-label">COUNT:</span>
             <span className="pj-sheet-calc-val">{stats.total}</span>

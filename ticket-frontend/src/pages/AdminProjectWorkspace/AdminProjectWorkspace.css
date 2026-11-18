@@ -71,6 +71,10 @@
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
+.project-workspace-folders.has-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .project-folder {
   display: flex;
   align-items: center;
@@ -1198,6 +1202,7 @@
 @media (max-width: 640px) {
   .project-workspace-folders,
   .project-workspace-folders.has-seven { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .project-workspace-folders.has-three { grid-template-columns: 1fr; }
   .project-details-grid { grid-template-columns: 1fr; }
   .pw-test-req-summary { grid-template-columns: 1fr; }
 }

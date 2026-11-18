@@ -92,15 +92,18 @@ export default function CustomSelect({
   return (
     <div
       ref={containerRef}
-      id={id}
+      id={id ? `${id}-container` : undefined}
       className={`c-select-container c-select-${variant} ${isOpen ? 'is-open' : ''} ${hasError ? 'has-error' : ''} ${disabled ? 'is-disabled' : ''} ${className}`}
     >
       {/* Hidden input for HTML form accessibility/autocomplete compatibility */}
-      <input type="hidden" value={value || ''} />
+      <input id={id ? `${id}-input` : undefined} type="hidden" autoComplete="off" value={value || ''} />
 
-      {/* Dropdown Trigger Button */}
+      {/* Dropdown Trigger Button (Receives id so <label for="..."> binds to this form button) */}
       <button
+        id={id}
         type="button"
+        role="combobox"
+        aria-controls={id ? `${id}-menu` : undefined}
         className="c-select-trigger"
         onClick={toggleDropdown}
         disabled={disabled}
@@ -137,12 +140,14 @@ export default function CustomSelect({
 
       {/* Floating Dropdown Menu */}
       {isOpen && (
-        <div ref={menuRef} className="c-select-menu" role="listbox">
+        <div id={id ? `${id}-menu` : undefined} ref={menuRef} className="c-select-menu" role="listbox">
           <div className="c-select-menu-inner">
-            {normalizedOptions.map((opt) => {
+            {normalizedOptions.map((opt, optIdx) => {
               const isItemActive = opt.value === value;
+              const optSlug = String(opt.value || `empty-${optIdx}`).toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
               return (
                 <div
+                  id={id ? `${id}-opt-${optSlug}-${optIdx}` : undefined}
                   key={opt.value}
                   role="option"
                   aria-selected={isItemActive}

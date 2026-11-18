@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
+import { formatIndianDate } from '../../utils/dateFormat';
 
 const TESTING_PRIORITY_OPTIONS = [
   { value: 'Critical', label: 'Critical' },
@@ -50,7 +51,7 @@ const WORKSPACE_FOLDERS = [
   { id: 'sheet', label: 'Sheet', detail: 'Project test sheets', icon: FileSpreadsheet },
   { id: 'tickets', label: 'Tickets', detail: 'Issues for this project', icon: Ticket },
   { id: 'lead', label: 'Project Lead', detail: 'Lead allocation & history', icon: ShieldCheck },
-  { id: 'developers', label: 'Developers', detail: 'Assigned engineering devs', icon: Users },
+  { id: 'developers', label: 'Team', detail: 'Developers & QA Members', icon: Users },
   { id: 'documents', label: 'Documents', detail: 'Project document record', icon: FileText },
   { id: 'testing-request', label: 'Testing Request', detail: 'Start testing approval', icon: Send, restrictedToLeadAndManager: true },
   { id: 'details', label: 'Details', detail: 'Project information', icon: Folder }
@@ -78,17 +79,23 @@ export default function AdminProjectWorkspace() {
   const isQAMember = currentUserRole === 'QA Member';
   const isManager = currentUserRole === 'Manager' || currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
 
-  // Access rules: Only Manager & QA Lead (plus Super Admin, Admin) can assign Project Leads & Developers
-  const canAssignLeadAndDevs = ['Manager', 'QA Lead', 'Super Admin', 'Admin'].includes(currentUserRole);
-  // Everyone EXCEPT QA Members can upload documents and edit Application URL / GitHub Link
-  const canEditDocsAndLinks = !isQAMember;
+  // Access rules: Manager, QA Lead, Project Lead (plus Super Admin, Admin) can assign Project Leads & Team Members
+  const canAssignLeadAndDevs = ['Manager', 'QA Lead', 'Project Lead', 'Super Admin', 'Admin'].includes(currentUserRole);
+  // Everyone EXCEPT QA Members and Developers can upload documents and edit Application URL / GitHub Link
+  const canEditDocsAndLinks = !isQAMember && !isDeveloper;
   // Only Project Lead and Manager can lock/unlock files & link fields and access Testing Request page
   const canLockContent = isManager || isProjectLead;
   const canManageTestingRequest = isManager || isProjectLead;
 
   const visibleWorkspaceFolders = useMemo(
-    () => WORKSPACE_FOLDERS.filter((folder) => !folder.restrictedToLeadAndManager || canManageTestingRequest),
-    [canManageTestingRequest]
+    () =>
+      WORKSPACE_FOLDERS.filter((folder) => {
+        if (isDeveloper) {
+          return ['sheet', 'documents', 'details'].includes(folder.id);
+        }
+        return !folder.restrictedToLeadAndManager || canManageTestingRequest;
+      }),
+    [canManageTestingRequest, isDeveloper]
   );
 
   const activeProject = project || {
@@ -638,10 +645,6 @@ export default function AdminProjectWorkspace() {
 
   const openFolder = (folderId) => {
     if (folderId === 'sheet') {
-      if (isDeveloper) {
-        setShowRestrictedModal(true);
-        return;
-      }
       navigate(`/admin/projects/${projectId}/sheet`, { state: { project: project || { id: projectId, project_code: `PRJ-${projectId}` } } });
       return;
     }
@@ -694,11 +697,11 @@ export default function AdminProjectWorkspace() {
   const handleAssignDevelopers = async (e) => {
     e.preventDefault();
     if (!canAssignLeadAndDevs) {
-      setDevAssignMsg({ text: 'Access Denied: Only Manager and QA Lead can assign developers.', type: 'error' });
+      setDevAssignMsg({ text: 'Access Denied: Only Manager, QA Lead, and Project Lead can assign team members.', type: 'error' });
       return;
     }
     if (selectedDevIds.length === 0) {
-      setDevAssignMsg({ text: 'Please select at least one developer.', type: 'error' });
+      setDevAssignMsg({ text: 'Please select at least one team member.', type: 'error' });
       return;
     }
 
@@ -712,7 +715,7 @@ export default function AdminProjectWorkspace() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setDevAssignMsg({ text: 'Developers assigned successfully!', type: 'success' });
+      setDevAssignMsg({ text: 'Team members assigned successfully!', type: 'success' });
       await Promise.all([fetchDevsAndHistory(), fetchProjectData()]);
       setSelectedDevIds([]);
       setTimeout(() => {
@@ -720,7 +723,7 @@ export default function AdminProjectWorkspace() {
         setDevAssignMsg({ text: '', type: '' });
       }, 1000);
     } catch (err) {
-      setDevAssignMsg({ text: err.response?.data?.error || 'Failed to assign developers.', type: 'error' });
+      setDevAssignMsg({ text: err.response?.data?.error || 'Failed to assign team members.', type: 'error' });
     } finally {
       setDevAssignLoading(false);
     }
@@ -728,10 +731,10 @@ export default function AdminProjectWorkspace() {
 
   const handleRemoveDeveloper = async (developerId) => {
     if (!canAssignLeadAndDevs) {
-      alert('Access Denied: Only Manager and QA Lead can remove developers.');
+      alert('Access Denied: Only Manager, QA Lead, and Project Lead can remove team members.');
       return;
     }
-    if (!window.confirm('Are you sure you want to remove this developer from the project?')) return;
+    if (!window.confirm('Are you sure you want to remove this team member from the project?')) return;
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`http://localhost:5000/api/admin/projects/${projectId}/developers/${developerId}`, {
@@ -750,19 +753,7 @@ export default function AdminProjectWorkspace() {
   };
 
   // Format date to Indian Standard (DD/MM/YYYY)
-  const formatDate = (value) => {
-    if (!value) return 'Not set';
-    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
-      const [y, m, d] = value.trim().split('-');
-      return `${d}/${m}/${y}`;
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+  const formatDate = (value) => formatIndianDate(value, 'Not set');
 
   const confirmLogout = () => {
     localStorage.clear();
@@ -773,16 +764,16 @@ export default function AdminProjectWorkspace() {
     <div className="admin-layout">
       {/* Logout Modal */}
       {showLogoutModal && (
-        <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowLogoutModal(false)}>
-          <section className="modal-content" role="dialog" aria-modal="true">
+        <div id="pw-logout-modal-overlay" className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowLogoutModal(false)}>
+          <section id="pw-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon"><LogOut size={21} /></div>
-            <h2 className="modal-title">Sign out of your workspace?</h2>
+            <h2 id="pw-logout-modal-title" className="modal-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your account credentials.</p>
             <div className="modal-actions">
-              <button className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
+              <button id="pw-logout-cancel-btn" className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="pw-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -792,19 +783,19 @@ export default function AdminProjectWorkspace() {
 
       {/* Restricted Access Modal for Developer */}
       {showRestrictedModal && (
-        <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowRestrictedModal(false)}>
-          <section className="modal-content" role="dialog" aria-modal="true" style={{ maxWidth: 440 }}>
+        <div id="pw-restricted-modal-overlay" className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowRestrictedModal(false)}>
+          <section id="pw-restricted-modal" className="modal-content" role="dialog" aria-modal="true" style={{ maxWidth: 440 }}>
             <div className="modal-icon" style={{ background: '#FEE2E2', color: '#DC2626' }}>
               <AlertCircle size={24} />
             </div>
-            <h2 className="modal-title" style={{ fontSize: 18, color: '#0F172A' }}>Test Sheet Access Restricted</h2>
+            <h2 id="pw-restricted-modal-title" className="modal-title" style={{ fontSize: 18, color: '#0F172A' }}>Test Sheet Access Restricted</h2>
             <p className="modal-text" style={{ fontSize: 13, lineHeight: 1.5, color: '#475569' }}>
               Full Google Sheets-style test case execution matrices are reserved for <strong>QA Members</strong> and <strong>Project Leads</strong>.
               <br /><br />
               As an engineering developer, you have access to defect tickets assigned to you in the <strong>Tickets</strong> tab and your <strong>Developer Dashboard</strong>.
             </p>
             <div className="modal-actions">
-              <button className="modal-btn modal-btn-confirm" onClick={() => setShowRestrictedModal(false)}>
+              <button id="pw-restricted-ok-btn" className="modal-btn modal-btn-confirm" onClick={() => setShowRestrictedModal(false)}>
                 Understood
               </button>
             </div>
@@ -822,25 +813,27 @@ export default function AdminProjectWorkspace() {
       )}
 
       <div className="main-content">
-        <main className="project-workspace">
-          <header className="project-workspace-header">
-            <button className="project-workspace-back" onClick={() => navigate(isDeveloper ? '/developer' : isProjectLead ? '/project-lead' : '/admin/projects')}>
+        <main id="pw-main-content" className="project-workspace">
+          <header id="pw-header" className="project-workspace-header">
+            <button id="pw-back-btn" className="project-workspace-back" onClick={() => navigate(isDeveloper ? '/developer' : isProjectLead ? '/project-lead' : '/admin/projects')}>
               <ArrowLeft size={16} /> Back
             </button>
             <div className="project-workspace-title">
               <span className="project-workspace-code">{activeProject.project_code}</span>
-              <h1>{activeProject.name}</h1>
+              <h1 id="pw-project-heading">{activeProject.name}</h1>
               <p>{activeProject.department || 'Website'} &bull; {activeProject.status || 'Active'}</p>
             </div>
           </header>
 
           {/* Folder tabs */}
           <section
-            className={`project-workspace-folders${visibleWorkspaceFolders.length === 7 ? ' has-seven' : ''}`}
+            id="pw-folders-section"
+            className={`project-workspace-folders${visibleWorkspaceFolders.length === 7 ? ' has-seven' : visibleWorkspaceFolders.length === 3 ? ' has-three' : ''}`}
             aria-label="Project folders"
           >
             {visibleWorkspaceFolders.map(({ id, label, detail, icon: Icon }) => (
               <button
+                id={`pw-folder-tab-${id}-btn`}
                 className={`project-folder ${activeFolder === id ? 'active' : ''}`}
                 key={id}
                 onClick={() => openFolder(id)}
@@ -856,11 +849,12 @@ export default function AdminProjectWorkspace() {
 
           {/* Tab 1: Sheet */}
           {activeFolder === 'sheet' && (
-            <section className="project-workspace-content">
+            <section id="pw-sheet-section" className="project-workspace-content">
               <div className="project-content-heading">
-                <div><span>PROJECT CONTENTS</span><h2>Test Execution & Sheets</h2></div>
+                <div><span>PROJECT CONTENTS</span><h2 id="pw-sheet-heading">Test Execution & Sheets</h2></div>
                 {!isDeveloper && (
                   <button
+                    id="pw-open-sheets-header-btn"
                     className="pj-btn-primary"
                     onClick={() => navigate(`/admin/projects/${projectId}/sheet`, { state: { project: activeProject } })}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#0F9D58', color: '#fff', borderRadius: '6px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
@@ -872,12 +866,13 @@ export default function AdminProjectWorkspace() {
               </div>
               <div style={{ background: '#fff', border: '1px solid #dce5e7', borderRadius: '8px', padding: '32px 24px', textAlign: 'center', margin: '16px 0' }}>
                 <FileSpreadsheet size={46} color="#0F9D58" style={{ margin: '0 auto 12px' }} />
-                <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 8px' }}>Google Sheets-Style Test Workbook</h3>
+                <h3 id="pw-sheet-card-heading" style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 8px' }}>Google Sheets-Style Test Workbook</h3>
                 <p style={{ color: '#52717b', fontSize: '14px', maxWidth: '580px', margin: '0 auto 20px', lineHeight: 1.5 }}>
                   Access multiple sheet tabs, test case execution matrix, screenshot proof column, copy-paste across rows & columns, and automated status calculations.
                 </p>
                 {!isDeveloper ? (
                   <button
+                    id="pw-launch-sheets-btn"
                     onClick={() => navigate(`/admin/projects/${projectId}/sheet`, { state: { project: activeProject } })}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 22px', background: '#0F9D58', color: '#fff', borderRadius: '6px', fontWeight: 600, border: 'none', cursor: 'pointer', fontSize: '14px' }}
                   >
@@ -895,9 +890,9 @@ export default function AdminProjectWorkspace() {
 
           {/* Tab 2: Tickets */}
           {activeFolder === 'tickets' && (
-            <section className="project-workspace-content">
+            <section id="pw-tickets-section" className="project-workspace-content">
               <div className="project-content-heading">
-                <div><span>PROJECT CONTENTS</span><h2>Bug Defect Tickets</h2></div>
+                <div><span>PROJECT CONTENTS</span><h2 id="pw-tickets-heading">Bug Defect Tickets</h2></div>
                 <strong>{ticketsUnavailable ? activeProject.tickets_count || 0 : tickets.length} total</strong>
               </div>
               {ticketsUnavailable ? (
@@ -906,6 +901,7 @@ export default function AdminProjectWorkspace() {
                 <div className="project-ticket-list">
                   {tickets.map((ticket) => (
                     <article
+                      id={`pw-ticket-row-${ticket.id}`}
                       className="project-ticket-row"
                       key={ticket.id}
                       style={{ cursor: 'pointer' }}
@@ -919,7 +915,7 @@ export default function AdminProjectWorkspace() {
                         <span className={`project-ticket-status ${String(ticket.status || '').toLowerCase().replaceAll(' ', '-')}`}>
                           {ticket.status}
                         </span>
-                        <button type="button" className="pw-btn-preview" onClick={(e) => { e.stopPropagation(); setSelectedTicketId(ticket.id); }}>
+                        <button id={`pw-ticket-view-btn-${ticket.id}`} type="button" className="pw-btn-preview" onClick={(e) => { e.stopPropagation(); setSelectedTicketId(ticket.id); }}>
                           <Eye size={13} /> View
                         </button>
                       </div>
@@ -932,11 +928,12 @@ export default function AdminProjectWorkspace() {
 
           {/* Tab 3: Project Lead Assignment (Section 2.2) */}
           {activeFolder === 'lead' && (
-            <section className="project-workspace-content">
+            <section id="pw-lead-section" className="project-workspace-content">
               <div className="project-content-heading">
-                <div><span>PROJECT LEAD MANAGEMENT</span><h2>Project Lead Allocation</h2></div>
+                <div><span>PROJECT LEAD MANAGEMENT</span><h2 id="pw-lead-heading">Project Lead Allocation</h2></div>
                 {canAssignLeadAndDevs && (
                   <button
+                    id="pw-add-lead-btn"
                     className="pw-btn-action-primary"
                     onClick={() => {
                       setSelectedLeadId(activeProject.project_lead_id || '');
@@ -950,13 +947,13 @@ export default function AdminProjectWorkspace() {
               </div>
 
               {/* Current Lead Card */}
-              <div className="pw-lead-card">
+              <div id="pw-current-lead-card" className="pw-lead-card">
                 <div className="pw-lead-avatar">
                   {activeProject.lead_name ? activeProject.lead_name.charAt(0).toUpperCase() : 'L'}
                 </div>
                 <div className="pw-lead-info">
                   <span className="pw-eyebrow-tag">CURRENT PROJECT LEAD</span>
-                  <h3>{activeProject.lead_name || 'No Project Lead Assigned'}</h3>
+                  <h3 id="pw-current-lead-name">{activeProject.lead_name || 'No Project Lead Assigned'}</h3>
                   <div className="pw-lead-details-row">
                     {activeProject.lead_assigned_at && (
                       <span>Assigned on: <strong>{formatDate(activeProject.lead_assigned_at)}</strong></span>
@@ -971,10 +968,11 @@ export default function AdminProjectWorkspace() {
               {/* Lead Assignment History (Collapsible) */}
               <div className="pw-section-sub" style={{ marginTop: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showLeadHistory ? 12 : 0 }}>
-                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 id="pw-lead-history-heading" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <History size={15} /> Assignment History ({leadHistory.length})
                   </h3>
                   <button
+                    id="pw-lead-history-toggle-btn"
                     type="button"
                     className="pw-history-toggle-btn"
                     onClick={() => setShowLeadHistory((prev) => !prev)}
@@ -988,7 +986,7 @@ export default function AdminProjectWorkspace() {
                     <p className="project-workspace-empty" style={{ marginTop: 12 }}>No previous lead assignment history recorded for this project.</p>
                   ) : (
                     <div className="pw-table-wrap" style={{ marginTop: 12 }}>
-                      <table className="pw-table">
+                      <table id="pw-lead-history-table" className="pw-table">
                         <thead>
                           <tr>
                             <th>Project Lead</th>
@@ -1015,13 +1013,14 @@ export default function AdminProjectWorkspace() {
             </section>
           )}
 
-          {/* Tab 4: Developer Assignment (Section 4) */}
+          {/* Tab 4: Team Allocation (Section 4) */}
           {activeFolder === 'developers' && (
-            <section className="project-workspace-content">
+            <section id="pw-developers-section" className="project-workspace-content">
               <div className="project-content-heading">
-                <div><span>ENGINEERING ALLOCATION</span><h2>Assigned Developers</h2></div>
+                <div><span>TEAM ALLOCATION</span><h2 id="pw-developers-heading">Assigned Team Members</h2></div>
                 {canAssignLeadAndDevs && (
                   <button
+                    id="pw-add-devs-btn"
                     className="pw-btn-action-primary"
                     onClick={() => {
                       setSelectedDevIds([]);
@@ -1029,23 +1028,23 @@ export default function AdminProjectWorkspace() {
                     }}
                   >
                     <UserPlus size={15} />
-                    <span>Add Developers</span>
+                    <span>Add Team Members</span>
                   </button>
                 )}
               </div>
 
-              {/* List of currently assigned devs */}
+              {/* List of currently assigned devs / team members */}
               {assignedDevs.length === 0 ? (
                 <div className="pw-empty-box">
                   <Users size={32} color="#94A3B8" />
-                  <p>No engineering developers assigned to this project yet.</p>
+                  <p>No team members assigned to this project yet.</p>
                 </div>
               ) : (
                 <div className="pw-devs-grid">
                   {assignedDevs.map((d) => (
-                    <div key={d.developer_id} className="pw-dev-card">
+                    <div key={d.developer_id} id={`pw-dev-card-${d.developer_id}`} className="pw-dev-card">
                       <div className="pw-dev-avatar">
-                        {d.developer_name ? d.developer_name.charAt(0).toUpperCase() : 'D'}
+                        {d.developer_name ? d.developer_name.charAt(0).toUpperCase() : 'T'}
                       </div>
                       <div className="pw-dev-info">
                         <strong>{d.developer_name}</strong>
@@ -1054,10 +1053,11 @@ export default function AdminProjectWorkspace() {
                       </div>
                       {canAssignLeadAndDevs && (
                         <button
+                          id={`pw-remove-dev-btn-${d.developer_id}`}
                           type="button"
                           className="pw-btn-remove"
                           onClick={() => handleRemoveDeveloper(d.developer_id)}
-                          title="Remove developer from project"
+                          title="Remove team member from project"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -1070,10 +1070,11 @@ export default function AdminProjectWorkspace() {
               {/* Developer Assignment History (Collapsible) */}
               <div className="pw-section-sub" style={{ marginTop: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showDevHistory ? 12 : 0 }}>
-                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <History size={15} /> Developer Assignment History ({devHistory.length})
+                  <h3 id="pw-dev-history-heading" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <History size={15} /> Team Assignment History ({devHistory.length})
                   </h3>
                   <button
+                    id="pw-dev-history-toggle-btn"
                     type="button"
                     className="pw-history-toggle-btn"
                     onClick={() => setShowDevHistory((prev) => !prev)}
@@ -1087,7 +1088,7 @@ export default function AdminProjectWorkspace() {
                     <p className="project-workspace-empty" style={{ marginTop: 12 }}>No developer assignment history recorded yet.</p>
                   ) : (
                     <div className="pw-table-wrap" style={{ marginTop: 12 }}>
-                      <table className="pw-table">
+                      <table id="pw-dev-history-table" className="pw-table">
                         <thead>
                           <tr>
                             <th>Developer</th>
@@ -1120,16 +1121,17 @@ export default function AdminProjectWorkspace() {
 
           {/* Tab 5: Documents & Application Links */}
           {activeFolder === 'documents' && (
-            <section className="project-workspace-content">
+            <section id="pw-documents-section" className="project-workspace-content">
               <div className="project-content-heading">
                 <div>
                   <span>PROJECT CONTENTS</span>
-                  <h2>Project Documents & Application Links</h2>
+                  <h2 id="pw-documents-heading">Project Documents & Application Links</h2>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <strong>{documents.length} document{documents.length === 1 ? '' : 's'} tracked</strong>
                   {canLockContent && (
                     <button
+                      id="pw-lock-all-content-btn"
                       type="button"
                       className={`pw-btn-lock ${linksMeta.links_locked && linksMeta.documents_locked ? 'locked' : ''}`}
                       onClick={() =>
@@ -1199,10 +1201,10 @@ export default function AdminProjectWorkspace() {
               )}
 
               {/* Application URL & Application GitHub Link Card */}
-              <form className="pw-links-card" onSubmit={handleSaveLinks}>
+              <form id="pw-links-form" className="pw-links-card" onSubmit={handleSaveLinks}>
                 <div className="pw-links-card-header">
                   <div>
-                    <h3>Application Links</h3>
+                    <h3 id="pw-links-heading">Application Links</h3>
                     <p>
                       {linksMeta.links_locked
                         ? `Locked (Read-Only)${linksMeta.links_locked_by ? ` by ${linksMeta.links_locked_by}` : ''}`
@@ -1218,7 +1220,7 @@ export default function AdminProjectWorkspace() {
                           <Lock size={12} />
                           <span>Locked • Read Only</span>
                         </>
-                      ) : isQAMember ? (
+                      ) : !canEditDocsAndLinks ? (
                         <>
                           <Eye size={12} />
                           <span>Read Only</span>
@@ -1232,6 +1234,7 @@ export default function AdminProjectWorkspace() {
                     </span>
                     {canLockContent && (
                       <button
+                        id="pw-lock-links-btn"
                         type="button"
                         className={`pw-btn-lock ${linksMeta.links_locked ? 'locked' : ''}`}
                         onClick={() => handleToggleSectionLock('links', !linksMeta.links_locked)}
@@ -1265,12 +1268,14 @@ export default function AdminProjectWorkspace() {
                         type="url"
                         className={`pw-input${!canEditDocsAndLinks || linksMeta.links_locked ? ' pw-input-readonly' : ''}`}
                         placeholder="https://app.example.com"
+                        autoComplete="url"
                         value={applicationUrl}
                         onChange={(e) => setApplicationUrl(e.target.value)}
                         readOnly={!canEditDocsAndLinks || linksMeta.links_locked}
                       />
                       {applicationUrl.trim() && !/^(javascript|vbscript|data):/i.test(applicationUrl.trim()) && (
                         <a
+                          id="pw-app-url-open-link"
                           href={/^https?:\/\//i.test(applicationUrl.trim()) ? applicationUrl.trim() : `https://${applicationUrl.trim()}`}
                           target="_blank"
                           rel="noreferrer"
@@ -1295,12 +1300,14 @@ export default function AdminProjectWorkspace() {
                         type="url"
                         className={`pw-input${!canEditDocsAndLinks || linksMeta.links_locked ? ' pw-input-readonly' : ''}`}
                         placeholder="https://github.com/organization/repository"
+                        autoComplete="url"
                         value={applicationGithubLink}
                         onChange={(e) => setApplicationGithubLink(e.target.value)}
                         readOnly={!canEditDocsAndLinks || linksMeta.links_locked}
                       />
                       {applicationGithubLink.trim() && !/^(javascript|vbscript|data):/i.test(applicationGithubLink.trim()) && (
                         <a
+                          id="pw-github-url-open-link"
                           href={/^https?:\/\//i.test(applicationGithubLink.trim()) ? applicationGithubLink.trim() : `https://${applicationGithubLink.trim()}`}
                           target="_blank"
                           rel="noreferrer"
@@ -1318,6 +1325,7 @@ export default function AdminProjectWorkspace() {
                 {canEditDocsAndLinks && !linksMeta.links_locked && (
                   <div className="pw-links-footer">
                     <button
+                      id="pw-save-links-btn"
                       type="submit"
                       className="pw-btn-primary"
                       disabled={linksSaving}
@@ -1333,8 +1341,8 @@ export default function AdminProjectWorkspace() {
               {/* Uploaded Files Section Header */}
               <div className="pw-docs-section-bar">
                 <div className="pw-docs-section-title">
-                  <h3>Uploaded Files</h3>
-                  <span className={`pw-lock-pill ${linksMeta.documents_locked || isQAMember ? 'locked' : 'unlocked'}`}>
+                  <h3 id="pw-uploaded-files-heading">Uploaded Files</h3>
+                  <span className={`pw-lock-pill ${linksMeta.documents_locked || !canEditDocsAndLinks ? 'locked' : 'unlocked'}`}>
                     {linksMeta.documents_locked ? (
                       <>
                         <Lock size={12} />
@@ -1342,7 +1350,7 @@ export default function AdminProjectWorkspace() {
                           Files Locked • Read Only{linksMeta.documents_locked_by ? ` by ${linksMeta.documents_locked_by}` : ''}
                         </span>
                       </>
-                    ) : isQAMember ? (
+                    ) : !canEditDocsAndLinks ? (
                       <>
                         <Eye size={12} />
                         <span>View & Download Only</span>
@@ -1358,6 +1366,7 @@ export default function AdminProjectWorkspace() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   {canLockContent && (
                     <button
+                      id="pw-lock-documents-btn"
                       type="button"
                       className={`pw-btn-lock ${linksMeta.documents_locked ? 'locked' : ''}`}
                       onClick={() => handleToggleSectionLock('documents', !linksMeta.documents_locked)}
@@ -1379,10 +1388,11 @@ export default function AdminProjectWorkspace() {
 
                   {/* Document upload allowed for everyone except QA Members, unless locked */}
                   {canEditDocsAndLinks && !linksMeta.documents_locked && (
-                    <label className="pw-btn-upload-doc">
+                    <label className="pw-btn-upload-doc" htmlFor="pw-doc-upload-primary">
                       <Upload size={16} color="#FFFFFF" />
                       <span style={{ color: '#FFFFFF' }}>{docUploadLoading ? 'Uploading...' : 'Upload Documents'}</span>
                       <input
+                        id="pw-doc-upload-primary"
                         type="file"
                         onChange={handleFileUpload}
                         disabled={docUploadLoading}
@@ -1409,7 +1419,7 @@ export default function AdminProjectWorkspace() {
                   margin: '12px 0'
                 }}>
                   <FileText size={42} color="#94A3B8" style={{ marginBottom: '12px' }} />
-                  <h4 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: 600, color: '#1E293B' }}>
+                  <h4 id="pw-docs-empty-heading" style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: 600, color: '#1E293B' }}>
                     No Documents Uploaded Yet
                   </h4>
                   <p style={{ margin: '0 auto 16px', fontSize: '13px', color: '#64748B', maxWidth: '440px' }}>
@@ -1420,10 +1430,11 @@ export default function AdminProjectWorkspace() {
                       : 'No documents have been uploaded for this project yet.'}
                   </p>
                   {canEditDocsAndLinks && !linksMeta.documents_locked && (
-                    <label className="pw-btn-upload-doc">
+                    <label className="pw-btn-upload-doc" htmlFor="pw-doc-upload-empty">
                       <Upload size={16} color="#FFFFFF" />
                       <span style={{ color: '#FFFFFF' }}>{docUploadLoading ? 'Uploading...' : 'Upload Documents'}</span>
                       <input
+                        id="pw-doc-upload-empty"
                         type="file"
                         onChange={handleFileUpload}
                         disabled={docUploadLoading}
@@ -1435,7 +1446,7 @@ export default function AdminProjectWorkspace() {
                 </div>
               ) : (
                 <div style={{ overflowX: 'auto', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', marginTop: '12px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
+                  <table id="pw-documents-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
                     <thead>
                       <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', textAlign: 'left' }}>
                         <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569' }}>Document Name</th>
@@ -1483,11 +1494,12 @@ export default function AdminProjectWorkspace() {
                             <td style={{ padding: '12px 16px', color: '#64748B' }}>{doc.file_size || '—'}</td>
                             <td style={{ padding: '12px 16px', color: '#334155', fontWeight: 500 }}>{doc.uploaded_by || 'Admin'}</td>
                             <td style={{ padding: '12px 16px', color: '#64748B' }}>
-                              {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : '—'}
+                              {formatIndianDate(doc.uploaded_at, '—')}
                             </td>
                             <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                                 <button
+                                  id={`pw-doc-view-btn-${doc.id}`}
                                   type="button"
                                   onClick={() => handleViewDocument(doc)}
                                   className="pw-btn-doc-view"
@@ -1497,6 +1509,7 @@ export default function AdminProjectWorkspace() {
                                   <span>View</span>
                                 </button>
                                 <button
+                                  id={`pw-doc-download-btn-${doc.id}`}
                                   type="button"
                                   onClick={() => handleDownloadDocument(doc)}
                                   disabled={docDownloadingId === doc.id}
@@ -1508,6 +1521,7 @@ export default function AdminProjectWorkspace() {
                                 </button>
                                 {canLockContent && !linksMeta.documents_locked && (
                                   <button
+                                    id={`pw-doc-lock-btn-${doc.id}`}
                                     type="button"
                                     onClick={() => handleToggleDocLock(doc)}
                                     disabled={docLockUpdatingId === doc.id}
@@ -1519,6 +1533,7 @@ export default function AdminProjectWorkspace() {
                                 )}
                                 {canEditDocsAndLinks && !rowLocked && (
                                   <button
+                                    id={`pw-doc-delete-btn-${doc.id}`}
                                     type="button"
                                     onClick={() => handleDeleteDocument(doc.id, doc.name)}
                                     className="pw-btn-doc-delete"
@@ -1541,11 +1556,11 @@ export default function AdminProjectWorkspace() {
 
           {/* Tab 6: Testing Request (Project Lead & Manager Only) */}
           {activeFolder === 'testing-request' && canManageTestingRequest && (
-            <section className="project-workspace-content">
+            <section id="pw-testing-request-section" className="project-workspace-content">
               <div className="project-content-heading">
                 <div>
                   <span>QA TESTING WORKFLOW</span>
-                  <h2>Request to Start Testing</h2>
+                  <h2 id="pw-testing-request-heading">Request to Start Testing</h2>
                 </div>
                 {testingRequests.length > 0 && (
                   <span className={`pw-req-status-badge ${String(testingRequests[0].status || 'Pending').toLowerCase()}`}>
@@ -1581,7 +1596,7 @@ export default function AdminProjectWorkspace() {
                   </div>
                 </div>
 
-                <form onSubmit={handleRaiseTestingRequest} className="pw-test-req-form">
+                <form id="pw-testing-request-form" onSubmit={handleRaiseTestingRequest} className="pw-test-req-form">
                   <div className="pw-test-req-row">
                     <div className="pw-form-group" style={{ minWidth: '180px' }}>
                       <label htmlFor="pw-testing-priority">Request Priority</label>
@@ -1590,7 +1605,7 @@ export default function AdminProjectWorkspace() {
                         value={testingPriority}
                         onChange={setTestingPriority}
                         options={TESTING_PRIORITY_OPTIONS}
-                        variant="filter"
+                        variant="form"
                       />
                     </div>
 
@@ -1601,6 +1616,7 @@ export default function AdminProjectWorkspace() {
                         type="text"
                         className="pw-input"
                         placeholder="e.g. Build v1.0 deployed on staging, credentials & test scope in Documents..."
+                        autoComplete="off"
                         value={testingNotes}
                         onChange={(e) => setTestingNotes(e.target.value)}
                       />
@@ -1612,6 +1628,7 @@ export default function AdminProjectWorkspace() {
                       Submitting sends this project testing request directly to the QA Lead&apos;s Approvals &amp; Requests module.
                     </p>
                     <button
+                      id="pw-raise-testing-btn"
                       type="submit"
                       className="pw-btn-raise-testing"
                       disabled={testingSubmitting || testingRequests[0]?.status === 'Pending'}
@@ -1630,7 +1647,7 @@ export default function AdminProjectWorkspace() {
               </div>
 
               <div className="pw-section-sub" style={{ marginTop: 24 }}>
-                <h3>Testing Request History ({testingRequests.length})</h3>
+                <h3 id="pw-testing-history-heading">Testing Request History ({testingRequests.length})</h3>
                 {testingRequestsLoading ? (
                   <p className="project-workspace-empty">Loading testing requests...</p>
                 ) : testingRequests.length === 0 ? (
@@ -1639,7 +1656,7 @@ export default function AdminProjectWorkspace() {
                   </p>
                 ) : (
                   <div className="pw-table-wrap">
-                    <table className="pw-table">
+                    <table id="pw-testing-history-table" className="pw-table">
                       <thead>
                         <tr>
                           <th>Request Code</th>
@@ -1677,8 +1694,8 @@ export default function AdminProjectWorkspace() {
 
           {/* Tab 7: Details */}
           {activeFolder === 'details' && (
-            <section className="project-workspace-content">
-              <div className="project-content-heading"><div><span>PROJECT CONTENTS</span><h2>Details</h2></div></div>
+            <section id="pw-details-section" className="project-workspace-content">
+              <div className="project-content-heading"><div><span>PROJECT CONTENTS</span><h2 id="pw-details-heading">Details</h2></div></div>
               <dl className="project-details-grid">
                 <div><dt>Project code</dt><dd>{activeProject.project_code || 'Not set'}</dd></div>
                 <div><dt>Project lead</dt><dd>{activeProject.lead_name || 'Not assigned'}</dd></div>
@@ -1695,13 +1712,13 @@ export default function AdminProjectWorkspace() {
 
       {/* Modal: Assign / Change Project Lead */}
       {isLeadModalOpen && (
-        <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setIsLeadModalOpen(false)}>
-          <div className="pw-modal-box">
+        <div id="pw-lead-modal-overlay" className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setIsLeadModalOpen(false)}>
+          <div id="pw-lead-modal" className="pw-modal-box">
             <div className="pw-modal-header">
-              <h3>Add Project Lead</h3>
-              <button className="pw-modal-close" onClick={() => setIsLeadModalOpen(false)}><X size={18} /></button>
+              <h3 id="pw-lead-modal-title">Add Project Lead</h3>
+              <button id="pw-lead-modal-close-btn" className="pw-modal-close" onClick={() => setIsLeadModalOpen(false)}><X size={18} /></button>
             </div>
-            <form onSubmit={handleAssignProjectLead}>
+            <form id="pw-assign-lead-form" onSubmit={handleAssignProjectLead}>
               <div className="pw-modal-body">
                 {leadAssignMsg.text && (
                   <div className={`pw-alert ${leadAssignMsg.type}`}>
@@ -1710,8 +1727,9 @@ export default function AdminProjectWorkspace() {
                   </div>
                 )}
                 <div className="pw-form-group">
-                  <label>Select Project Lead *</label>
+                  <label htmlFor="pw-select-lead">Select Project Lead *</label>
                   <CustomSelect
+                    id="pw-select-lead"
                     value={selectedLeadId}
                     onChange={setSelectedLeadId}
                     options={[
@@ -1727,10 +1745,10 @@ export default function AdminProjectWorkspace() {
                 </div>
               </div>
               <div className="pw-modal-footer">
-                <button type="button" className="pw-btn-secondary" onClick={() => setIsLeadModalOpen(false)}>
+                <button id="pw-lead-modal-cancel-btn" type="button" className="pw-btn-secondary" onClick={() => setIsLeadModalOpen(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="pw-btn-primary" disabled={leadAssignLoading || !selectedLeadId}>
+                <button id="pw-lead-modal-submit-btn" type="submit" className="pw-btn-primary" disabled={leadAssignLoading || !selectedLeadId}>
                   {leadAssignLoading ? 'Assigning...' : 'Add Project Lead'}
                 </button>
               </div>
@@ -1741,13 +1759,13 @@ export default function AdminProjectWorkspace() {
 
       {/* Modal: Assign Developers */}
       {isDevModalOpen && (
-        <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setIsDevModalOpen(false)}>
-          <div className="pw-modal-box" style={{ maxWidth: 580 }}>
+        <div id="pw-dev-modal-overlay" className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setIsDevModalOpen(false)}>
+          <div id="pw-dev-modal" className="pw-modal-box" style={{ maxWidth: 580 }}>
             <div className="pw-modal-header">
-              <h3>Add Developers to Project</h3>
-              <button className="pw-modal-close" onClick={() => setIsDevModalOpen(false)}><X size={18} /></button>
+              <h3 id="pw-dev-modal-title">Add Team Members to Project</h3>
+              <button id="pw-dev-modal-close-btn" className="pw-modal-close" onClick={() => setIsDevModalOpen(false)}><X size={18} /></button>
             </div>
-            <form onSubmit={handleAssignDevelopers}>
+            <form id="pw-assign-devs-form" onSubmit={handleAssignDevelopers}>
               <div className="pw-modal-body">
                 {devAssignMsg.text && (
                   <div className={`pw-alert ${devAssignMsg.type}`}>
@@ -1755,13 +1773,14 @@ export default function AdminProjectWorkspace() {
                     <span>{devAssignMsg.text}</span>
                   </div>
                 )}
-                <label style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>Select Developers</label>
+                <label style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>Select Team Members (Developers & QA)</label>
                 <div className="pw-dev-select-grid">
                   {availableDevs.map((dev) => {
                     const isAlready = assignedDevs.some((d) => d.developer_id === dev.id);
                     const isSelected = selectedDevIds.includes(dev.id);
                     return (
                       <div
+                        id={`pw-avail-dev-option-${dev.id}`}
                         key={dev.id}
                         className={`pw-dev-pick-item ${isSelected ? 'selected' : ''} ${isAlready ? 'disabled' : ''}`}
                         onClick={() => !isAlready && toggleSelectDev(dev.id)}
@@ -1770,7 +1789,12 @@ export default function AdminProjectWorkspace() {
                           {isSelected && <Check size={14} color="#fff" />}
                         </div>
                         <div className="pw-dev-pick-info">
-                          <strong>{dev.full_name}</strong>
+                          <strong style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {dev.full_name}
+                            <span style={{ fontSize: 11, fontWeight: 600, color: dev.role === 'QA Member' ? '#0284C7' : '#4F46E5', background: dev.role === 'QA Member' ? '#E0F2FE' : '#EEF2FF', padding: '1px 6px', borderRadius: 4 }}>
+                              {dev.role || 'Member'}
+                            </span>
+                          </strong>
                           <span>{dev.email}</span>
                           {isAlready && <span className="pw-tag-already">Already on Project</span>}
                         </div>
@@ -1780,11 +1804,11 @@ export default function AdminProjectWorkspace() {
                 </div>
               </div>
               <div className="pw-modal-footer">
-                <button type="button" className="pw-btn-secondary" onClick={() => setIsDevModalOpen(false)}>
+                <button id="pw-dev-modal-cancel-btn" type="button" className="pw-btn-secondary" onClick={() => setIsDevModalOpen(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="pw-btn-primary" disabled={devAssignLoading || selectedDevIds.length === 0}>
-                  {devAssignLoading ? 'Adding...' : `Add Developers (${selectedDevIds.length})`}
+                <button id="pw-dev-modal-submit-btn" type="submit" className="pw-btn-primary" disabled={devAssignLoading || selectedDevIds.length === 0}>
+                  {devAssignLoading ? 'Adding...' : `Add Team Members (${selectedDevIds.length})`}
                 </button>
               </div>
             </form>
@@ -1794,22 +1818,23 @@ export default function AdminProjectWorkspace() {
 
       {/* Modal: Document Preview / View */}
       {previewDoc && (
-        <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && closePreviewModal()}>
-          <div className="pw-modal-box" style={{ maxWidth: 860, width: '92%', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+        <div id="pw-doc-preview-modal-overlay" className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && closePreviewModal()}>
+          <div id="pw-doc-preview-modal" className="pw-modal-box" style={{ maxWidth: 860, width: '92%', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
             <div className="pw-modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
                 <FileText size={22} color="#2563EB" />
                 <div style={{ minWidth: 0 }}>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <h3 id="pw-doc-preview-modal-title" style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {previewDoc.name}
                   </h3>
                   <span style={{ fontSize: '12px', color: '#64748B' }}>
-                    {previewDoc.file_size} &bull; Uploaded by {previewDoc.uploaded_by || 'Admin'} on {previewDoc.uploaded_at ? new Date(previewDoc.uploaded_at).toLocaleDateString() : 'Recent'}
+                    {previewDoc.file_size} &bull; Uploaded by {previewDoc.uploaded_by || 'Admin'} on {formatIndianDate(previewDoc.uploaded_at, 'Recent')}
                   </span>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <a
+                  id="pw-doc-preview-open-link"
                   href={previewDoc.blobUrl || previewDoc.file_url}
                   target="_blank"
                   rel="noreferrer"
@@ -1832,6 +1857,7 @@ export default function AdminProjectWorkspace() {
                   <span>Open in Tab</span>
                 </a>
                 <button
+                  id="pw-doc-preview-download-btn"
                   type="button"
                   onClick={() => handleDownloadDocument(previewDoc)}
                   style={{
@@ -1851,7 +1877,7 @@ export default function AdminProjectWorkspace() {
                   <Download size={14} />
                   <span>Download</span>
                 </button>
-                <button className="pw-modal-close" onClick={closePreviewModal} style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
+                <button id="pw-doc-preview-close-btn" className="pw-modal-close" onClick={closePreviewModal} style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
                   <X size={18} />
                 </button>
               </div>
@@ -1873,12 +1899,13 @@ export default function AdminProjectWorkspace() {
               ) : (
                 <div style={{ textAlign: 'center', padding: '36px 20px', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', maxWidth: '480px', width: '100%' }}>
                   <FileText size={48} color="#2563EB" style={{ margin: '0 auto 12px' }} />
-                  <h4 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 700, color: '#0F172A' }}>{previewDoc.name}</h4>
+                  <h4 id="pw-doc-preview-fallback-heading" style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 700, color: '#0F172A' }}>{previewDoc.name}</h4>
                   <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#64748B', lineHeight: 1.5 }}>
                     This document format ({previewDoc.file_type || previewDoc.name.split('.').pop()?.toUpperCase()}) can be opened in a browser tab or downloaded to your device for viewing with compatible software.
                   </p>
                   <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
                     <a
+                      id="pw-doc-preview-fallback-open-link"
                       href={previewDoc.blobUrl || previewDoc.file_url}
                       target="_blank"
                       rel="noreferrer"
@@ -1900,6 +1927,7 @@ export default function AdminProjectWorkspace() {
                       <span>Open in Browser Tab</span>
                     </a>
                     <button
+                      id="pw-doc-preview-fallback-download-btn"
                       type="button"
                       onClick={() => handleDownloadDocument(previewDoc)}
                       style={{

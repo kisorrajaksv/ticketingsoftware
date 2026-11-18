@@ -3,12 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   Check,
-  ChevronDown,
   Key,
   Lock,
   LogOut,
   Plus,
-  RefreshCw,
   Search,
   Shield,
   ShieldAlert,
@@ -46,7 +44,6 @@ function AdminRoles() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [userEmail] = useState(() => localStorage.getItem('userEmail') || '');
 
   const fetchRoles = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -139,31 +136,30 @@ function AdminRoles() {
     );
   });
 
-  const displayName = userEmail ? userEmail.split('@')[0] : 'Administrator';
-  const avatarLabel = displayName.charAt(0).toUpperCase();
-
   return (
     <div className="admin-layout">
       {/* Logout Modal */}
       {showLogoutModal && (
         <div
+          id="roles-logout-overlay"
           className="modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setShowLogoutModal(false);
           }}
         >
-          <section className="modal-content" role="dialog" aria-modal="true">
+          <section id="roles-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon"><LogOut size={21} /></div>
-            <h2 className="modal-title">Sign out of your workspace?</h2>
+            <h2 id="roles-logout-title" className="modal-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your account.</p>
             <div className="modal-actions">
               <button
+                id="roles-logout-cancel-btn"
                 className="modal-btn modal-btn-cancel"
                 onClick={() => setShowLogoutModal(false)}
               >
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="roles-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -175,44 +171,18 @@ function AdminRoles() {
       <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Content */}
-      <main className="main-content">
-        <header className="header">
-          <div className="breadcrumb">
-            <span>Workspace</span>
-            <span className="breadcrumb-divider">/</span>
-            <strong>Roles & Permissions</strong>
-          </div>
-          <div className="header-right">
-            <button
-              className="notification-bell"
-              onClick={fetchRoles}
-              title="Refresh roles"
-              aria-label="Refresh roles list"
-            >
-              <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />
-            </button>
-            <div className="profile-divider" />
-            <div className="user-profile">
-              <div className="avatar">{avatarLabel}</div>
-              <div className="user-info">
-                <span className="user-name">{displayName}</span>
-                <span className="user-role">{localStorage.getItem('userRole') || 'Administrator'}</span>
-              </div>
-              <ChevronDown size={15} className="profile-chevron" />
-            </div>
-          </div>
-        </header>
-
+      <main id="roles-main-content" className="main-content">
         <div className="dashboard-container">
           <div className="users-layout">
             {/* Header Card */}
             <div className="projects-header-row">
               <div className="projects-header-info">
-                <h2>Roles & Permissions Directory</h2>
+                <h2 id="roles-page-heading">Roles & Permissions Directory</h2>
                 <p>Define custom roles and allocate access capabilities across your workspace.</p>
               </div>
               <div className="users-header-actions">
                 <button
+                  id="roles-create-btn"
                   className="btn-primary-action"
                   onClick={() => setIsModalOpen(true)}
                 >
@@ -227,8 +197,10 @@ function AdminRoles() {
               <div className="users-search-box">
                 <Search size={16} color="#64748b" />
                 <input
+                  id="roles-search-input"
                   type="text"
                   placeholder="Search role name or capability..."
+                  autoComplete="off"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -248,14 +220,14 @@ function AdminRoles() {
             ) : (
               <div className="roles-grid">
                 {filteredRoles.map((role) => (
-                  <div className="role-card" key={role.id}>
+                  <div id={`role-card-${role.id}`} className="role-card" key={role.id}>
                     <div className="role-card-header">
                       <div className="role-title-row">
                         <div className="role-icon-box">
                           <Shield size={20} />
                         </div>
                         <div>
-                          <h3 className="role-name-text">{role.role_name}</h3>
+                          <h3 id={`role-name-${role.id}`} className="role-name-text">{role.role_name}</h3>
                           <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
                             ID: #{role.id}
                           </span>
@@ -296,15 +268,17 @@ function AdminRoles() {
       {/* Create Role Modal */}
       {isModalOpen && (
         <div
+          id="role-create-modal-overlay"
           className="modal-overlay-user"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setIsModalOpen(false);
           }}
         >
-          <div className="modal-card-user" role="dialog" aria-modal="true">
+          <div id="role-create-modal" className="modal-card-user" role="dialog" aria-modal="true">
             <div className="modal-header-user">
-              <h3>Create New Role</h3>
+              <h3 id="role-create-modal-title">Create New Role</h3>
               <button
+                id="role-create-modal-close-btn"
                 className="modal-close-btn"
                 onClick={() => setIsModalOpen(false)}
                 aria-label="Close dialog"
@@ -313,16 +287,18 @@ function AdminRoles() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateRole}>
+            <form id="role-create-form" onSubmit={handleCreateRole}>
               <div className="modal-body-user">
                 {formError && <div className="user-error-banner">{formError}</div>}
 
                 <div className="form-group-user">
-                  <label>Role Name *</label>
+                  <label htmlFor="role-create-name">Role Name *</label>
                   <input
+                    id="role-create-name"
                     type="text"
                     name="role_name"
                     placeholder="e.g. Release Manager or Security Auditor"
+                    autoComplete="off"
                     required
                     value={formData.role_name}
                     onChange={handleInputChange}
@@ -330,11 +306,13 @@ function AdminRoles() {
                 </div>
 
                 <div className="form-group-user">
-                  <label>Description</label>
+                  <label htmlFor="role-create-description">Description</label>
                   <input
+                    id="role-create-description"
                     type="text"
                     name="description"
                     placeholder="Brief description of this role's purpose..."
+                    autoComplete="off"
                     value={formData.description}
                     onChange={handleInputChange}
                   />
@@ -344,8 +322,9 @@ function AdminRoles() {
                   <label>Assign Permissions</label>
                   <div className="permission-checkbox-grid">
                     {AVAILABLE_PERMISSIONS.map((perm) => (
-                      <label key={perm.id} className="permission-checkbox-item">
+                      <label key={perm.id} className="permission-checkbox-item" htmlFor={`role-perm-${perm.id}`}>
                         <input
+                          id={`role-perm-${perm.id}`}
                           type="checkbox"
                           checked={formData.permissions.includes(perm.id)}
                           onChange={() => handleTogglePermission(perm.id)}
@@ -366,6 +345,7 @@ function AdminRoles() {
 
               <div className="modal-footer-user">
                 <button
+                  id="role-create-cancel-btn"
                   type="button"
                   className="btn-secondary"
                   onClick={() => setIsModalOpen(false)}
@@ -373,6 +353,7 @@ function AdminRoles() {
                   Cancel
                 </button>
                 <button
+                  id="role-create-submit-btn"
                   type="submit"
                   className="btn-primary-action"
                   disabled={submitting}

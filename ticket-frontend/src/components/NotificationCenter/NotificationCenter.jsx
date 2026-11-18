@@ -1,9 +1,43 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { Bell, Check, CheckCheck, Globe, UserCheck, X, Clock } from 'lucide-react';
+import { formatIndianDateTime } from '../../utils/dateFormat';
 import './NotificationCenter.css';
 import { SOCKET_URL } from '../../utils/apiConfig';
+import { getValidToken } from '../../utils/auth';
+
+function NotificationDrawerPortal({ isOpen, onClose, children }) {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onCloseRef.current();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  return createPortal(
+    <div
+      className={`notif-drawer-overlay${isOpen ? ' is-open' : ''}`}
+      aria-hidden={!isOpen}
+      onMouseDown={(event) => {
+        if (isOpen && event.target === event.currentTarget) {
+          onCloseRef.current();
+        }
+      }}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+}
 
 const TYPE_META = {
   info: { label: 'Info', className: 'notif-type-info' },
@@ -18,8 +52,52 @@ function NotificationCenter({ collapsed = false }) {
   const [filterTab, setFilterTab] = useState('all');
   const [loading, setLoading] = useState(false);
   const [liveToast, setLiveToast] = useState(null);
+  const [osPermission, setOsPermission] = useState(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'denied'
+  );
 
   const unreadCount = notifications.filter((item) => !item.is_read).length;
+
+  // Check and proactively request OS desktop notification permission
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setOsPermission(Notification.permission);
+      if (Notification.permission === 'default') {
+        Notification.requestPermission()
+          .then((perm) => setOsPermission(perm))
+          .catch(() => {});
+      }
+    }
+  }, []);
+
+  // Helper to trigger real OS Desktop Notification outside of browser/site
+  const triggerOsNotification = useCallback((incoming) => {
+    if (!incoming || typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    try {
+      const title = incoming.title || 'QA Software Workspace';
+      const body = incoming.message || 'You have received a new notification.';
+      const iconUrl = '/vite.svg';
+
+      const osNotif = new window.Notification(title, {
+        body,
+        icon: iconUrl,
+        badge: iconUrl,
+        tag: `qa-notif-${incoming.id || Date.now()}`,
+        renotify: true
+      });
+
+      osNotif.onclick = () => {
+        window.focus();
+        if (incoming.link) {
+          window.location.href = incoming.link;
+        }
+      };
+    } catch (err) {
+      console.warn('Could not display OS notification:', err);
+    }
+  }, []);
 
   useEffect(() => {
     window.dispatchEvent(
@@ -28,7 +106,7 @@ function NotificationCenter({ collapsed = false }) {
   }, [unreadCount]);
 
   const fetchNotifications = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = getValidToken();
     if (!token) return;
     setLoading(true);
     try {
@@ -39,7 +117,9 @@ function NotificationCenter({ collapsed = false }) {
         setNotifications(data);
       }
     } catch (err) {
-      console.warn('Could not load notifications:', err.message);
+      if (err.response?.status !== 401) {
+        console.warn('Could not load notifications:', err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -65,7 +145,7 @@ function NotificationCenter({ collapsed = false }) {
   }, [fetchNotifications]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = getValidToken();
     if (!token) return undefined;
 
     let socket = null;
@@ -95,7 +175,7 @@ function NotificationCenter({ collapsed = false }) {
         socket.emit('join_user_room', { userId });
       });
 
-      socket.on('new_notification', (incoming) => {
+      const handleIncomingNotification = (incoming) => {
         if (!incoming) return;
         setNotifications((prev) => {
           if (prev.some((n) => n.id === incoming.id)) return prev;
@@ -105,7 +185,13 @@ function NotificationCenter({ collapsed = false }) {
         setLiveToast(incoming);
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => setLiveToast(null), 6000);
-      });
+
+        // Display outside of browser via OS Notification
+        triggerOsNotification(incoming);
+      };
+
+      socket.on('new_notification', handleIncomingNotification);
+      socket.on(`notification_user_${userId}`, handleIncomingNotification);
     };
 
     connectSocket();
@@ -161,6 +247,7 @@ function NotificationCenter({ collapsed = false }) {
   return (
     <>
       <button
+        id="notif-sidebar-trigger-btn"
         type="button"
         className="nav-item sidebar-notif-trigger"
         onClick={() => {
@@ -180,7 +267,7 @@ function NotificationCenter({ collapsed = false }) {
       </button>
 
       {liveToast && (
-        <div className="notif-toast" role="status" aria-live="polite">
+        <div id="notif-toast" className="notif-toast" role="status" aria-live="polite">
           <div className="notif-toast-icon">
             <Bell size={16} />
           </div>
@@ -200,6 +287,7 @@ function NotificationCenter({ collapsed = false }) {
             )}
           </div>
           <button
+            id="notif-toast-close-btn"
             type="button"
             className="notif-toast-close"
             onClick={() => setLiveToast(null)}
@@ -210,57 +298,98 @@ function NotificationCenter({ collapsed = false }) {
         </div>
       )}
 
-      {drawerOpen && (
-        <div
-          className="notif-drawer-overlay"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setDrawerOpen(false);
-          }}
+      <NotificationDrawerPortal
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      >
+        <section
+          id="notif-drawer-section"
+          className="notif-drawer-card"
+          role="dialog"
+          aria-modal={drawerOpen}
+          aria-labelledby="notif-drawer-title"
         >
-          <section
-            className="notif-drawer-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="notif-drawer-title"
-          >
-            <header className="notif-drawer-header">
-              <div className="notif-drawer-title-group">
-                <div className="notif-drawer-icon-box">
-                  <Bell size={18} />
-                </div>
-                <div>
-                  <h3 id="notif-drawer-title">Notifications Inbox</h3>
-                  <p>
-                    {unreadCount > 0
-                      ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`
-                      : 'All caught up'}
-                  </p>
-                </div>
+          <header id="notif-drawer-header" className="notif-drawer-header">
+            <button
+              id="notif-drawer-close-btn"
+              type="button"
+              className="notif-drawer-close-btn"
+              onClick={() => setDrawerOpen(false)}
+              aria-label="Close notifications"
+            >
+              <X size={18} />
+            </button>
+            <div className="notif-drawer-title-group">
+              <div className="notif-drawer-icon-box">
+                <Bell size={18} />
               </div>
+              <div>
+                <h3 id="notif-drawer-title">Notifications Inbox</h3>
+                <p>
+                  {unreadCount > 0
+                    ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`
+                    : 'All caught up'}
+                </p>
+              </div>
+            </div>
+            {unreadCount > 0 && (
               <div className="notif-drawer-header-actions">
-                {unreadCount > 0 && (
-                  <button
-                    type="button"
-                    className="notif-mark-all-btn"
-                    onClick={handleMarkAllRead}
-                  >
-                    <CheckCheck size={14} />
-                    <span>Mark all read</span>
-                  </button>
-                )}
                 <button
+                  id="notif-mark-all-read-btn"
                   type="button"
-                  className="notif-drawer-close-btn"
-                  onClick={() => setDrawerOpen(false)}
-                  aria-label="Close notifications"
+                  className="notif-mark-all-btn"
+                  onClick={handleMarkAllRead}
                 >
-                  <X size={18} />
+                  <CheckCheck size={14} />
+                  <span>Mark all read</span>
                 </button>
               </div>
-            </header>
+            )}
+          </header>
+
+          {/* OS Desktop Notification Status Banner */}
+          {osPermission !== 'granted' && typeof window !== 'undefined' && 'Notification' in window ? (
+            <div id="notif-os-permission-banner" className="notif-os-banner">
+              <div className="notif-os-banner-icon">
+                <Globe size={15} />
+              </div>
+              <div className="notif-os-banner-text">
+                <strong>OS Desktop Notifications</strong>
+                <span>Get alerts outside the browser when minimized</span>
+              </div>
+              <button
+                id="notif-enable-os-btn"
+                type="button"
+                className="notif-enable-os-btn"
+                onClick={async () => {
+                  try {
+                    const perm = await Notification.requestPermission();
+                    setOsPermission(perm);
+                    if (perm === 'granted') {
+                      new window.Notification('OS Notifications Enabled! 🎉', {
+                        body: 'You will now receive desktop alerts for projects and tickets outside the site.',
+                        icon: '/vite.svg'
+                      });
+                    }
+                  } catch (e) {
+                    console.warn('Could not request notification permission:', e);
+                  }
+                }}
+              >
+                Enable
+              </button>
+            </div>
+          ) : (
+            <div style={{ padding: '0 20px', marginTop: 6, marginBottom: 2 }}>
+              <span className="notif-os-active-tag">
+                <Check size={11} /> OS Desktop Alerts Active
+              </span>
+            </div>
+          )}
 
             <div className="notif-drawer-tabs">
               <button
+                id="notif-tab-all-btn"
                 type="button"
                 className={`notif-filter-tab ${filterTab === 'all' ? 'active' : ''}`}
                 onClick={() => setFilterTab('all')}
@@ -268,6 +397,7 @@ function NotificationCenter({ collapsed = false }) {
                 All ({notifications.length})
               </button>
               <button
+                id="notif-tab-unread-btn"
                 type="button"
                 className={`notif-filter-tab ${filterTab === 'unread' ? 'active' : ''}`}
                 onClick={() => setFilterTab('unread')}
@@ -293,6 +423,7 @@ function NotificationCenter({ collapsed = false }) {
                   const meta = TYPE_META[item.type] || TYPE_META.info;
                   return (
                     <article
+                      id={`notif-card-${item.id}`}
                       key={item.id}
                       className={`notif-item-card ${item.is_read ? 'read' : 'unread'}`}
                     >
@@ -311,6 +442,7 @@ function NotificationCenter({ collapsed = false }) {
                         </div>
                         {!item.is_read && (
                           <button
+                            id={`notif-read-btn-${item.id}`}
                             type="button"
                             className="notif-read-single-btn"
                             onClick={() => handleMarkAsRead(item.id)}
@@ -322,7 +454,7 @@ function NotificationCenter({ collapsed = false }) {
                         )}
                       </div>
 
-                      <h4 className="notif-item-title">{item.title}</h4>
+                      <h4 id={`notif-title-${item.id}`} className="notif-item-title">{item.title}</h4>
                       {item.message && <p className="notif-item-message">{item.message}</p>}
 
                       <div className="notif-item-meta">
@@ -334,7 +466,7 @@ function NotificationCenter({ collapsed = false }) {
                         <span className="notif-item-time">
                           <Clock size={11} />
                           {item.created_at
-                            ? new Date(item.created_at).toLocaleString()
+                            ? formatIndianDateTime(item.created_at, 'Just now')
                             : 'Just now'}
                         </span>
                       </div>
@@ -343,9 +475,8 @@ function NotificationCenter({ collapsed = false }) {
                 })
               )}
             </div>
-          </section>
-        </div>
-      )}
+        </section>
+      </NotificationDrawerPortal>
     </>
   );
 }

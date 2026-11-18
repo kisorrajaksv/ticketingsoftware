@@ -5,12 +5,10 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowUpDown,
-  Bell,
   Briefcase,
   Building2,
   Calendar,
   Camera,
-  ChevronDown,
   Code2,
   Crown,
   Eye,
@@ -27,6 +25,7 @@ import {
   Settings,
   ShieldCheck,
   Trash2,
+  Unlock,
   Upload,
   UserCheck,
   UserPlus,
@@ -37,6 +36,8 @@ import {
 } from 'lucide-react';
 import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
+import { formatIndianDate } from '../../utils/dateFormat';
+import { getValidToken } from '../../utils/auth';
 import '../../styles/admin.css';
 import './AdminUsers.css';
 
@@ -63,7 +64,7 @@ const DEPARTMENT_FILTER_OPTIONS = [
   ...AVAILABLE_DEPARTMENTS.map((dept) => ({
     value: dept,
     label: dept,
-    icon: <Building2 size={14} color="#2563eb" />
+    icon: <Building2 size={14} color="#64748b" />
   }))
 ];
 
@@ -72,7 +73,7 @@ const ROLE_FILTER_OPTIONS = [
   ...AVAILABLE_ROLES.map((role) => ({
     value: role,
     label: role,
-    icon: <ShieldCheck size={14} color="#0284c7" />
+    icon: <ShieldCheck size={14} color="#64748b" />
   }))
 ];
 
@@ -92,13 +93,13 @@ const SORT_BY_OPTIONS = [
 const MODAL_DEPARTMENT_OPTIONS = AVAILABLE_DEPARTMENTS.map((dept) => ({
   value: dept,
   label: dept,
-  icon: <Building2 size={15} color="#2563eb" />
+  icon: <Building2 size={15} color="#64748b" />
 }));
 
 const MODAL_ROLE_OPTIONS = AVAILABLE_ROLES.map((role) => ({
   value: role,
   label: role,
-  icon: <ShieldCheck size={15} color="#0284c7" />
+  icon: <ShieldCheck size={15} color="#64748b" />
 }));
 
 const MODAL_STATUS_OPTIONS = [
@@ -118,6 +119,19 @@ const initialFormData = {
   avatar: ''
 };
 
+const UM_FILTER_LOCK_STORAGE_KEY = 'um_locked_filters';
+
+const readLockedUserFiltersState = () => {
+  try {
+    const raw = localStorage.getItem(UM_FILTER_LOCK_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && parsed.locked ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
 function AdminUsers() {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
@@ -125,10 +139,42 @@ function AdminUsers() {
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('All');
-  const [roleFilter, setRoleFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [sortBy, setSortBy] = useState('default');
+  const [filtersLocked, setFiltersLocked] = useState(() => Boolean(readLockedUserFiltersState()));
+  const [departmentFilter, setDepartmentFilter] = useState(
+    () => readLockedUserFiltersState()?.departmentFilter || 'All'
+  );
+  const [roleFilter, setRoleFilter] = useState(
+    () => readLockedUserFiltersState()?.roleFilter || 'All'
+  );
+  const [statusFilter, setStatusFilter] = useState(
+    () => readLockedUserFiltersState()?.statusFilter || 'All'
+  );
+  const [sortBy, setSortBy] = useState(
+    () => readLockedUserFiltersState()?.sortBy || 'default'
+  );
+
+  const toggleFilterLock = () => {
+    const nextLocked = !filtersLocked;
+    setFiltersLocked(nextLocked);
+    try {
+      if (nextLocked) {
+        localStorage.setItem(
+          UM_FILTER_LOCK_STORAGE_KEY,
+          JSON.stringify({
+            locked: true,
+            departmentFilter,
+            roleFilter,
+            statusFilter,
+            sortBy
+          })
+        );
+      } else {
+        localStorage.removeItem(UM_FILTER_LOCK_STORAGE_KEY);
+      }
+    } catch {
+      // Ignore storage write failures
+    }
+  };
 
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -152,14 +198,12 @@ function AdminUsers() {
   const createFileInputRef = useRef(null);
   const editFileInputRef = useRef(null);
 
-  const [userEmail] = useState(() => localStorage.getItem('userEmail') || 'manager@gmail.com');
-
   const isProtectedUser = (email) => {
     return Boolean(email && PROTECTED_EMAILS.includes(email.toLowerCase().trim()));
   };
 
   const fetchUsers = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = getValidToken();
     if (!token) {
       navigate('/', { replace: true });
       return;
@@ -511,6 +555,30 @@ function AdminUsers() {
   };
 
   // Create User Submission
+  const [resendingUserId, setResendingUserId] = useState(null);
+
+  const handleResendInvite = async (targetUser) => {
+    if (!targetUser?.id) return;
+    setResendingUserId(targetUser.id);
+    const token = localStorage.getItem('token');
+    try {
+      await axios.post(
+        `http://localhost:5000/api/admin/users/${targetUser.id}/resend-invite`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSuccessToast({
+        title: 'Credentials Email Resent',
+        message: `Welcome credentials have been sent successfully to ${targetUser.email}.`
+      });
+      setTimeout(() => setSuccessToast(null), 6000);
+    } catch (err) {
+      setFormError(err.response?.data?.error || 'Failed to resend credentials email.');
+    } finally {
+      setResendingUserId(null);
+    }
+  };
+
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setFormError('');
@@ -671,15 +739,11 @@ function AdminUsers() {
     const total = users.length;
     const active = users.filter((u) => u.status !== 'Inactive').length;
     const inactive = users.filter((u) => u.status === 'Inactive').length;
-    const departments = new Set(
-      users.map((u) => u.department || 'Quality Assurance')
-    ).size;
 
     return {
       total,
       active,
-      inactive,
-      departments
+      inactive
     };
   }, [users]);
 
@@ -800,67 +864,18 @@ function AdminUsers() {
     );
   };
 
-  const displayName = userEmail ? userEmail.split('@')[0] : 'admin1';
-  const displayAvatar = displayName.charAt(0).toUpperCase();
-
   return (
-    <div className="admin-layout">
+    <div className="admin-layout users-page">
       {/* Admin Sidebar Navigation */}
       <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Content Area */}
-      <main className="main-content">
-        {/* Top Header */}
-        <header className="header">
-          <div className="breadcrumb">
-            <span>Workspace</span>
-            <span className="breadcrumb-divider">›</span>
-            <span>Users</span>
-            <span className="breadcrumb-divider">›</span>
-            <strong>User Management</strong>
-          </div>
-
-          <div className="header-right">
-            <div className="header-search">
-              <Search size={14} />
-              <input
-                type="text"
-                placeholder="Search anything..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            <button
-              className="notification-bell"
-              onClick={fetchUsers}
-              title="Refresh users directory"
-              aria-label="Refresh users list"
-            >
-              <Bell size={17} />
-              <span className="notification-count" />
-            </button>
-
-            <div className="profile-divider" />
-
-            <div className="user-profile">
-              <div className="avatar" style={{ background: '#9333ea', color: '#fff' }}>
-                {displayAvatar}
-              </div>
-              <div className="user-info">
-                <span className="user-name">{displayName}</span>
-                <span className="user-role">{currentUserRole}</span>
-              </div>
-              <ChevronDown size={14} className="profile-chevron" />
-            </div>
-          </div>
-        </header>
-
+      <main id="um-main-content" className="main-content">
         {/* Dashboard Body */}
         <div className="dashboard-container">
           {/* Email Invitation / Action Success Toast */}
           {successToast && (
-            <div className="um-success-toast" role="alert">
+            <div id="um-success-toast" className="um-success-toast" role="alert">
               <div className="um-success-toast-content">
                 <span className="um-toast-check">✓</span>
                 <div>
@@ -869,6 +884,7 @@ function AdminUsers() {
                 </div>
               </div>
               <button
+                id="um-toast-close-btn"
                 className="um-toast-close-btn"
                 onClick={() => setSuccessToast(null)}
                 aria-label="Dismiss message"
@@ -880,13 +896,10 @@ function AdminUsers() {
 
           <div className="users-page-layout">
             {/* Page Header */}
-            <div className="um-header-container">
+            <header id="um-header-section" className="um-header-container">
               <div className="um-header-left">
-                <div className="um-header-icon-box">
-                  <Users size={24} />
-                </div>
                 <div className="um-header-titles">
-                  <h1>{isQAMember ? 'Team Directory & Users' : 'User Management'}</h1>
+                  <h1 id="um-page-heading">{isQAMember ? 'Team Directory & Users' : 'User Management'}</h1>
                   <p>
                     {isQAMember
                       ? 'Explore workspace team members, departments, roles, and employee contact details. QA Member directory mode active.'
@@ -897,6 +910,7 @@ function AdminUsers() {
 
               {!isQAMember && (
                 <button
+                  id="um-create-user-btn"
                   className="um-btn-create"
                   onClick={handleOpenCreateModal}
                 >
@@ -904,11 +918,11 @@ function AdminUsers() {
                   <span>Create User</span>
                 </button>
               )}
-            </div>
+            </header>
 
             {/* QA Member Read-Only Notice */}
             {isQAMember && (
-              <div style={{
+              <div id="um-qa-readonly-notice" style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
@@ -928,10 +942,10 @@ function AdminUsers() {
               </div>
             )}
 
-            {/* 4 Summary Stat Cards */}
-            <div className="um-stats-grid">
+            {/* Summary Stat Cards */}
+            <section id="um-stats-grid" className="um-stats-grid">
               {/* Card 1: Total Users */}
-              <div className="um-stat-card">
+              <div id="um-stat-total-card" className="um-stat-card">
                 <div className="um-stat-icon-wrap icon-wrap-blue">
                   <Users size={22} />
                 </div>
@@ -945,7 +959,7 @@ function AdminUsers() {
               </div>
 
               {/* Card 2: Active Users */}
-              <div className="um-stat-card">
+              <div id="um-stat-active-card" className="um-stat-card">
                 <div className="um-stat-icon-wrap icon-wrap-green">
                   <ShieldCheck size={22} />
                 </div>
@@ -959,7 +973,7 @@ function AdminUsers() {
               </div>
 
               {/* Card 3: Inactive Users */}
-              <div className="um-stat-card">
+              <div id="um-stat-inactive-card" className="um-stat-card">
                 <div className="um-stat-icon-wrap icon-wrap-orange">
                   <UserX size={22} />
                 </div>
@@ -971,28 +985,16 @@ function AdminUsers() {
                   <div className="um-stat-label">Inactive Users</div>
                 </div>
               </div>
-
-              {/* Card 4: Departments */}
-              <div className="um-stat-card">
-                <div className="um-stat-icon-wrap icon-wrap-purple">
-                  <Building2 size={22} />
-                </div>
-                <div className="um-stat-content">
-                  <div className="um-stat-top">
-                    <span className="um-stat-number">{stats.departments}</span>
-                    <span className="um-stat-trend trend-neutral">0% No change</span>
-                  </div>
-                  <div className="um-stat-label">Departments</div>
-                </div>
-              </div>
-            </div>
+            </section>
 
             {/* Filter and Search Bar */}
             <div className="um-controls-bar">
               <div className="um-search-container">
                 <Search size={16} color="#64748b" />
                 <input
+                  id="um-search-input"
                   type="text"
+                  autoComplete="off"
                   placeholder="Search by name, email, employee ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -1002,49 +1004,78 @@ function AdminUsers() {
               <div className="um-filter-selects">
                 {/* Department Dropdown */}
                 <CustomSelect
+                  id="um-filter-department"
                   value={departmentFilter}
-                  onChange={setDepartmentFilter}
+                  onChange={(val) => {
+                    if (!filtersLocked) setDepartmentFilter(val);
+                  }}
                   options={DEPARTMENT_FILTER_OPTIONS}
                   icon={<Building2 size={14} color="#64748b" />}
                   placeholder="All Departments"
                   variant="filter"
+                  disabled={filtersLocked}
                 />
 
                 {/* Role Dropdown */}
                 <CustomSelect
+                  id="um-filter-role"
                   value={roleFilter}
-                  onChange={setRoleFilter}
+                  onChange={(val) => {
+                    if (!filtersLocked) setRoleFilter(val);
+                  }}
                   options={ROLE_FILTER_OPTIONS}
                   icon={<ShieldCheck size={14} color="#64748b" />}
                   placeholder="All Roles"
                   variant="filter"
+                  disabled={filtersLocked}
                 />
 
                 {/* Status Dropdown */}
                 <CustomSelect
+                  id="um-filter-status"
                   value={statusFilter}
-                  onChange={setStatusFilter}
+                  onChange={(val) => {
+                    if (!filtersLocked) setStatusFilter(val);
+                  }}
                   options={STATUS_FILTER_OPTIONS}
                   placeholder="All Status"
                   variant="filter"
+                  disabled={filtersLocked}
                 />
 
-                {/* Sort By Dropdown */}
-                <CustomSelect
-                  value={sortBy}
-                  onChange={setSortBy}
-                  options={SORT_BY_OPTIONS}
-                  icon={<ArrowUpDown size={14} color="#64748b" />}
-                  placeholder="Sort by"
-                  variant="filter"
-                />
+                {/* Sort By Dropdown & Filter Lock */}
+                <div className="um-sort-lock-group">
+                  <CustomSelect
+                    id="um-filter-sort"
+                    value={sortBy}
+                    onChange={(val) => {
+                      if (!filtersLocked) setSortBy(val);
+                    }}
+                    options={SORT_BY_OPTIONS}
+                    icon={<ArrowUpDown size={14} color="#64748b" />}
+                    placeholder="Sort by"
+                    variant="filter"
+                    disabled={filtersLocked}
+                  />
+
+                  <button
+                    id="um-filter-lock-btn"
+                    type="button"
+                    className={`um-fix-filter-chip ${filtersLocked ? 'is-locked' : ''}`}
+                    onClick={toggleFilterLock}
+                    aria-pressed={filtersLocked}
+                    aria-label={filtersLocked ? 'Unlock filters' : 'Lock filters'}
+                  >
+                    {filtersLocked ? <Lock size={16} /> : <Unlock size={16} />}
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Users Table Card */}
-            <div className="um-table-card">
+            <section id="um-table-section" className="um-table-card">
               <div className="um-table-scroll">
-                <table className="um-table">
+                <table id="um-users-table" className="um-table">
                   <thead>
                     <tr>
                       <th>EMP ID / USER ID</th>
@@ -1075,18 +1106,21 @@ function AdminUsers() {
                         <td colSpan="7">
                           <div className="um-empty-state">
                             <Users className="um-empty-icon" />
-                            <h3>No team members found</h3>
+                            <h3 id="um-empty-heading">No team members found</h3>
                             <p>
                               We couldn't find any user accounts matching your search or filters.
                             </p>
                             <button
+                              id="um-reset-filters-btn"
                               className="um-btn-reset-filters"
                               onClick={() => {
                                 setSearchQuery('');
-                                setDepartmentFilter('All');
-                                setRoleFilter('All');
-                                setStatusFilter('All');
-                                setSortBy('default');
+                                if (!filtersLocked) {
+                                  setDepartmentFilter('All');
+                                  setRoleFilter('All');
+                                  setStatusFilter('All');
+                                  setSortBy('default');
+                                }
                               }}
                             >
                               Reset filters
@@ -1102,9 +1136,7 @@ function AdminUsers() {
                         const initialLetter = (user.full_name || user.email || 'U')
                           .charAt(0)
                           .toUpperCase();
-                        const joinedDateStr = user.created_at
-                          ? new Date(user.created_at).toLocaleDateString()
-                          : '10/8/2026';
+                        const joinedDateStr = formatIndianDate(user.created_at, '08/10/2026');
 
                         return (
                           <tr key={user.id}>
@@ -1174,6 +1206,7 @@ function AdminUsers() {
                               <div className="um-actions-cell">
                                 {/* View Action */}
                                 <button
+                                  id={`um-view-user-btn-${user.id}`}
                                   className="um-btn-icon"
                                   title="View user profile"
                                   onClick={() => setViewingUser(user)}
@@ -1181,10 +1214,24 @@ function AdminUsers() {
                                   <Eye size={15} />
                                 </button>
 
+                                {/* Resend Credentials Email Action */}
+                                {!isQAMember && !protectedAcc && (
+                                  <button
+                                    id={`um-resend-invite-btn-${user.id}`}
+                                    className="um-btn-icon"
+                                    title="Resend welcome email with login credentials"
+                                    disabled={resendingUserId === user.id}
+                                    onClick={() => handleResendInvite(user)}
+                                  >
+                                    <Mail size={15} color="#2563EB" />
+                                  </button>
+                                )}
+
                                 {/* Edit Action */}
                                 {!isQAMember && (
                                   protectedAcc ? (
                                     <button
+                                      id={`um-edit-locked-btn-${user.id}`}
                                       className="um-btn-icon is-locked"
                                       disabled
                                       title="Protected system user cannot be edited"
@@ -1193,6 +1240,7 @@ function AdminUsers() {
                                     </button>
                                   ) : (
                                     <button
+                                      id={`um-edit-user-btn-${user.id}`}
                                       className="um-btn-icon"
                                       title="Edit user"
                                       onClick={() => openEditModal(user)}
@@ -1206,6 +1254,7 @@ function AdminUsers() {
                                 {!isQAMember && (
                                   protectedAcc ? (
                                     <button
+                                      id={`um-delete-locked-btn-${user.id}`}
                                       className="um-btn-icon is-locked"
                                       disabled
                                       title="Protected system user cannot be deleted"
@@ -1214,6 +1263,7 @@ function AdminUsers() {
                                     </button>
                                   ) : (
                                     <button
+                                      id={`um-delete-user-btn-${user.id}`}
                                       className="um-btn-icon btn-delete"
                                       title="Delete user"
                                       onClick={() => setUserToDelete(user)}
@@ -1231,7 +1281,7 @@ function AdminUsers() {
                   </tbody>
                 </table>
               </div>
-            </div>
+            </section>
           </div>
         </div>
       </main>
@@ -1239,18 +1289,20 @@ function AdminUsers() {
       {/* CREATE USER MODAL */}
       {isCreateModalOpen && (
         <div
+          id="um-create-modal-overlay"
           className="um-modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setIsCreateModalOpen(false);
           }}
         >
-          <div className="um-modal-card" role="dialog" aria-modal="true" aria-labelledby="create-user-title">
+          <div id="um-create-modal" className="um-modal-card" role="dialog" aria-modal="true" aria-labelledby="create-user-title">
             <div className="um-modal-header">
               <div className="um-modal-header-titles">
                 <h3 id="create-user-title">Create New User</h3>
                 <p>Fill in team member details and configure workspace access.</p>
               </div>
               <button
+                id="um-create-modal-close-btn"
                 className="um-modal-close"
                 onClick={() => setIsCreateModalOpen(false)}
                 aria-label="Close dialog"
@@ -1259,7 +1311,7 @@ function AdminUsers() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="um-modal-form" noValidate>
+            <form id="um-create-user-form" onSubmit={handleCreateUser} className="um-modal-form" noValidate>
               <div className="um-modal-body">
                 {formError && <div className="um-error-banner">{formError}</div>}
 
@@ -1276,10 +1328,11 @@ function AdminUsers() {
                   </div>
                   <div className="um-avatar-upload-controls">
                     <div className="um-avatar-btn-row">
-                      <label className="um-btn-upload">
+                      <label className="um-btn-upload" htmlFor="create-avatar-upload">
                         <Upload size={14} />
                         <span>{formData.avatar ? 'Change Photo' : 'Select Photo'}</span>
                         <input
+                          id="create-avatar-upload"
                           ref={createFileInputRef}
                           type="file"
                           accept="image/png,image/jpeg,image/webp"
@@ -1289,6 +1342,7 @@ function AdminUsers() {
                       </label>
                       {formData.avatar && (
                         <button
+                          id="um-create-remove-avatar-btn"
                           type="button"
                           className="um-btn-remove-avatar"
                           onClick={() => handleRemoveAvatar(false)}
@@ -1317,6 +1371,7 @@ function AdminUsers() {
                         id="create-emp-id"
                         type="text"
                         name="emp_id"
+                        autoComplete="off"
                         value={formData.emp_id}
                         readOnly
                         disabled
@@ -1336,6 +1391,7 @@ function AdminUsers() {
                         id="create-full-name"
                         type="text"
                         name="full_name"
+                        autoComplete="name"
                         placeholder="e.g. Rahul Sharma"
                         maxLength={50}
                         value={formData.full_name}
@@ -1369,6 +1425,7 @@ function AdminUsers() {
                         id="create-email"
                         type="email"
                         name="email"
+                        autoComplete="email"
                         placeholder="e.g. rahul.sharma@company.com"
                         value={formData.email}
                         onChange={handleCreateInputChange}
@@ -1397,6 +1454,7 @@ function AdminUsers() {
                         id="create-phone"
                         type="tel"
                         name="phone"
+                        autoComplete="tel"
                         placeholder="98765 43210"
                         maxLength={10}
                         value={formData.phone}
@@ -1476,7 +1534,7 @@ function AdminUsers() {
                   </div>
 
                   <div className="um-form-group">
-                    <label htmlFor="create-status">
+                    <label id="create-status-label">
                       Account Status
                     </label>
                     <div className="um-status-readonly-box" title="New accounts are automatically activated upon creation">
@@ -1488,23 +1546,11 @@ function AdminUsers() {
                     </div>
                   </div>
                 </div>
-
-                {/* 6. Password Delivery Notice Note */}
-                <div className="um-password-notice-banner">
-                  <div className="um-notice-icon-box">
-                    <Mail size={16} />
-                  </div>
-                  <div className="um-notice-text">
-                    <span className="um-notice-title">Password will be sent through email</span>
-                    <span className="um-notice-desc">
-                      A secure login password will be automatically generated and delivered to the user's registered email address upon account creation.
-                    </span>
-                  </div>
-                </div>
               </div>
 
               <div className="um-modal-footer">
                 <button
+                  id="um-create-cancel-btn"
                   type="button"
                   className="um-btn-secondary"
                   onClick={() => setIsCreateModalOpen(false)}
@@ -1512,6 +1558,7 @@ function AdminUsers() {
                   Cancel
                 </button>
                 <button
+                  id="um-create-submit-btn"
                   type="submit"
                   className="um-btn-primary"
                   disabled={submitting}
@@ -1528,18 +1575,20 @@ function AdminUsers() {
       {/* EDIT USER MODAL */}
       {isEditModalOpen && editFormData && (
         <div
+          id="um-edit-modal-overlay"
           className="um-modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setIsEditModalOpen(false);
           }}
         >
-          <div className="um-modal-card" role="dialog" aria-modal="true" aria-labelledby="edit-user-title">
+          <div id="um-edit-modal" className="um-modal-card" role="dialog" aria-modal="true" aria-labelledby="edit-user-title">
             <div className="um-modal-header">
               <div className="um-modal-header-titles">
                 <h3 id="edit-user-title">Edit User</h3>
                 <p>Update team member details and assigned workspace permissions.</p>
               </div>
               <button
+                id="um-edit-modal-close-btn"
                 className="um-modal-close"
                 onClick={() => setIsEditModalOpen(false)}
                 aria-label="Close dialog"
@@ -1548,7 +1597,7 @@ function AdminUsers() {
               </button>
             </div>
 
-            <form onSubmit={handleUpdateUser} className="um-modal-form" noValidate>
+            <form id="um-edit-user-form" onSubmit={handleUpdateUser} className="um-modal-form" noValidate>
               <div className="um-modal-body">
                 {formError && <div className="um-error-banner">{formError}</div>}
 
@@ -1565,10 +1614,11 @@ function AdminUsers() {
                   </div>
                   <div className="um-avatar-upload-controls">
                     <div className="um-avatar-btn-row">
-                      <label className="um-btn-upload">
+                      <label className="um-btn-upload" htmlFor="edit-avatar-upload">
                         <Upload size={14} />
                         <span>{editFormData.avatar ? 'Change Photo' : 'Select Photo'}</span>
                         <input
+                          id="edit-avatar-upload"
                           ref={editFileInputRef}
                           type="file"
                           accept="image/png,image/jpeg,image/webp"
@@ -1578,6 +1628,7 @@ function AdminUsers() {
                       </label>
                       {editFormData.avatar && (
                         <button
+                          id="um-edit-remove-avatar-btn"
                           type="button"
                           className="um-btn-remove-avatar"
                           onClick={() => handleRemoveAvatar(true)}
@@ -1605,6 +1656,7 @@ function AdminUsers() {
                         id="edit-emp-id"
                         type="text"
                         name="emp_id"
+                        autoComplete="off"
                         value={editFormData.emp_id}
                         readOnly
                         disabled
@@ -1624,6 +1676,7 @@ function AdminUsers() {
                         id="edit-full-name"
                         type="text"
                         name="full_name"
+                        autoComplete="name"
                         placeholder="e.g. Rahul Sharma"
                         maxLength={50}
                         value={editFormData.full_name}
@@ -1656,6 +1709,7 @@ function AdminUsers() {
                         id="edit-email"
                         type="email"
                         name="email"
+                        autoComplete="email"
                         value={editFormData.email}
                         onChange={handleEditInputChange}
                         onBlur={() =>
@@ -1683,6 +1737,7 @@ function AdminUsers() {
                         id="edit-phone"
                         type="tel"
                         name="phone"
+                        autoComplete="tel"
                         placeholder="98765 43210"
                         maxLength={10}
                         value={editFormData.phone}
@@ -1792,6 +1847,7 @@ function AdminUsers() {
 
               <div className="um-modal-footer">
                 <button
+                  id="um-edit-cancel-btn"
                   type="button"
                   className="um-btn-secondary"
                   onClick={() => setIsEditModalOpen(false)}
@@ -1799,6 +1855,7 @@ function AdminUsers() {
                   Cancel
                 </button>
                 <button
+                  id="um-edit-submit-btn"
                   type="submit"
                   className="um-btn-primary"
                   disabled={submitting}
@@ -1814,18 +1871,20 @@ function AdminUsers() {
       {/* VIEW USER DETAILS MODAL */}
       {viewingUser && (
         <div
+          id="um-view-modal-overlay"
           className="um-modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setViewingUser(null);
           }}
         >
-          <div className="um-modal-card" style={{ maxWidth: '560px' }} role="dialog" aria-modal="true">
+          <div id="um-view-modal" className="um-modal-card" style={{ maxWidth: '560px' }} role="dialog" aria-modal="true">
             <div className="um-modal-header">
               <div className="um-modal-header-titles">
-                <h3>User Details</h3>
+                <h3 id="um-view-modal-title">User Details</h3>
                 <p>Detailed workspace membership profile.</p>
               </div>
               <button
+                id="um-view-modal-close-btn"
                 className="um-modal-close"
                 onClick={() => setViewingUser(null)}
                 aria-label="Close dialog"
@@ -1851,7 +1910,7 @@ function AdminUsers() {
                   </div>
                 )}
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>
+                  <h4 id="um-view-user-name" style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>
                     {viewingUser.full_name || 'Team Member'}
                   </h4>
                   <div style={{ color: '#64748b', fontSize: '0.88rem', marginTop: '2px' }}>
@@ -1902,16 +1961,28 @@ function AdminUsers() {
                 <div className="um-view-item">
                   <div className="um-view-label">Joined Date</div>
                   <div className="um-view-val">
-                    {viewingUser.created_at
-                      ? new Date(viewingUser.created_at).toLocaleDateString()
-                      : '10/8/2026'}
+                    {formatIndianDate(viewingUser.created_at, '08/10/2026')}
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="um-modal-footer">
+              {!isQAMember && !PROTECTED_EMAILS.includes(viewingUser.email?.toLowerCase()) && (
+                <button
+                  id="um-view-resend-invite-btn"
+                  type="button"
+                  className="um-btn-secondary"
+                  style={{ color: '#2563EB', borderColor: '#BFDBFE', background: '#EFF6FF', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  disabled={resendingUserId === viewingUser.id}
+                  onClick={() => handleResendInvite(viewingUser)}
+                >
+                  <Mail size={14} />
+                  <span>{resendingUserId === viewingUser.id ? 'Sending...' : 'Resend Credentials Email'}</span>
+                </button>
+              )}
               <button
+                id="um-view-close-footer-btn"
                 type="button"
                 className="um-btn-secondary"
                 onClick={() => setViewingUser(null)}
@@ -1926,17 +1997,19 @@ function AdminUsers() {
       {/* DELETE CONFIRMATION MODAL */}
       {userToDelete && (
         <div
+          id="um-delete-modal-overlay"
           className="um-modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setUserToDelete(null);
           }}
         >
-          <div className="um-modal-card" style={{ maxWidth: '440px' }} role="dialog" aria-modal="true">
+          <div id="um-delete-modal" className="um-modal-card" style={{ maxWidth: '440px' }} role="dialog" aria-modal="true">
             <div className="um-modal-header">
-              <h3 style={{ color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              <h3 id="um-delete-modal-title" style={{ color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <AlertTriangle size={20} color="#dc2626" /> Delete User
               </h3>
               <button
+                id="um-delete-modal-close-btn"
                 className="um-modal-close"
                 onClick={() => setUserToDelete(null)}
                 aria-label="Close dialog"
@@ -1958,6 +2031,7 @@ function AdminUsers() {
 
             <div className="um-modal-footer">
               <button
+                id="um-delete-cancel-btn"
                 type="button"
                 className="um-btn-secondary"
                 onClick={() => setUserToDelete(null)}
@@ -1965,6 +2039,7 @@ function AdminUsers() {
                 Cancel
               </button>
               <button
+                id="um-delete-confirm-btn"
                 type="button"
                 className="um-btn-danger"
                 disabled={submitting}
@@ -1980,25 +2055,27 @@ function AdminUsers() {
       {/* LOGOUT CONFIRMATION MODAL */}
       {showLogoutModal && (
         <div
+          id="um-logout-modal-overlay"
           className="modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setShowLogoutModal(false);
           }}
         >
-          <section className="modal-content" role="dialog" aria-modal="true">
+          <section id="um-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon">
               <LogOut size={21} />
             </div>
-            <h2 className="modal-title">Sign out of your workspace?</h2>
+            <h2 id="um-logout-modal-title" className="modal-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your account credentials.</p>
             <div className="modal-actions">
               <button
+                id="um-logout-cancel-btn"
                 className="modal-btn modal-btn-cancel"
                 onClick={() => setShowLogoutModal(false)}
               >
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="um-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>

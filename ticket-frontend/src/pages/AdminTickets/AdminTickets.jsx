@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import {
+  AlertCircle,
   ArrowLeft,
-  ChevronDown,
+  CheckCircle2,
   ChevronRight,
+  Clock,
   Eye,
   FileText,
   Folder,
@@ -14,7 +16,6 @@ import {
   List,
   LogOut,
   Plus,
-  RefreshCw,
   Search,
   Ticket,
   Upload,
@@ -25,6 +26,7 @@ import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
 import FolderEmblem from '../AdminProjects/FolderEmblem';
+import { getValidToken, clearAuthSession } from '../../utils/auth';
 import '../../styles/admin.css';
 import '../AdminUsers/AdminUsers.css';
 import '../AdminProjects/AdminProjects.css';
@@ -40,8 +42,9 @@ const TICKET_STATUS_OPTIONS = [
 ];
 
 const TICKET_PRIORITY_OPTIONS = [
-  { value: 'All', label: 'All Priorities' },
+  { value: 'All', label: 'All Severities' },
   { value: 'Critical', label: 'Critical' },
+  { value: 'Block', label: 'Block' },
   { value: 'High', label: 'High' },
   { value: 'Medium', label: 'Medium' },
   { value: 'Low', label: 'Low' }
@@ -64,6 +67,7 @@ const MODAL_TYPE_OPTIONS = [
 
 const MODAL_PRIORITY_OPTIONS = [
   { value: 'Critical', label: 'Critical' },
+  { value: 'Block', label: 'Block' },
   { value: 'High', label: 'High' },
   { value: 'Medium', label: 'Medium' },
   { value: 'Low', label: 'Low' }
@@ -80,14 +84,6 @@ const initialTicketForm = {
   attachments: []
 };
 
-const TICKET_STATUS_CLASS_MAP = {
-  Open: 'ticket-status-open',
-  'In Progress': 'ticket-status-in-progress',
-  Resolved: 'ticket-status-resolved',
-  Reopened: 'ticket-status-reopened',
-  Closed: 'ticket-status-closed'
-};
-
 const TICKET_TYPE_CLASS_MAP = {
   Bug: 'type-bug',
   Incident: 'type-incident',
@@ -96,16 +92,67 @@ const TICKET_TYPE_CLASS_MAP = {
   Task: 'type-task'
 };
 
-const TICKET_PRIORITY_CLASS_MAP = {
-  Critical: 'priority-critical',
-  High: 'priority-high',
-  Medium: 'priority-medium',
-  Low: 'priority-low'
+const FOLDER_PRIORITY_LEVELS = [
+  { key: 'critical', label: 'Critical' },
+  { key: 'block', label: 'Block' },
+  { key: 'high', label: 'High' },
+  { key: 'medium', label: 'Medium' },
+  { key: 'low', label: 'Low' }
+];
+
+const SEVERITY_LABEL_MAP = {
+  critical: 'Critical',
+  block: 'Block',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low'
 };
+
+function resolveTicketLevel(ticket) {
+  const priority = String(ticket?.priority || '').trim().toLowerCase();
+  const severity = String(ticket?.severity || '').trim().toLowerCase();
+  const status = String(ticket?.status || '').trim().toLowerCase();
+
+  if (
+    ['block', 'blocker', 'blocked'].includes(priority) ||
+    ['block', 'blocker', 'blocked'].includes(severity) ||
+    ['block', 'blocker', 'blocked'].includes(status)
+  ) {
+    return 'block';
+  }
+  if (priority === 'critical' || priority === 'urgent' || severity === 'critical') {
+    return 'critical';
+  }
+  if (priority === 'high' || priority === 'medium' || priority === 'low') {
+    return priority;
+  }
+  if (severity === 'high' || severity === 'medium' || severity === 'low') {
+    return severity;
+  }
+  return 'medium';
+}
+
+function getFolderPriorityCounts(folderTickets) {
+  const counts = {
+    critical: 0,
+    block: 0,
+    high: 0,
+    medium: 0,
+    low: 0
+  };
+  (folderTickets || []).forEach((ticket) => {
+    const level = resolveTicketLevel(ticket);
+    if (Object.prototype.hasOwnProperty.call(counts, level)) {
+      counts[level] += 1;
+    }
+  });
+  return counts;
+}
 
 function matchesTicketAttributes(ticket, { statusFilter, priorityFilter, typeFilter }) {
   const matchesStatus = statusFilter === 'All' || ticket.status === statusFilter;
-  const matchesPriority = priorityFilter === 'All' || ticket.priority === priorityFilter;
+  const matchesPriority =
+    priorityFilter === 'All' || resolveTicketLevel(ticket) === priorityFilter.toLowerCase();
   const matchesType = typeFilter === 'All' || ticket.type === typeFilter;
   return matchesStatus && matchesPriority && matchesType;
 }
@@ -146,10 +193,9 @@ function AdminTickets() {
   const currentUserRole = localStorage.getItem('userRole') || 'Administrator';
   const isDeveloper = currentUserRole === 'Developer';
   const isProjectLead = currentUserRole === 'Project Lead';
-  const [userEmail] = useState(() => localStorage.getItem('userEmail') || '');
 
   const fetchData = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = getValidToken();
     if (!token) {
       navigate('/', { replace: true });
       return;
@@ -173,10 +219,11 @@ function AdminTickets() {
       setProjects(projectsRes.data || []);
       setUsers(usersRes.data || []);
     } catch (error) {
-      console.error('Failed to load tickets:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
-        localStorage.removeItem('token');
+        clearAuthSession();
         navigate('/', { replace: true });
+      } else {
+        console.error('Failed to load tickets:', error);
       }
     } finally {
       setLoading(false);
@@ -293,6 +340,7 @@ function AdminTickets() {
         'http://localhost:5000/api/admin/tickets',
         {
           ...formData,
+          severity: formData.priority,
           project_id: matchedProject?.id || activeFolder?.projectId || undefined,
           title: formData.title.trim(),
           description: formData.description.trim(),
@@ -506,12 +554,17 @@ function AdminTickets() {
   const statsSource = activeFolder ? activeFolder.tickets : tickets;
   const overviewStats = isShowingFoldersGrid
     ? folderSummaryStats
-    : [
-        { label: activeFolder ? 'Folder Tickets' : 'Total Tickets', value: statsSource.length, tone: 'total' },
-        { label: 'Open', value: statsSource.filter((ticket) => ticket.status === 'Open').length, tone: 'open' },
-        { label: 'In Progress', value: statsSource.filter((ticket) => ticket.status === 'In Progress').length, tone: 'progress' },
-        { label: 'Resolved', value: statsSource.filter((ticket) => ticket.status === 'Resolved').length, tone: 'resolved' }
-      ];
+    : activeFolder
+      ? [
+          { label: 'Tickets', value: statsSource.length, tone: 'total' },
+          { label: 'Resolved', value: statsSource.filter((ticket) => ticket.status === 'Resolved').length, tone: 'resolved' }
+        ]
+      : [
+          { label: 'Total Tickets', value: statsSource.length, tone: 'total' },
+          { label: 'Open', value: statsSource.filter((ticket) => ticket.status === 'Open').length, tone: 'open' },
+          { label: 'In Progress', value: statsSource.filter((ticket) => ticket.status === 'In Progress').length, tone: 'progress' },
+          { label: 'Resolved', value: statsSource.filter((ticket) => ticket.status === 'Resolved').length, tone: 'resolved' }
+        ];
 
   const folderNameByKey = useMemo(() => {
     const map = new Map();
@@ -531,9 +584,6 @@ function AdminTickets() {
     return activeFolder?.projectName || 'General';
   };
 
-  const displayName = userEmail ? userEmail.split('@')[0] : 'Administrator';
-  const avatarLabel = displayName.charAt(0).toUpperCase();
-
   return (
     <div className="admin-layout tickets-page">
       {/* Enhanced Defect Resolution & Inspection Modal */}
@@ -552,23 +602,25 @@ function AdminTickets() {
 
       {showLogoutModal && (
         <div
+          id="tickets-logout-overlay"
           className="modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setShowLogoutModal(false);
           }}
         >
-          <section className="modal-content" role="dialog" aria-modal="true">
+          <section id="tickets-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon"><LogOut size={21} /></div>
-            <h2 className="modal-title">Sign out of your workspace?</h2>
+            <h2 id="tickets-logout-title" className="modal-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your account.</p>
             <div className="modal-actions">
               <button
+                id="tickets-logout-cancel-btn"
                 className="modal-btn modal-btn-cancel"
                 onClick={() => setShowLogoutModal(false)}
               >
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="tickets-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -578,35 +630,13 @@ function AdminTickets() {
 
       <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
 
-      <main className="main-content">
-        <div className="tickets-top-utility-bar">
-          <div className="header-right">
-            <button
-              className="notification-bell"
-              onClick={fetchData}
-              title="Refresh tickets"
-              aria-label="Refresh tickets list"
-            >
-              <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />
-            </button>
-            <div className="profile-divider" />
-            <div className="user-profile">
-              <div className="avatar">{avatarLabel}</div>
-              <div className="user-info">
-                <span className="user-name">{displayName}</span>
-                <span className="user-role">{localStorage.getItem('userRole') || 'Administrator'}</span>
-              </div>
-              <ChevronDown size={15} className="profile-chevron" />
-            </div>
-          </div>
-        </div>
-
+      <main id="tickets-main-content" className="main-content">
         <div className="dashboard-container">
           <div className="projects-layout">
             {!activeFolder && (
               <div className="projects-header-row">
                 <div className="projects-header-info">
-                  <h2>{isDeveloper ? 'Assigned Defects & Project Tickets' : isProjectLead ? 'Project Defect Tickets' : 'Tickets Workspace'}</h2>
+                  <h2 id="tickets-page-heading">{isDeveloper ? 'Assigned Defects & Project Tickets' : isProjectLead ? 'Project Defect Tickets' : 'Tickets Workspace'}</h2>
                   {!isShowingFoldersGrid && (
                     <p>
                       {isDeveloper
@@ -616,8 +646,9 @@ function AdminTickets() {
                   )}
                 </div>
                 <div className="users-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div className="ticket-view-toggle" role="group" aria-label="Ticket workspace view">
+                  <div id="tickets-view-toggle" className="ticket-view-toggle" role="group" aria-label="Ticket workspace view">
                     <button
+                      id="tickets-view-folders-btn"
                       type="button"
                       className={`ticket-view-toggle-btn ${viewMode === 'folders' ? 'active' : ''}`}
                       onClick={() => {
@@ -628,6 +659,7 @@ function AdminTickets() {
                       <span>Project Folders</span>
                     </button>
                     <button
+                      id="tickets-view-all-btn"
                       type="button"
                       className={`ticket-view-toggle-btn ${viewMode === 'all' ? 'active' : ''}`}
                       onClick={() => {
@@ -642,6 +674,7 @@ function AdminTickets() {
 
                   {!isDeveloper && (
                     <button
+                      id="tickets-raise-btn"
                       className="btn-primary-action"
                       onClick={handleOpenRaiseModal}
                     >
@@ -654,9 +687,10 @@ function AdminTickets() {
             )}
 
             {activeFolder && viewMode === 'folders' && (
-              <div className="ticket-active-folder-banner">
+              <div id="tickets-active-folder-banner" className="ticket-active-folder-banner">
                 <div className="ticket-active-folder-left">
                   <button
+                    id="tickets-back-folders-btn"
                     type="button"
                     className="ticket-back-folders-btn"
                     onClick={handleCloseFolder}
@@ -669,7 +703,7 @@ function AdminTickets() {
                   <div className="ticket-active-folder-identity">
                     <div>
                       <div className="ticket-active-folder-title-row">
-                        <h3>{activeFolder.projectName}</h3>
+                        <h3 id="tickets-active-folder-heading">{activeFolder.projectName}</h3>
                         {activeFolder.status && (
                           <span className={`pj-status-badge ${(activeFolder.status || 'active').toLowerCase().replace(/\s+/g, '-')}`}>
                             {activeFolder.status}
@@ -688,6 +722,7 @@ function AdminTickets() {
 
                 {!isDeveloper && (
                   <button
+                    id="tickets-folder-raise-btn"
                     type="button"
                     className="btn-primary-action"
                     onClick={handleOpenRaiseModal}
@@ -700,19 +735,49 @@ function AdminTickets() {
             )}
 
             <div className={`tickets-overview ${isShowingFoldersGrid ? 'folders-overview' : ''}`}>
-              {overviewStats.map((card) => (
-                <div key={card.label} className={`overview-card ${card.tone}`}>
-                  <span>{card.label}</span>
-                  <strong>{card.value}</strong>
-                </div>
-              ))}
+              {overviewStats.map((card) => {
+                const iconTone =
+                  card.tone === 'total'
+                    ? 'blue'
+                    : card.tone === 'open'
+                      ? 'orange'
+                      : card.tone === 'progress'
+                        ? 'purple'
+                        : 'green';
+                const MetricIcon =
+                  card.tone === 'total'
+                    ? isShowingFoldersGrid
+                      ? Folder
+                      : Ticket
+                    : card.tone === 'open'
+                      ? AlertCircle
+                      : card.tone === 'progress'
+                        ? Clock
+                        : CheckCircle2;
+
+                return (
+                  <div key={card.label} className={`overview-card ${card.tone}`}>
+                    <div className="pj-metric-left">
+                      <div className={`pj-metric-icon-box ${iconTone}`}>
+                        <MetricIcon size={24} />
+                      </div>
+                      <div className="pj-metric-info">
+                        <span className="pj-metric-label">{card.label}</span>
+                        <strong className="pj-metric-number">{card.value}</strong>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            <div className="users-filter-bar">
+            <div className={`users-filter-bar ${isShowingFoldersGrid ? 'is-folders-search' : ''}`}>
               <div className="users-search-box">
                 <Search size={16} color="#64748b" />
                 <input
+                  id="tickets-search-input"
                   type="text"
+                  autoComplete="off"
                   placeholder={
                     isShowingFoldersGrid
                       ? 'Search project folder, lead, department, or ticket...'
@@ -724,8 +789,9 @@ function AdminTickets() {
               </div>
 
               {!isShowingFoldersGrid && (
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <div className="tickets-filter-dropdowns">
                   <CustomSelect
+                    id="tickets-status-filter"
                     value={statusFilter}
                     onChange={setStatusFilter}
                     options={TICKET_STATUS_OPTIONS}
@@ -734,14 +800,16 @@ function AdminTickets() {
                   />
 
                   <CustomSelect
+                    id="tickets-priority-filter"
                     value={priorityFilter}
                     onChange={setPriorityFilter}
                     options={TICKET_PRIORITY_OPTIONS}
                     variant="filter"
-                    placeholder="All Priorities"
+                    placeholder="All Severities"
                   />
 
                   <CustomSelect
+                    id="tickets-type-filter"
                     value={typeFilter}
                     onChange={setTypeFilter}
                     options={TICKET_TYPE_OPTIONS}
@@ -783,9 +851,11 @@ function AdminTickets() {
                   <div className="ticket-folders-grid">
                     {visibleFolders.map((folder) => {
                       const folderTickets = folder.tickets;
+                      const priorityCounts = getFolderPriorityCounts(folderTickets);
 
                       return (
                         <div
+                          id={`tickets-folder-card-${folder.key}`}
                           key={folder.key}
                           className={`ticket-folder-card folder-accent-${folder.folderColor || 'blue'}`}
                           role="button"
@@ -816,13 +886,29 @@ function AdminTickets() {
                               </span>
                             </div>
 
-                            <h3 className="ticket-folder-name" title={folder.projectName}>
+                            <h3 id={`tickets-folder-name-${folder.key}`} className="ticket-folder-name" title={folder.projectName}>
                               {folder.projectName}
                             </h3>
                             <p className="ticket-folder-sub">
                               {folder.department || 'Project Workspace'}
                               {folder.leadName ? ` • Lead: ${folder.leadName}` : ''}
                             </p>
+
+                            <div className="ticket-folder-status-strip" aria-label="Ticket status counts by priority">
+                              {FOLDER_PRIORITY_LEVELS.map((level) => {
+                                const count = priorityCounts[level.key];
+                                return (
+                                  <span
+                                    key={level.key}
+                                    className={`folder-stat-chip ${level.key}${count === 0 ? ' is-zero' : ''}`}
+                                  >
+                                    <span className="folder-stat-dot" aria-hidden="true" />
+                                    <span className="folder-stat-label">{level.label}</span>
+                                    <strong className="folder-stat-value">{count}</strong>
+                                  </span>
+                                );
+                              })}
+                            </div>
 
                             <div className="ticket-folder-footer">
                               <span className="ticket-folder-open-cta">
@@ -839,15 +925,14 @@ function AdminTickets() {
               </div>
             ) : (
               <div className="users-table-card">
-                <table className="users-table">
+                <table id="tickets-table" className="users-table">
                   <thead>
                     <tr>
                       <th>Ticket Code</th>
                       <th>Title & Description</th>
                       <th>Project</th>
                       <th>Type</th>
-                      <th>Priority</th>
-                      <th>Status</th>
+                      <th>Severity</th>
                       <th>Assigned To</th>
                       <th>Actions</th>
                     </tr>
@@ -855,13 +940,13 @@ function AdminTickets() {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
+                        <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
                           Loading tickets...
                         </td>
                       </tr>
                     ) : filteredTickets.length === 0 ? (
                       <tr>
-                        <td colSpan="8">
+                        <td colSpan="7">
                           <div className="user-empty-state">
                             <Ticket size={40} style={{ opacity: 0.35, marginBottom: '10px' }} />
                             <p>
@@ -875,6 +960,7 @@ function AdminTickets() {
                     ) : (
                       filteredTickets.map((t) => (
                         <tr
+                          id={`tickets-row-${t.id}`}
                           key={t.id}
                           className="ticket-table-row"
                           onClick={() => {
@@ -921,24 +1007,23 @@ function AdminTickets() {
                             </span>
                           </td>
                           <td>
-                            <span
-                              className={`priority-badge ${TICKET_PRIORITY_CLASS_MAP[t.priority] || 'priority-medium'}`}
-                            >
-                              {t.priority}
-                            </span>
-                          </td>
-                          <td>
-                            <span
-                              className={`status-tag ${TICKET_STATUS_CLASS_MAP[t.status] || 'ticket-status-closed'}`}
-                            >
-                              {t.status}
-                            </span>
+                            {(() => {
+                              const severityLevel = resolveTicketLevel(t);
+                              const severityLabel =
+                                SEVERITY_LABEL_MAP[severityLevel] || t.severity || t.priority || 'Medium';
+                              return (
+                                <span className={`priority-badge priority-${severityLevel}`}>
+                                  {severityLabel}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td style={{ fontWeight: 500, color: '#334155' }}>
                             {t.assigned_to || 'Unassigned'}
                           </td>
                           <td>
                             <button
+                              id={`tickets-view-btn-${t.id}`}
                               type="button"
                               className="ticket-view-button"
                               onClick={(event) => {
@@ -964,12 +1049,13 @@ function AdminTickets() {
 
       {isModalOpen && (
         <div
+          id="raise-ticket-modal-overlay"
           className="ticket-modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setIsModalOpen(false);
           }}
         >
-          <div className="ticket-modal-card" role="dialog" aria-modal="true" aria-labelledby="raise-ticket-title">
+          <div id="raise-ticket-modal-card" className="ticket-modal-card" role="dialog" aria-modal="true" aria-labelledby="raise-ticket-title">
             <div className="modal-header-user">
               <div className="ticket-modal-heading">
                 <span className="ticket-modal-heading-icon"><Ticket size={18} /></span>
@@ -979,6 +1065,7 @@ function AdminTickets() {
                 </div>
               </div>
               <button
+                id="raise-ticket-modal-close-btn"
                 className="modal-close-btn"
                 onClick={() => setIsModalOpen(false)}
                 aria-label="Close dialog"
@@ -987,7 +1074,7 @@ function AdminTickets() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateTicket}>
+            <form id="raise-ticket-form" onSubmit={handleCreateTicket}>
               <div className="modal-body-user">
                 {formError && <div className="user-error-banner">{formError}</div>}
 
@@ -1000,8 +1087,9 @@ function AdminTickets() {
 
                 <div className="form-grid-2">
                   <div className="form-group-user">
-                    <label>Issue Type</label>
+                    <label htmlFor="raise-ticket-type">Issue Type</label>
                     <CustomSelect
+                      id="raise-ticket-type"
                       value={formData.type}
                       onChange={(val) => setFormData((prev) => ({ ...prev, type: val }))}
                       options={MODAL_TYPE_OPTIONS}
@@ -1010,8 +1098,9 @@ function AdminTickets() {
                   </div>
 
                   <div className="form-group-user">
-                    <label>Priority</label>
+                    <label htmlFor="raise-ticket-priority">Severity</label>
                     <CustomSelect
+                      id="raise-ticket-priority"
                       value={formData.priority}
                       onChange={(val) => setFormData((prev) => ({ ...prev, priority: val }))}
                       options={MODAL_PRIORITY_OPTIONS}
@@ -1021,10 +1110,12 @@ function AdminTickets() {
                 </div>
 
                 <div className="form-group-user">
-                  <label>Title *</label>
+                  <label htmlFor="raise-ticket-title-input">Title *</label>
                   <input
+                    id="raise-ticket-title-input"
                     type="text"
                     name="title"
+                    autoComplete="off"
                     placeholder="Short summary of the issue or requirement"
                     required
                     value={formData.title}
@@ -1033,8 +1124,9 @@ function AdminTickets() {
                 </div>
 
                 <div className="form-group-user">
-                  <label>Description</label>
+                  <label htmlFor="raise-ticket-description">Description</label>
                   <textarea
+                    id="raise-ticket-description"
                     name="description"
                     placeholder="Steps to reproduce, expected vs actual behavior..."
                     value={formData.description}
@@ -1045,8 +1137,9 @@ function AdminTickets() {
 
                 <div className="form-grid-2">
                   <div className="form-group-user">
-                    <label>Related Project</label>
+                    <label htmlFor="raise-ticket-project">Related Project</label>
                     <CustomSelect
+                      id="raise-ticket-project"
                       value={formData.project_code}
                       onChange={(val) => setFormData((prev) => ({ ...prev, project_code: val }))}
                       options={projectOptions}
@@ -1055,8 +1148,9 @@ function AdminTickets() {
                   </div>
 
                   <div className="form-group-user">
-                    <label>Assign To</label>
+                    <label htmlFor="raise-ticket-assignee">Assign To</label>
                     <CustomSelect
+                      id="raise-ticket-assignee"
                       value={formData.assigned_to}
                       onChange={(val) => setFormData((prev) => ({ ...prev, assigned_to: val }))}
                       options={userOptions}
@@ -1066,11 +1160,11 @@ function AdminTickets() {
                 </div>
 
                 <div className="form-group-user">
-                  <label>Attachments</label>
-                  <label className="ticket-upload-box">
+                  <label htmlFor="raise-ticket-attachments">Attachments</label>
+                  <label className="ticket-upload-box" htmlFor="raise-ticket-attachments">
                     <Upload size={16} />
                     <span>Upload image or video</span>
-                    <input type="file" accept="image/*,video/*" multiple onChange={handleAttachmentChange} />
+                    <input id="raise-ticket-attachments" type="file" accept="image/*,video/*" multiple onChange={handleAttachmentChange} />
                   </label>
 
                   {(formData.attachments || []).length > 0 && (
@@ -1079,7 +1173,7 @@ function AdminTickets() {
                         <div className="attachment-chip" key={`${attachment.name}-${index}`}>
                           {attachment.mediaType === 'image' ? <ImageIcon size={14} /> : attachment.mediaType === 'video' ? <Video size={14} /> : <FileText size={14} />}
                           <span>{attachment.name}</span>
-                          <button type="button" aria-label={`Remove ${attachment.name}`} onClick={() => removeAttachment(index)}>
+                          <button id={`raise-ticket-remove-att-${index}`} type="button" aria-label={`Remove ${attachment.name}`} onClick={() => removeAttachment(index)}>
                             <X size={12} />
                           </button>
                         </div>
@@ -1091,6 +1185,7 @@ function AdminTickets() {
 
               <div className="modal-footer-user">
                 <button
+                  id="raise-ticket-cancel-btn"
                   type="button"
                   className="btn-secondary"
                   onClick={() => setIsModalOpen(false)}
@@ -1098,6 +1193,7 @@ function AdminTickets() {
                   Cancel
                 </button>
                 <button
+                  id="raise-ticket-submit-btn"
                   type="submit"
                   className="btn-primary-action"
                   disabled={submitting}

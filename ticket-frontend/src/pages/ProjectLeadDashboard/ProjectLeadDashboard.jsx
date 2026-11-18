@@ -16,20 +16,18 @@ import {
   Eye,
   Plus,
   ExternalLink,
-  ChevronDown,
-  RefreshCw,
   X,
   UserPlus,
   Trash2,
   History,
   ShieldCheck,
   Check,
-  Bell,
   LogOut
 } from 'lucide-react';
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
+import { formatIndianDate } from '../../utils/dateFormat';
 import '../../styles/admin.css';
 import './ProjectLeadDashboard.css';
 
@@ -215,7 +213,6 @@ export default function ProjectLeadDashboard() {
   };
 
   const displayName = userName || (userEmail ? userEmail.split('@')[0] : 'Project Lead');
-  const avatarLabel = displayName.charAt(0).toUpperCase();
 
   // Filtered Tickets
   const filteredTickets = useMemo(() => {
@@ -264,16 +261,16 @@ export default function ProjectLeadDashboard() {
     <div className="admin-layout">
       {/* Sign Out Modal */}
       {showLogoutModal && (
-        <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowLogoutModal(false)}>
-          <section className="modal-content" role="dialog" aria-modal="true">
+        <div id="pld-logout-modal-overlay" className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowLogoutModal(false)}>
+          <section id="pld-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon"><LogOut size={21} /></div>
-            <h2 className="modal-title">Sign out of your workspace?</h2>
+            <h2 id="pld-logout-modal-title" className="modal-title">Sign out of your workspace?</h2>
             <p className="modal-text">You can sign back in at any time with your project lead account.</p>
             <div className="modal-actions">
-              <button className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
+              <button id="pld-logout-cancel-btn" className="modal-btn modal-btn-cancel" onClick={() => setShowLogoutModal(false)}>
                 Stay signed in
               </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
+              <button id="pld-logout-confirm-btn" className="modal-btn modal-btn-confirm" onClick={confirmLogout}>
                 Sign out
               </button>
             </div>
@@ -288,44 +285,16 @@ export default function ProjectLeadDashboard() {
         onLogout={() => setShowLogoutModal(true)}
       />
 
-      <main className="main-content">
-        {/* Top Navbar */}
-        <header className="header">
-          <div className="breadcrumb">
-            <span>Workspace</span>
-            <span className="breadcrumb-divider">&gt;</span>
-            <strong>Project Lead Dashboard</strong>
-          </div>
-          <div className="header-right">
-            <button
-              className="notification-bell"
-              onClick={() => { fetchDashboardStats(); fetchTickets(); }}
-              title="Refresh dashboard data"
-              aria-label="Refresh data"
-            >
-              <RefreshCw size={17} className={loading ? 'tdm-spin' : ''} />
-            </button>
-            <div className="profile-divider" />
-            <div className="user-profile">
-              <div className="avatar" style={{ background: '#EFF6FF', color: '#1E3A8A' }}>{avatarLabel}</div>
-              <div className="user-info">
-                <span className="user-name">{displayName}</span>
-                <span className="user-role">Project Lead</span>
-              </div>
-              <ChevronDown size={14} className="profile-chevron" />
-            </div>
-          </div>
-        </header>
-
+      <main id="pld-main-content" className="main-content">
         {/* Dashboard Container */}
         <div className="pld-container">
           {/* Welcome Banner */}
-          <section className="pld-welcome-banner">
+          <section id="pld-welcome-banner" className="pld-welcome-banner">
             <div className="pld-welcome-content">
               <div className="pld-eyebrow">
                 <FolderKanban size={13} /> Project Lead Workspace Console
               </div>
-              <h1>Welcome, Project Lead {displayName}!</h1>
+              <h1 id="pld-welcome-heading">Welcome, Project Lead {displayName}!</h1>
               <p>
                 Direct roadmap execution, assign engineering developers to your projects, inspect complete test case sheets, and triage bug tickets through to closure.
               </p>
@@ -388,10 +357,10 @@ export default function ProjectLeadDashboard() {
           </div>
 
           {/* Section A: Assigned Projects Overview */}
-          <section className="pld-section">
+          <section id="pld-projects-section" className="pld-section">
             <div className="pld-section-header">
               <div>
-                <h2>Assigned Projects Overview</h2>
+                <h2 id="pld-projects-heading">Assigned Projects Overview</h2>
                 <p>Projects allocated under your leadership. Click to access complete test case sheets or manage developers.</p>
               </div>
             </div>
@@ -399,12 +368,12 @@ export default function ProjectLeadDashboard() {
             {projects.length === 0 ? (
               <div className="pld-empty-card">
                 <FolderKanban size={36} color="#94A3B8" />
-                <h3>No Projects Assigned Yet</h3>
+                <h3 id="pld-empty-projects-heading">No Projects Assigned Yet</h3>
                 <p>When an administrator or QA Manager assigns you as Project Lead on a project, it will appear here.</p>
               </div>
             ) : (
               <div className="pld-projects-table-wrap">
-                <table className="pld-table">
+                <table id="pld-projects-table" className="pld-table">
                   <thead>
                     <tr>
                       <th>Project Code & Name</th>
@@ -464,6 +433,7 @@ export default function ProjectLeadDashboard() {
                         <td style={{ textAlign: 'right' }}>
                           <div className="pld-actions-group">
                             <button
+                              id={`pld-proj-sheet-btn-${proj.id}`}
                               type="button"
                               className="pld-btn-action sheet"
                               onClick={() => navigate(`/admin/projects/${proj.id}/sheet`, { state: { project: proj } })}
@@ -473,6 +443,7 @@ export default function ProjectLeadDashboard() {
                               <span>Test Sheet</span>
                             </button>
                             <button
+                              id={`pld-proj-devs-btn-${proj.id}`}
                               type="button"
                               className="pld-btn-action devs"
                               onClick={() => openDevModal(proj)}
@@ -482,6 +453,7 @@ export default function ProjectLeadDashboard() {
                               <span>Developers</span>
                             </button>
                             <button
+                              id={`pld-proj-details-btn-${proj.id}`}
                               type="button"
                               className="pld-btn-action details"
                               onClick={() => navigate(`/admin/projects/${proj.id}`, { state: { project: proj } })}
@@ -500,10 +472,10 @@ export default function ProjectLeadDashboard() {
           </section>
 
           {/* Section B: Project Bug Tickets & Developer Assignment */}
-          <section className="pld-section">
+          <section id="pld-tickets-section" className="pld-section">
             <div className="pld-section-header">
               <div>
-                <h2>Project Bug Tickets Management</h2>
+                <h2 id="pld-tickets-heading">Project Bug Tickets Management</h2>
                 <p>Monitor defects raised from failed test cases, assign project developers, review resolution evidence, and track fixes.</p>
               </div>
               <div className="pld-ticket-count-pill">{filteredTickets.length} Tickets</div>
@@ -514,7 +486,9 @@ export default function ProjectLeadDashboard() {
               <div className="pld-search-box">
                 <Search size={15} />
                 <input
+                  id="pld-search-input"
                   type="text"
+                  autoComplete="off"
                   placeholder="Search by ticket ID, title, module..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -523,6 +497,7 @@ export default function ProjectLeadDashboard() {
 
               <div className="pld-filter-selects" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <CustomSelect
+                  id="pld-status-filter"
                   value={statusFilter}
                   onChange={setStatusFilter}
                   options={PLD_STATUS_OPTIONS}
@@ -531,6 +506,7 @@ export default function ProjectLeadDashboard() {
                 />
 
                 <CustomSelect
+                  id="pld-severity-filter"
                   value={severityFilter}
                   onChange={setSeverityFilter}
                   options={PLD_SEVERITY_OPTIONS}
@@ -540,6 +516,7 @@ export default function ProjectLeadDashboard() {
 
                 {projects.length > 1 && (
                   <CustomSelect
+                    id="pld-project-filter"
                     value={projectFilter}
                     onChange={setProjectFilter}
                     options={pldProjectOptions}
@@ -554,12 +531,12 @@ export default function ProjectLeadDashboard() {
             {filteredTickets.length === 0 ? (
               <div className="pld-empty-card">
                 <Ticket size={34} color="#94A3B8" />
-                <h3>No Bug Tickets Found</h3>
+                <h3 id="pld-empty-tickets-heading">No Bug Tickets Found</h3>
                 <p>No tickets match the selected filters or search query.</p>
               </div>
             ) : (
               <div className="pld-projects-table-wrap">
-                <table className="pld-table">
+                <table id="pld-tickets-table" className="pld-table">
                   <thead>
                     <tr>
                       <th>Ticket ID</th>
@@ -609,6 +586,7 @@ export default function ProjectLeadDashboard() {
                         </td>
                         <td style={{ textAlign: 'right' }}>
                           <button
+                            id={`pld-ticket-preview-btn-${ticket.id}`}
                             type="button"
                             className="pld-btn-preview-ticket"
                             onClick={() => setSelectedTicketId(ticket.id)}
@@ -630,17 +608,18 @@ export default function ProjectLeadDashboard() {
 
       {/* Developer Assignment to Project Modal (Section 4) */}
       {devModalProject && (
-        <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setDevModalProject(null)}>
-          <div className="pld-dev-modal-card">
+        <div id="pld-dev-modal-overlay" className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setDevModalProject(null)}>
+          <div id="pld-dev-modal-card" className="pld-dev-modal-card">
             <div className="pld-modal-header">
               <div>
                 <span className="pld-modal-badge"><Users size={14} /> DEVELOPER MANAGEMENT</span>
-                <h3>Assign Developers: {devModalProject.name}</h3>
+                <h3 id="pld-dev-modal-title">Assign Developers: {devModalProject.name}</h3>
                 <p className="pld-modal-sub">
                   Project Code: <strong>{devModalProject.project_code}</strong> &bull; Assigned Project Lead: <strong>{displayName}</strong>
                 </p>
               </div>
               <button
+                id="pld-dev-modal-close-btn"
                 type="button"
                 className="rbt-close-btn"
                 onClick={() => setDevModalProject(null)}
@@ -669,6 +648,7 @@ export default function ProjectLeadDashboard() {
                   <span>Currently Assigned Engineering Developers ({projectAssignedDevs.length})</span>
                   {devHistory.length > 0 && (
                     <button
+                      id="pld-dev-history-toggle-btn"
                       type="button"
                       className="pld-btn-hist-toggle"
                       onClick={() => setShowDevHistory(!showDevHistory)}
@@ -691,9 +671,10 @@ export default function ProjectLeadDashboard() {
                         <div className="pld-dev-info">
                           <strong>{d.developer_name}</strong>
                           <span>{d.emp_id || 'EMP'} &bull; {d.developer_email}</span>
-                          <small>Assigned on {new Date(d.assigned_at).toLocaleDateString()}</small>
+                          <small>Assigned on {formatIndianDate(d.assigned_at)}</small>
                         </div>
                         <button
+                          id={`pld-remove-dev-btn-${d.developer_id}`}
                           type="button"
                           className="pld-btn-remove-dev"
                           onClick={() => handleRemoveDevFromProject(d.developer_id)}
@@ -717,7 +698,7 @@ export default function ProjectLeadDashboard() {
                       <div key={h.id} className="pld-hist-row">
                         <span><strong>{h.developer_name}</strong> ({h.developer_email})</span>
                         <span className={`pld-hist-status ${h.status.toLowerCase()}`}>{h.status}</span>
-                        <small>Assigned by {h.assigned_by} on {new Date(h.assigned_at).toLocaleDateString()}</small>
+                        <small>Assigned by {h.assigned_by} on {formatIndianDate(h.assigned_at)}</small>
                       </div>
                     ))}
                   </div>
@@ -725,8 +706,8 @@ export default function ProjectLeadDashboard() {
               )}
 
               {/* Bottom: Assign New Developers Form */}
-              <form onSubmit={handleAssignDevsToProject} className="pld-assign-form">
-                <div className="pld-dev-section-title">Available Developers</div>
+              <form id="pld-assign-devs-form" onSubmit={handleAssignDevsToProject} className="pld-assign-form">
+                <div className="pld-dev-section-title">Available Team Members (Developers & QA)</div>
                 <div className="pld-avail-devs-grid">
                   {availableDevelopers.map((dev) => {
                     const isAlreadyAssigned = projectAssignedDevs.some((d) => d.developer_id === dev.id);
@@ -734,6 +715,7 @@ export default function ProjectLeadDashboard() {
 
                     return (
                       <div
+                        id={`pld-avail-dev-card-${dev.id}`}
                         key={dev.id}
                         className={`pld-avail-dev-card ${isSelected ? 'selected' : ''} ${isAlreadyAssigned ? 'assigned' : ''}`}
                         onClick={() => !isAlreadyAssigned && toggleSelectDev(dev.id)}
@@ -742,7 +724,12 @@ export default function ProjectLeadDashboard() {
                           {isSelected ? <Check size={14} color="#fff" /> : null}
                         </div>
                         <div className="pld-avail-info">
-                          <strong>{dev.full_name}</strong>
+                          <strong style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {dev.full_name}
+                            <span style={{ fontSize: 11, fontWeight: 600, color: dev.role === 'QA Member' ? '#0284C7' : '#4F46E5', background: dev.role === 'QA Member' ? '#E0F2FE' : '#EEF2FF', padding: '1px 6px', borderRadius: 4 }}>
+                              {dev.role || 'Member'}
+                            </span>
+                          </strong>
                           <span>{dev.email}</span>
                           {isAlreadyAssigned && <span className="pld-tag-already">Already on Project</span>}
                         </div>
@@ -752,11 +739,13 @@ export default function ProjectLeadDashboard() {
                 </div>
 
                 <div className="pld-notes-input-wrap">
-                  <label>Assignment Notes / Role Focus (Optional)</label>
+                  <label htmlFor="pld-assignment-notes">Assignment Notes / Role Focus (Optional)</label>
                   <input
+                    id="pld-assignment-notes"
                     type="text"
                     className="rbt-input"
                     placeholder="e.g. Frontend bug fixes, API endpoint investigation"
+                    autoComplete="off"
                     value={devAssignmentNotes}
                     onChange={(e) => setDevAssignmentNotes(e.target.value)}
                   />
@@ -764,6 +753,7 @@ export default function ProjectLeadDashboard() {
 
                 <div className="pld-modal-actions">
                   <button
+                    id="pld-dev-modal-done-btn"
                     type="button"
                     className="rbt-btn-cancel"
                     onClick={() => setDevModalProject(null)}
@@ -771,6 +761,7 @@ export default function ProjectLeadDashboard() {
                     Done
                   </button>
                   <button
+                    id="pld-dev-modal-assign-submit-btn"
                     type="submit"
                     className="rbt-btn-submit"
                     disabled={selectedDevIdsToAssign.length === 0 || assigningDevsLoading}
