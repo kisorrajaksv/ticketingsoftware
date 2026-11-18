@@ -850,27 +850,7 @@ function AdminProjects() {
             </div>
           </section>
 
-          {/* QA Member Projects Notice */}
-          {isQAMember && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              background: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-              color: '#166534',
-              padding: '12px 18px',
-              borderRadius: '10px',
-              fontSize: '0.88rem',
-              fontWeight: '500',
-              marginBottom: '16px'
-            }}>
-              <span>📁</span>
-              <span>
-                <strong>QA Projects Access:</strong> You can inspect project details, review test suites, and open execution sheets. Creating and deleting projects is managed by Leads and Managers.
-              </span>
-            </div>
-          )}
+
 
           {/* 2. Dashboard Metrics (2x2) + Search & Filter Panel */}
           <section id="pj-overview-section" className={`pj-overview-controls-row${isDeveloper ? ' pj-no-filters' : ''}`}>

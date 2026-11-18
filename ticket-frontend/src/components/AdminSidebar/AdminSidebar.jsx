@@ -36,7 +36,6 @@ const mainMenuNav = MAIN_ADMIN_NAV;
 export const QA_MEMBER_NAV = [
   { label: 'Dashboard', to: '/qa-member', icon: LayoutDashboard, end: true },
   { label: 'Projects', to: '/admin/projects', icon: FolderKanban },
-  { label: 'Users', to: '/admin/users', icon: Users, end: true },
   { label: 'Tickets', to: '/admin/tickets', icon: Ticket },
   { label: 'Reports', to: '/admin/reports', icon: BarChart3 },
   { label: 'Application Settings', to: '/admin/settings', icon: Settings, end: true }
