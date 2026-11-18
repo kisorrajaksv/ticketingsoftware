@@ -26,6 +26,7 @@ import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
 import FolderEmblem from '../AdminProjects/FolderEmblem';
+import { getValidToken, clearAuthSession } from '../../utils/auth';
 import '../../styles/admin.css';
 import '../AdminUsers/AdminUsers.css';
 import '../AdminProjects/AdminProjects.css';
@@ -194,7 +195,7 @@ function AdminTickets() {
   const isProjectLead = currentUserRole === 'Project Lead';
 
   const fetchData = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = getValidToken();
     if (!token) {
       navigate('/', { replace: true });
       return;
@@ -218,10 +219,11 @@ function AdminTickets() {
       setProjects(projectsRes.data || []);
       setUsers(usersRes.data || []);
     } catch (error) {
-      console.error('Failed to load tickets:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
-        localStorage.removeItem('token');
+        clearAuthSession();
         navigate('/', { replace: true });
+      } else {
+        console.error('Failed to load tickets:', error);
       }
     } finally {
       setLoading(false);
@@ -775,6 +777,7 @@ function AdminTickets() {
                 <input
                   id="tickets-search-input"
                   type="text"
+                  autoComplete="off"
                   placeholder={
                     isShowingFoldersGrid
                       ? 'Search project folder, lead, department, or ticket...'
@@ -1112,6 +1115,7 @@ function AdminTickets() {
                     id="raise-ticket-title-input"
                     type="text"
                     name="title"
+                    autoComplete="off"
                     placeholder="Short summary of the issue or requirement"
                     required
                     value={formData.title}

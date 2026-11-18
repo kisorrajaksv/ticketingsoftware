@@ -229,6 +229,7 @@ function AdminDeployments() {
                   id="deployments-search-input"
                   type="text"
                   placeholder="Search deployment code, service, version..."
+                  autoComplete="off"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -376,6 +377,7 @@ function AdminDeployments() {
                       type="text"
                       name="deploy_code"
                       placeholder="e.g. DEP-905"
+                      autoComplete="off"
                       required
                       value={formData.deploy_code}
                       onChange={handleInputChange}
@@ -402,6 +404,7 @@ function AdminDeployments() {
                       type="text"
                       name="service_name"
                       placeholder="e.g. Payment Gateway API"
+                      autoComplete="off"
                       required
                       value={formData.service_name}
                       onChange={handleInputChange}
@@ -415,6 +418,7 @@ function AdminDeployments() {
                       type="text"
                       name="version"
                       placeholder="e.g. v2.4.1"
+                      autoComplete="off"
                       required
                       value={formData.version}
                       onChange={handleInputChange}
@@ -429,6 +433,7 @@ function AdminDeployments() {
                     type="text"
                     name="release_notes"
                     placeholder="Summary of bug fixes, performance improvements, or PR links..."
+                    autoComplete="off"
                     value={formData.release_notes}
                     onChange={handleInputChange}
                   />
@@ -441,6 +446,7 @@ function AdminDeployments() {
                       id="deploy-requested-by"
                       type="text"
                       name="requested_by"
+                      autoComplete="name"
                       value={formData.requested_by}
                       onChange={handleInputChange}
                     />

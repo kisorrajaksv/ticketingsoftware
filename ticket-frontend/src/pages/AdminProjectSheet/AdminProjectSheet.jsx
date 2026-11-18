@@ -2750,6 +2750,7 @@ export default function AdminProjectSheet() {
                   min="1"
                   max="1000"
                   className="pjs-tb-row-count-input"
+                  autoComplete="off"
                   value={rowsToAddInput}
                   onChange={(e) => setRowsToAddInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -2778,6 +2779,7 @@ export default function AdminProjectSheet() {
               id="pj-sheet-search-input"
               type="text"
               placeholder="Find in sheet..."
+              autoComplete="off"
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
             />
@@ -2802,6 +2804,7 @@ export default function AdminProjectSheet() {
             type="text"
             className="pjs-formula-input"
             placeholder={isDeveloper ? 'Read-only cell value...' : 'Type value or formula for selected cell...'}
+            autoComplete="off"
             value={formulaValue}
             onChange={(e) => {
               if (!isDeveloper) setFormulaValue(e.target.value);
@@ -2992,6 +2995,7 @@ export default function AdminProjectSheet() {
                                   type="text"
                                   placeholder="Paste image URL or Ctrl+V..."
                                   className="pjs-cell-editor"
+                                  autoComplete="off"
                                   value={editValue}
                                   onChange={(e) => setEditValue(e.target.value)}
                                   onBlur={() => commitEdit(rIdx, col.id, editValue)}
@@ -3015,6 +3019,7 @@ export default function AdminProjectSheet() {
                                 ref={cellInputRef}
                                 type={col.type === 'date' ? 'date' : col.type === 'number' ? 'number' : 'text'}
                                 className="pjs-cell-editor"
+                                autoComplete="off"
                                 value={editValue}
                                 onChange={(e) => setEditValue(e.target.value)}
                                 onBlur={() => commitEdit(rIdx, col.id, editValue)}
@@ -3219,6 +3224,7 @@ export default function AdminProjectSheet() {
                 min="1"
                 max="1000"
                 className="pjs-add-rows-input"
+                autoComplete="off"
                 value={rowsToAddInput}
                 onChange={(e) => setRowsToAddInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -3305,6 +3311,7 @@ export default function AdminProjectSheet() {
                         ref={tabRenameInputRef}
                         type="text"
                         className="pjs-tab-rename-input"
+                        autoComplete="off"
                         value={editingTabName}
                         onChange={(e) => setEditingTabName(e.target.value)}
                         onBlur={commitTabRename}
@@ -3509,6 +3516,7 @@ export default function AdminProjectSheet() {
                     id="pj-sheet-new-col-name"
                     type="text"
                     placeholder="e.g. Expected Result, Jira Ticket, Build"
+                    autoComplete="off"
                     value={newColLabel}
                     onChange={(e) => setNewColLabel(e.target.value)}
                     autoFocus
@@ -3667,6 +3675,7 @@ export default function AdminProjectSheet() {
                       id="pj-sheet-cond-new-value"
                       type="text"
                       placeholder="e.g. Pass, Fail, Blocked, Done, High..."
+                      autoComplete="off"
                       value={newRuleValue}
                       onChange={(e) => setNewRuleValue(e.target.value)}
                       style={{ flex: 1, padding: '6px 10px', border: '1px solid #dadce0', borderRadius: '4px', fontSize: '12px' }}

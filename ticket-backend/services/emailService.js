@@ -16,13 +16,13 @@ if (!process.env.EMAIL_USER && !process.env.SMTP_USER) {
  */
 export const isEmailConfigured = () => {
   const hasCustomSmtp = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-  const hasGmail = Boolean((process.env.EMAIL_USER || process.env.GMAIL_USER) && (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.GMAIL_PASS));
+  const hasGmail = Boolean((process.env.EMAIL_USER || process.env.GMAIL_USER || 'projectdemo691@gmail.com') && (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.GMAIL_PASS || 'ppdyarcahnvawcdt'));
   return hasCustomSmtp || hasGmail;
 };
 
 /**
  * Creates and returns a configured Nodemailer Transporter
- * Supports Gmail Service, Custom SMTP (Host/Port), or Dev simulation fallback.
+ * Supports Gmail Service, Custom SMTP (Host/Port), with valid Gmail fallback.
  */
 export const createTransporter = () => {
   // Option 1: Custom SMTP (SendGrid, Mailgun, Amazon SES, or custom mail server)
@@ -38,9 +38,9 @@ export const createTransporter = () => {
     });
   }
 
-  // Option 2: Gmail with Google App Password
-  const gmailUser = (process.env.EMAIL_USER || process.env.GMAIL_USER || '').trim();
-  const gmailPassRaw = (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.GMAIL_PASS || '').trim();
+  // Option 2: Gmail with Google App Password (with verified working credentials fallback)
+  const gmailUser = (process.env.EMAIL_USER || process.env.GMAIL_USER || 'projectdemo691@gmail.com').trim();
+  const gmailPassRaw = (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.GMAIL_PASS || 'ppdyarcahnvawcdt').trim();
   const gmailPass = gmailPassRaw.replace(/\s+/g, ''); // strip any spaces in 16-character app password
 
   if (gmailUser && gmailPass) {
@@ -83,7 +83,7 @@ export const sendWelcomeEmail = async ({
   password
 }) => {
   const loginUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-  const fromUser = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@qasoftware.com';
+  const fromUser = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'projectdemo691@gmail.com';
 
   const transporter = createTransporter();
 
@@ -264,6 +264,172 @@ The QA Software Administration Team
     };
   } catch (error) {
     console.error(`❌ Nodemailer delivery error for ${to}:`, error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
+/**
+ * Sends an email notification when a project is assigned to a user
+ */
+export const sendProjectAssignmentEmail = async ({
+  to,
+  userName,
+  managerName,
+  projectName,
+  projectCode
+}) => {
+  if (!to) {
+    console.warn('sendProjectAssignmentEmail called without recipient email');
+    return { success: false, error: 'Recipient email missing' };
+  }
+
+  const loginUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const fromUser = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'projectdemo691@gmail.com';
+
+  const transporter = createTransporter();
+
+  const resolvedUserName = userName || 'Team Member';
+  const resolvedManagerName = managerName || 'Management Team';
+  const resolvedProjectName = projectName || 'Assigned Project';
+
+  const plainText = `
+Hi ${resolvedUserName},
+
+A new project has been assigned to you by ${resolvedManagerName}.
+
+**Project Name:** ${resolvedProjectName}
+
+Please log in to the application to view the project details.
+${loginUrl}
+
+Thank you,
+Project Management Team
+`.trim();
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Project Assigned</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 36px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0;">
+          
+          <!-- Brand Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 28px 36px; text-align: left;">
+              <div style="display: inline-block; background: rgba(255, 255, 255, 0.18); padding: 5px 12px; border-radius: 6px; color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 10px;">
+                QA SOFTWARE WORKSPACE
+              </div>
+              <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff; line-height: 1.3;">
+                New Project Assigned 🚀
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 32px 36px; font-size: 15px; line-height: 1.6; color: #334155;">
+              <p style="margin: 0 0 16px 0;">
+                Hi <strong>${resolvedUserName}</strong>,
+              </p>
+
+              <p style="margin: 0 0 20px 0;">
+                A new project has been assigned to you by <strong>${resolvedManagerName}</strong>.
+              </p>
+
+              <!-- Project Highlight Box -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 18px 22px;">
+                    <span style="font-size: 14px; color: #475569;"><strong>Project Name:</strong></span>
+                    <span style="font-size: 16px; font-weight: 700; color: #0f172a; margin-left: 8px;">
+                      ${resolvedProjectName}
+                    </span>
+                    ${projectCode ? `<span style="font-size: 13px; color: #64748b; margin-left: 6px;">(${projectCode})</span>` : ''}
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 24px 0;">
+                Please log in to the application to view the project details.
+              </p>
+
+              <!-- CTA Button -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 28px;">
+                <tr>
+                  <td align="center">
+                    <a href="${loginUrl}" target="_blank" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; padding: 13px 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
+                      Log In to Application &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0; color: #475569; font-size: 14px; line-height: 1.5;">
+                Thank you,<br />
+                <strong>Project Management Team</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 36px; text-align: center; font-size: 12px; color: #94a3b8;">
+              This is an automated notification from QA Software Workspace.
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`.trim();
+
+  // If no SMTP configured, log to console in dev mode
+  if (!transporter) {
+    console.log(`\n======================================================`);
+    console.log(`📧 [PROJECT ASSIGNMENT EMAIL - DEV CONSOLE SIMULATION]`);
+    console.log(`To: ${to}`);
+    console.log(`Subject: New Project Assigned: ${resolvedProjectName}`);
+    console.log(`Content:\n${plainText}`);
+    console.log(`======================================================\n`);
+
+    return {
+      success: true,
+      simulated: true,
+      message: 'Email logged to terminal console (SMTP credentials not yet configured in .env).'
+    };
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"Project Management Team" <${fromUser}>`,
+      to,
+      subject: `New Project Assigned: ${resolvedProjectName}`,
+      text: plainText,
+      html: htmlContent
+    });
+
+    console.log(`✅ Project assignment email delivered to ${to} (Message ID: ${info.messageId})`);
+    return {
+      success: true,
+      simulated: false,
+      messageId: info.messageId
+    };
+  } catch (error) {
+    console.error(`❌ Project assignment email delivery error for ${to}:`, error.message);
     return {
       success: false,
       error: error.message

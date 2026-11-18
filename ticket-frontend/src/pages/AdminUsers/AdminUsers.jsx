@@ -37,6 +37,7 @@ import {
 import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import { formatIndianDate } from '../../utils/dateFormat';
+import { getValidToken } from '../../utils/auth';
 import '../../styles/admin.css';
 import './AdminUsers.css';
 
@@ -202,7 +203,7 @@ function AdminUsers() {
   };
 
   const fetchUsers = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = getValidToken();
     if (!token) {
       navigate('/', { replace: true });
       return;
@@ -554,6 +555,30 @@ function AdminUsers() {
   };
 
   // Create User Submission
+  const [resendingUserId, setResendingUserId] = useState(null);
+
+  const handleResendInvite = async (targetUser) => {
+    if (!targetUser?.id) return;
+    setResendingUserId(targetUser.id);
+    const token = localStorage.getItem('token');
+    try {
+      await axios.post(
+        `http://localhost:5000/api/admin/users/${targetUser.id}/resend-invite`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSuccessToast({
+        title: 'Credentials Email Resent',
+        message: `Welcome credentials have been sent successfully to ${targetUser.email}.`
+      });
+      setTimeout(() => setSuccessToast(null), 6000);
+    } catch (err) {
+      setFormError(err.response?.data?.error || 'Failed to resend credentials email.');
+    } finally {
+      setResendingUserId(null);
+    }
+  };
+
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setFormError('');
@@ -969,6 +994,7 @@ function AdminUsers() {
                 <input
                   id="um-search-input"
                   type="text"
+                  autoComplete="off"
                   placeholder="Search by name, email, employee ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -1188,6 +1214,19 @@ function AdminUsers() {
                                   <Eye size={15} />
                                 </button>
 
+                                {/* Resend Credentials Email Action */}
+                                {!isQAMember && !protectedAcc && (
+                                  <button
+                                    id={`um-resend-invite-btn-${user.id}`}
+                                    className="um-btn-icon"
+                                    title="Resend welcome email with login credentials"
+                                    disabled={resendingUserId === user.id}
+                                    onClick={() => handleResendInvite(user)}
+                                  >
+                                    <Mail size={15} color="#2563EB" />
+                                  </button>
+                                )}
+
                                 {/* Edit Action */}
                                 {!isQAMember && (
                                   protectedAcc ? (
@@ -1332,6 +1371,7 @@ function AdminUsers() {
                         id="create-emp-id"
                         type="text"
                         name="emp_id"
+                        autoComplete="off"
                         value={formData.emp_id}
                         readOnly
                         disabled
@@ -1351,6 +1391,7 @@ function AdminUsers() {
                         id="create-full-name"
                         type="text"
                         name="full_name"
+                        autoComplete="name"
                         placeholder="e.g. Rahul Sharma"
                         maxLength={50}
                         value={formData.full_name}
@@ -1384,6 +1425,7 @@ function AdminUsers() {
                         id="create-email"
                         type="email"
                         name="email"
+                        autoComplete="email"
                         placeholder="e.g. rahul.sharma@company.com"
                         value={formData.email}
                         onChange={handleCreateInputChange}
@@ -1412,6 +1454,7 @@ function AdminUsers() {
                         id="create-phone"
                         type="tel"
                         name="phone"
+                        autoComplete="tel"
                         placeholder="98765 43210"
                         maxLength={10}
                         value={formData.phone}
@@ -1491,7 +1534,7 @@ function AdminUsers() {
                   </div>
 
                   <div className="um-form-group">
-                    <label htmlFor="create-status">
+                    <label id="create-status-label">
                       Account Status
                     </label>
                     <div className="um-status-readonly-box" title="New accounts are automatically activated upon creation">
@@ -1613,6 +1656,7 @@ function AdminUsers() {
                         id="edit-emp-id"
                         type="text"
                         name="emp_id"
+                        autoComplete="off"
                         value={editFormData.emp_id}
                         readOnly
                         disabled
@@ -1632,6 +1676,7 @@ function AdminUsers() {
                         id="edit-full-name"
                         type="text"
                         name="full_name"
+                        autoComplete="name"
                         placeholder="e.g. Rahul Sharma"
                         maxLength={50}
                         value={editFormData.full_name}
@@ -1664,6 +1709,7 @@ function AdminUsers() {
                         id="edit-email"
                         type="email"
                         name="email"
+                        autoComplete="email"
                         value={editFormData.email}
                         onChange={handleEditInputChange}
                         onBlur={() =>
@@ -1691,6 +1737,7 @@ function AdminUsers() {
                         id="edit-phone"
                         type="tel"
                         name="phone"
+                        autoComplete="tel"
                         placeholder="98765 43210"
                         maxLength={10}
                         value={editFormData.phone}
@@ -1921,6 +1968,19 @@ function AdminUsers() {
             </div>
 
             <div className="um-modal-footer">
+              {!isQAMember && !PROTECTED_EMAILS.includes(viewingUser.email?.toLowerCase()) && (
+                <button
+                  id="um-view-resend-invite-btn"
+                  type="button"
+                  className="um-btn-secondary"
+                  style={{ color: '#2563EB', borderColor: '#BFDBFE', background: '#EFF6FF', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  disabled={resendingUserId === viewingUser.id}
+                  onClick={() => handleResendInvite(viewingUser)}
+                >
+                  <Mail size={14} />
+                  <span>{resendingUserId === viewingUser.id ? 'Sending...' : 'Resend Credentials Email'}</span>
+                </button>
+              )}
               <button
                 id="um-view-close-footer-btn"
                 type="button"

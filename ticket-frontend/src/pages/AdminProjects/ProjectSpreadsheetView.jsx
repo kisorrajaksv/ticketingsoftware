@@ -414,6 +414,7 @@ export default function ProjectSpreadsheetView({
           type="text"
           className="pj-sheet-formula-input"
           placeholder={readOnly ? 'Read-only cell value...' : 'Enter text, formula or cell value...'}
+          autoComplete="off"
           value={formulaValue}
           onChange={(e) => {
             if (!readOnly) setFormulaValue(e.target.value);
@@ -529,6 +530,7 @@ export default function ProjectSpreadsheetView({
                               ref={cellInputRef}
                               type={col.type === 'number' ? 'number' : col.type === 'date' ? 'date' : 'text'}
                               className="pj-sheet-cell-editor"
+                              autoComplete="off"
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
                               onBlur={() => commitEdit(rIdx, col.key, editValue)}

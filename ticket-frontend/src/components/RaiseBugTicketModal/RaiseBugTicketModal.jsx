@@ -312,6 +312,7 @@ export default function RaiseBugTicketModal({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Concise defect title..."
+                    autoComplete="off"
                   />
                 </div>
 

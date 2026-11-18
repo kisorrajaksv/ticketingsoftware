@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import axios from 'axios';
+import { getValidToken } from '../../utils/auth';
 import {
   BarChart3,
   CheckSquare,
@@ -35,7 +36,6 @@ const mainMenuNav = MAIN_ADMIN_NAV;
 export const QA_MEMBER_NAV = [
   { label: 'Dashboard', to: '/qa-member', icon: LayoutDashboard, end: true },
   { label: 'Projects', to: '/admin/projects', icon: FolderKanban },
-  { label: 'Users', to: '/admin/users', icon: Users, end: true },
   { label: 'Tickets', to: '/admin/tickets', icon: Ticket },
   { label: 'Reports', to: '/admin/reports', icon: BarChart3 },
   { label: 'Application Settings', to: '/admin/settings', icon: Settings, end: true }
@@ -148,7 +148,7 @@ function AdminSidebar({
     window.addEventListener('storage', syncFromStorage);
 
     let active = true;
-    const token = window.localStorage.getItem('token');
+    const token = getValidToken();
     if (token) {
       axios
         .get('http://localhost:5000/api/auth/me', {

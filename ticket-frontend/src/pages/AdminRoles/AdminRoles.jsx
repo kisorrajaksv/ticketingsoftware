@@ -200,6 +200,7 @@ function AdminRoles() {
                   id="roles-search-input"
                   type="text"
                   placeholder="Search role name or capability..."
+                  autoComplete="off"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -297,6 +298,7 @@ function AdminRoles() {
                     type="text"
                     name="role_name"
                     placeholder="e.g. Release Manager or Security Auditor"
+                    autoComplete="off"
                     required
                     value={formData.role_name}
                     onChange={handleInputChange}
@@ -310,6 +312,7 @@ function AdminRoles() {
                     type="text"
                     name="description"
                     placeholder="Brief description of this role's purpose..."
+                    autoComplete="off"
                     value={formData.description}
                     onChange={handleInputChange}
                   />

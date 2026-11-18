@@ -672,6 +672,7 @@ function SettingsContent() {
                   <input
                     id="ws-full-name"
                     type="text"
+                    autoComplete="name"
                     value={profileForm.full_name}
                     onChange={(e) =>
                       setProfileForm((prev) => ({ ...prev, full_name: e.target.value }))
@@ -684,7 +685,7 @@ function SettingsContent() {
 
                 <div className="ws-field">
                   <label htmlFor="ws-email">Email</label>
-                  <input id="ws-email" type="email" value={profileForm.email} readOnly />
+                  <input id="ws-email" type="email" autoComplete="email" value={profileForm.email} readOnly />
                 </div>
 
                 <div className="ws-field full">
@@ -692,6 +693,7 @@ function SettingsContent() {
                   <input
                     id="ws-role-dept"
                     type="text"
+                    autoComplete="off"
                     value={`${profileForm.role || 'Member'}${profileForm.emp_id ? ` • ${profileForm.emp_id}` : ''}`}
                     readOnly
                   />
@@ -907,6 +909,7 @@ function SettingsContent() {
                               id="ws-recipient-search"
                               type="text"
                               placeholder="Search users by name, role, emp ID, email..."
+                              autoComplete="off"
                               value={recipientSearch}
                               onChange={(e) => setRecipientSearch(e.target.value)}
                             />
@@ -997,6 +1000,7 @@ function SettingsContent() {
                       value={notifTitle}
                       onChange={(e) => setNotifTitle(e.target.value)}
                       placeholder="e.g., Regression Build Ready or Maintenance Notice"
+                      autoComplete="off"
                       maxLength={200}
                       required
                     />

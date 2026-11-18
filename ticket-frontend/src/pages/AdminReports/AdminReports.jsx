@@ -677,6 +677,7 @@ export default function AdminReports() {
                         id="reports-project-search"
                         type="text"
                         placeholder="Search project code, name, lead..."
+                        autoComplete="off"
                         value={projectSearch}
                         onChange={(e) => setProjectSearch(e.target.value)}
                       />
@@ -984,6 +985,7 @@ export default function AdminReports() {
                           <input
                             id="reports-qa-date"
                             type="date"
+                            autoComplete="off"
                             value={customDate}
                             onChange={(e) => {
                               setCustomDate(e.target.value);
@@ -1044,6 +1046,7 @@ export default function AdminReports() {
                           id="reports-qa-search"
                           type="text"
                           placeholder="Search QA member name, email..."
+                          autoComplete="off"
                           value={qaSearch}
                           onChange={(e) => setQaSearch(e.target.value)}
                         />

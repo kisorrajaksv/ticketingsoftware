@@ -488,6 +488,7 @@ export default function ProjectLeadDashboard() {
                 <input
                   id="pld-search-input"
                   type="text"
+                  autoComplete="off"
                   placeholder="Search by ticket ID, title, module..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -706,7 +707,7 @@ export default function ProjectLeadDashboard() {
 
               {/* Bottom: Assign New Developers Form */}
               <form id="pld-assign-devs-form" onSubmit={handleAssignDevsToProject} className="pld-assign-form">
-                <div className="pld-dev-section-title">Available Developers</div>
+                <div className="pld-dev-section-title">Available Team Members (Developers & QA)</div>
                 <div className="pld-avail-devs-grid">
                   {availableDevelopers.map((dev) => {
                     const isAlreadyAssigned = projectAssignedDevs.some((d) => d.developer_id === dev.id);
@@ -723,7 +724,12 @@ export default function ProjectLeadDashboard() {
                           {isSelected ? <Check size={14} color="#fff" /> : null}
                         </div>
                         <div className="pld-avail-info">
-                          <strong>{dev.full_name}</strong>
+                          <strong style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {dev.full_name}
+                            <span style={{ fontSize: 11, fontWeight: 600, color: dev.role === 'QA Member' ? '#0284C7' : '#4F46E5', background: dev.role === 'QA Member' ? '#E0F2FE' : '#EEF2FF', padding: '1px 6px', borderRadius: 4 }}>
+                              {dev.role || 'Member'}
+                            </span>
+                          </strong>
                           <span>{dev.email}</span>
                           {isAlreadyAssigned && <span className="pld-tag-already">Already on Project</span>}
                         </div>
@@ -739,6 +745,7 @@ export default function ProjectLeadDashboard() {
                     type="text"
                     className="rbt-input"
                     placeholder="e.g. Frontend bug fixes, API endpoint investigation"
+                    autoComplete="off"
                     value={devAssignmentNotes}
                     onChange={(e) => setDevAssignmentNotes(e.target.value)}
                   />
