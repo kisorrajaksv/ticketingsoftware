@@ -1,19 +1,34 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, KeyRound, X, CheckCircle2, AlertCircle, Copy, Check } from 'lucide-react';
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  KeyRound,
+  X,
+  CheckCircle2,
+  AlertCircle,
+  Copy,
+  Check,
+  ShieldCheck,
+  Layers,
+  Sparkles
+} from 'lucide-react';
 import { applyTheme } from '../../utils/theme';
 import './Login.css';
 
 const CubeLogo = () => (
-  <svg width="140" height="140" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <svg width="120" height="120" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <g transform="translate(50, 50)">
       {/* Top face (White) */}
       <path d="M 0 -40 L 34 -20 L 0 0 L -34 -20 Z" fill="#ffffff" />
       {/* Top face light blue highlight */}
-      <path d="M -34 -20 L -10 -6 L -17 -30 Z" fill="#d1f0ff" />
+      <path d="M -34 -20 L -10 -6 L -17 -30 Z" fill="#e0f2fe" />
       {/* Left face (Vibrant Blue) */}
-      <path d="M -34 -20 L 0 0 L 0 40 L -34 20 Z" fill="#296df2" />
+      <path d="M -34 -20 L 0 0 L 0 40 L -34 20 Z" fill="#2563eb" />
       {/* Right face (Dark Navy) */}
-      <path d="M 0 0 L 34 -20 L 34 20 L 0 40 Z" fill="#1b2a59" />
+      <path d="M 0 0 L 34 -20 L 34 20 L 0 40 Z" fill="#1e293b" />
     </g>
   </svg>
 );
@@ -268,55 +283,127 @@ function Login() {
   };
 
   return (
-    <div className="login-container">
-      <div className="left-panel">
-        <div className="bg-circle-1"></div>
-        <div className="bg-circle-2"></div>
-        <div className="bg-circle-3"></div>
-        
-        <div className="logo-container">
-          <div className="logo-icon-wrapper">
-            <CubeLogo />
+    <div className="login-fullpage-root">
+      {/* ──────────────────────────────────────────────────────────────────
+          Left Panel: 100vh Immersive Glassmorphism Hero Showcase
+          ────────────────────────────────────────────────────────────────── */}
+      <div className="login-hero-pane">
+        <div className="hero-mesh-overlay" aria-hidden="true" />
+        <div className="hero-orb orb-1" aria-hidden="true" />
+        <div className="hero-orb orb-2" aria-hidden="true" />
+        <div className="hero-grid-pattern" aria-hidden="true" />
+
+        <div className="hero-content-wrapper">
+          {/* Top Brand Pill */}
+          <div className="hero-topbar">
+            <div className="hero-brand-pill">
+              <span className="hero-brand-dot" aria-hidden="true" />
+              <span>QA ENTERPRISE CLOUD</span>
+            </div>
           </div>
-          <h1 id="login-brand-heading" className="logo-text">
-            <span>QA</span> Software
-          </h1>
-          <p className="logo-subtitle">Project | Testing | Tickets | Team Management</p>
-          <div className="logo-divider"></div>
+
+          {/* Center Brand Showcase */}
+          <div className="hero-center-body">
+            <div className="hero-cube-pedestal">
+              <div className="hero-cube-wrap">
+                <CubeLogo />
+              </div>
+            </div>
+
+            <h1 id="login-brand-heading" className="hero-main-title">
+              QA <span className="hero-title-accent">Software</span>
+            </h1>
+
+            <p className="hero-subtitle">
+              Next-generation quality management, continuous test execution matrix, and release workflow automation.
+            </p>
+
+            {/* Glassmorphism Feature Cards */}
+            <div className="hero-features-grid">
+              <div className="hero-feature-item">
+                <div className="feature-icon-badge badge-cyan">
+                  <Sparkles size={16} />
+                </div>
+                <div className="feature-info">
+                  <span className="feature-title">Real-Time Defect Tracking</span>
+                  <span className="feature-desc">Interactive ticket triage, reproduction steps, and activity timeline.</span>
+                </div>
+              </div>
+
+              <div className="hero-feature-item">
+                <div className="feature-icon-badge badge-blue">
+                  <Layers size={16} />
+                </div>
+                <div className="feature-info">
+                  <span className="feature-title">Spreadsheet Test Matrix</span>
+                  <span className="feature-desc">High-speed matrix execution, sprint sheets, and instant reporting.</span>
+                </div>
+              </div>
+
+              <div className="hero-feature-item">
+                <div className="feature-icon-badge badge-emerald">
+                  <ShieldCheck size={16} />
+                </div>
+                <div className="feature-info">
+                  <span className="feature-title">Multi-Role Governance</span>
+                  <span className="feature-desc">Granular RBAC approvals for QA Leads, Project Leads & Admins.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Trust & Status Row */}
+          <div className="hero-bottom-bar">
+            <div className="hero-status-pill">
+              <span className="status-indicator-dot" />
+              <span>Systems Operational • 99.9% Uptime</span>
+            </div>
+            <span className="hero-copy-text">© 2026 QA Software Enterprise</span>
+          </div>
         </div>
       </div>
 
-      <div className="right-panel">
-        <div className="form-wrapper">
-          <h2 id="login-welcome-heading" className="welcome-text">
-            Welcome <span>Back</span>
-          </h2>
-          <p className="subtitle">Sign in to your QA Software account</p>
+      {/* ──────────────────────────────────────────────────────────────────
+          Right Panel: 100vh Full-Height Clean Form Surface
+          ────────────────────────────────────────────────────────────────── */}
+      <div className="login-form-pane">
+        <div className="login-form-inner">
+          {/* Mobile-only brand header */}
+          <div className="mobile-brand-banner">
+            <div className="mobile-cube-box">
+              <CubeLogo />
+            </div>
+            <span className="mobile-brand-name">QA Software</span>
+          </div>
 
-          {/* Single Server Error Badge */}
+          {/* Form Header */}
+          <div className="login-form-header">
+            <div className="login-secure-chip">
+              <ShieldCheck size={13} />
+              <span>SECURE ACCESS PORTAL</span>
+            </div>
+            <h2 id="login-welcome-heading" className="login-welcome-title">
+              Welcome <span className="title-highlight">Back</span>
+            </h2>
+            <p className="login-welcome-desc">
+              Sign in with your enterprise credentials to access your QA dashboard.
+            </p>
+          </div>
+
+          {/* Server Error Alert */}
           {serverError && (
-            <div style={{ 
-              backgroundColor: '#fff1f2', 
-              color: '#ef4444', 
-              padding: '12px 16px', 
-              borderRadius: '8px', 
-              marginBottom: '20px', 
-              fontSize: '0.95rem', 
-              fontWeight: '500', 
-              display: 'flex', 
-              alignItems: 'center', 
-              border: '1px solid #fecdd3'
-            }}>
-              <span style={{ marginRight: '10px', fontSize: '1.2rem' }}>⚠️</span>
-              {serverError}
+            <div className="login-server-alert" role="alert">
+              <AlertCircle size={18} className="alert-svg-icon" />
+              <span>{serverError}</span>
             </div>
           )}
 
+          {/* Login Form */}
           <form id="login-form" onSubmit={handleLogin} noValidate autoComplete="off">
             <div className="form-group">
               <label className="form-label" htmlFor="login-email">Email Address</label>
-              <div className={`input-container ${emailError ? 'error-state' : ''}`} style={{ border: emailError ? '1px solid #ef4444' : '', borderRadius: '8px', transition: 'all 0.2s' }}>
-                <Mail className="input-icon" style={{ color: emailError ? '#ef4444' : '#64748b', transition: 'all 0.2s' }} />
+              <div className={`input-container ${emailError ? 'error-state' : ''}`}>
+                <Mail className="input-icon" aria-hidden="true" />
                 <input 
                   id="login-email"
                   type="email" 
@@ -331,19 +418,17 @@ function Login() {
                     if (serverError) setServerError('');
                   }}
                   disabled={isLoading}
-                  style={{ borderColor: 'transparent' }}
                 />
               </div>
-              {/* Permanent reserved space to prevent layout jump */}
-              <div style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px', fontWeight: '500', minHeight: '16px', opacity: emailError ? 1 : 0, transition: 'opacity 0.2s' }}>
+              <div className={`field-error-msg ${emailError ? 'visible' : ''}`}>
                 {emailError || ' '}
               </div>
             </div>
 
-            <div className="form-group" style={{ marginBottom: '5px' }}>
+            <div className="form-group">
               <label className="form-label" htmlFor="login-password">Password</label>
-              <div className={`input-container ${passwordError ? 'error-state' : ''}`} style={{ border: passwordError ? '1px solid #ef4444' : '', borderRadius: '8px', transition: 'all 0.2s' }}>
-                <Lock className="input-icon" style={{ color: passwordError ? '#ef4444' : '#64748b', transition: 'all 0.2s' }} />
+              <div className={`input-container ${passwordError ? 'error-state' : ''}`}>
+                <Lock className="input-icon" aria-hidden="true" />
                 <input 
                   id="login-password"
                   type={showPassword ? "text" : "password"} 
@@ -358,21 +443,37 @@ function Login() {
                     if (serverError) setServerError('');
                   }}
                   disabled={isLoading}
-                  style={{ borderColor: 'transparent' }}
                 />
                 {showPassword ? (
-                  <EyeOff id="login-hide-password-btn" className="eye-icon" onClick={() => !isLoading && setShowPassword(false)} />
+                  <EyeOff
+                    id="login-hide-password-btn"
+                    className="eye-icon"
+                    onClick={() => !isLoading && setShowPassword(false)}
+                    aria-label="Hide password"
+                    role="button"
+                    tabIndex={0}
+                  />
                 ) : (
-                  <Eye id="login-show-password-btn" className="eye-icon" onClick={() => !isLoading && setShowPassword(true)} />
+                  <Eye
+                    id="login-show-password-btn"
+                    className="eye-icon"
+                    onClick={() => !isLoading && setShowPassword(true)}
+                    aria-label="Show password"
+                    role="button"
+                    tabIndex={0}
+                  />
                 )}
               </div>
-              {/* Permanent reserved space to prevent layout jump */}
-              <div style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px', fontWeight: '500', minHeight: '16px', opacity: passwordError ? 1 : 0, transition: 'opacity 0.2s' }}>
+              <div className={`field-error-msg ${passwordError ? 'visible' : ''}`}>
                 {passwordError || ' '}
               </div>
             </div>
 
-            <div className="options-container" style={{ justifyContent: 'flex-end' }}>
+            <div className="options-container">
+              <label className="remember-me-label">
+                <input type="checkbox" className="remember-me-checkbox" defaultChecked />
+                <span>Remember this device</span>
+              </label>
               <button 
                 id="login-forgot-password-link"
                 type="button" 
@@ -383,14 +484,22 @@ function Login() {
               </button>
             </div>
 
-            <button id="login-submit-btn" type="submit" className="sign-in-btn" disabled={isLoading} style={{ opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
+            <button
+              id="login-submit-btn"
+              type="submit"
+              className="sign-in-btn"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
-                  <span style={{ display: 'inline-block', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite', marginRight: '8px' }}></span>
-                  Signing in...
+                  <span className="btn-spinner" aria-hidden="true" />
+                  <span>Signing in...</span>
                 </>
               ) : (
-                <>Sign In <ArrowRight className="sign-in-icon" /></>
+                <>
+                  <span>Sign In to Workspace</span>
+                  <ArrowRight className="sign-in-icon" aria-hidden="true" />
+                </>
               )}
             </button>
           </form>
