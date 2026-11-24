@@ -23,6 +23,8 @@ import {
   X
 } from 'lucide-react';
 import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
+import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
 import FolderEmblem from '../AdminProjects/FolderEmblem';
@@ -628,9 +630,13 @@ function AdminTickets() {
         </div>
       )}
 
-      <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
+      <RoleSidebar roleName={currentUserRole} onLogout={() => setShowLogoutModal(true)} />
 
       <main id="tickets-main-content" className="main-content">
+        <TopNavbar
+          pageTitle={isDeveloper ? 'Assigned Defects & Tickets' : isProjectLead ? 'Project Defect Tickets' : 'Defect Tickets'}
+          breadcrumbs={activeFolder ? [{ label: 'Tickets', to: '/admin/tickets' }] : []}
+        />
         <div className="dashboard-container">
           <div className="projects-layout">
             {!activeFolder && (

@@ -27,6 +27,7 @@ import {
   CalendarDays
 } from 'lucide-react';
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { formatIndianDate } from '../../utils/dateFormat';
 import '../../styles/admin.css';
 import './AdminReports.css';
@@ -512,6 +513,7 @@ export default function AdminReports() {
 
       {/* Main Content Viewport */}
       <main id="reports-main-content" className="main-content">
+        <TopNavbar pageTitle="Quality & Defect Reports" />
         {/* Dashboard Body */}
         <div className="dashboard-container">
           <div className="reports-layout">

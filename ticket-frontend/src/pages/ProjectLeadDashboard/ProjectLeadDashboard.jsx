@@ -25,6 +25,7 @@ import {
   LogOut
 } from 'lucide-react';
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
 import { formatIndianDate } from '../../utils/dateFormat';
@@ -286,6 +287,7 @@ export default function ProjectLeadDashboard() {
       />
 
       <main id="pld-main-content" className="main-content">
+        <TopNavbar pageTitle="Project Lead Console" />
         {/* Dashboard Container */}
         <div className="pld-container">
           {/* Welcome Banner */}

@@ -34,7 +34,8 @@ import {
   UserX,
   X
 } from 'lucide-react';
-import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
+import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import { formatIndianDate } from '../../utils/dateFormat';
 import { getValidToken } from '../../utils/auth';
@@ -914,11 +915,13 @@ function AdminUsers() {
     const total = users.length;
     const active = users.filter((u) => u.status !== 'Inactive').length;
     const inactive = users.filter((u) => u.status === 'Inactive').length;
+    const departments = new Set(users.map((u) => u.department).filter(Boolean)).size || AVAILABLE_DEPARTMENTS.length;
 
     return {
       total,
       active,
-      inactive
+      inactive,
+      departments
     };
   }, [users]);
 
@@ -1041,11 +1044,12 @@ function AdminUsers() {
 
   return (
     <div className="admin-layout users-page">
-      {/* Admin Sidebar Navigation */}
-      <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
+      {/* Role-Based Sidebar Navigation */}
+      <RoleSidebar roleName={currentUserRole} onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Content Area */}
       <main id="um-main-content" className="main-content">
+        <TopNavbar pageTitle={isAdmin ? 'Employee Management' : isQAMember ? 'Team Directory' : 'Users Directory'} />
         {/* Dashboard Body */}
         <div className="dashboard-container">
           {/* Email Invitation / Action Success Toast */}
@@ -1075,6 +1079,9 @@ function AdminUsers() {
             {/* Page Header */}
             <header id="um-header-section" className="um-header-container">
               <div className="um-header-left">
+                <div className="um-header-icon-box">
+                  <Users size={24} color="#2563EB" />
+                </div>
                 <div className="um-header-titles">
                   <h1 id="um-page-heading">
                     {isAdmin ? 'Employee Management' : isQAMember ? 'Team Directory & Users' : 'User Management'}
@@ -1150,48 +1157,62 @@ function AdminUsers() {
               </div>
             )}
 
-            {/* Summary Stat Cards */}
+            {/* 4 Summary Stat Cards */}
             <section id="um-stats-grid" className="um-stats-grid">
               {/* Card 1: Total Users */}
-              <div id="um-stat-total-card" className="um-stat-card">
-                <div className="um-stat-icon-wrap icon-wrap-blue">
-                  <Users size={22} />
-                </div>
-                <div className="um-stat-content">
-                  <div className="um-stat-top">
-                    <span className="um-stat-number">{stats.total}</span>
-                    <span className="um-stat-trend trend-up">↑ 12% vs last month</span>
+              <div id="um-stat-total-card" className="um-stat-card card-total">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-blue">
+                    <Users size={22} />
                   </div>
-                  <div className="um-stat-label">Total Users</div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Total Members</span>
+                    <span className="um-stat-number">{stats.total}</span>
+                  </div>
                 </div>
+                <span className="um-stat-badge badge-blue">Directory</span>
               </div>
 
               {/* Card 2: Active Users */}
-              <div id="um-stat-active-card" className="um-stat-card">
-                <div className="um-stat-icon-wrap icon-wrap-green">
-                  <ShieldCheck size={22} />
-                </div>
-                <div className="um-stat-content">
-                  <div className="um-stat-top">
-                    <span className="um-stat-number">{stats.active}</span>
-                    <span className="um-stat-trend trend-up">↑ 5% vs last month</span>
+              <div id="um-stat-active-card" className="um-stat-card card-active">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-green">
+                    <UserCheck size={22} />
                   </div>
-                  <div className="um-stat-label">Active Users</div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Active Members</span>
+                    <span className="um-stat-number">{stats.active}</span>
+                  </div>
                 </div>
+                <span className="um-stat-badge badge-green">Verified</span>
               </div>
 
               {/* Card 3: Inactive Users */}
-              <div id="um-stat-inactive-card" className="um-stat-card">
-                <div className="um-stat-icon-wrap icon-wrap-orange">
-                  <UserX size={22} />
-                </div>
-                <div className="um-stat-content">
-                  <div className="um-stat-top">
-                    <span className="um-stat-number">{stats.inactive}</span>
-                    <span className="um-stat-trend trend-down">↓ 2% vs last month</span>
+              <div id="um-stat-inactive-card" className="um-stat-card card-inactive">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-orange">
+                    <UserX size={22} />
                   </div>
-                  <div className="um-stat-label">Inactive Users</div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Inactive / Pending</span>
+                    <span className="um-stat-number">{stats.inactive}</span>
+                  </div>
                 </div>
+                <span className="um-stat-badge badge-orange">Offboarded</span>
+              </div>
+
+              {/* Card 4: Departments */}
+              <div id="um-stat-departments-card" className="um-stat-card card-departments">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-purple">
+                    <Building2 size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Departments</span>
+                    <span className="um-stat-number">{stats.departments}</span>
+                  </div>
+                </div>
+                <span className="um-stat-badge badge-purple">Org Units</span>
               </div>
             </section>
 
@@ -1207,6 +1228,16 @@ function AdminUsers() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className="um-search-clear-btn"
+                    onClick={() => setSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
 
               <div className="um-filter-selects">
@@ -1312,27 +1343,48 @@ function AdminUsers() {
                     ) : filteredUsers.length === 0 ? (
                       <tr>
                         <td colSpan="7">
-                          <div className="um-empty-state">
-                            <Users className="um-empty-icon" />
-                            <h3 id="um-empty-heading">No team members found</h3>
-                            <p>
-                              We couldn't find any user accounts matching your search or filters.
+                          <div className="um-empty-state-card">
+                            <div className="um-empty-icon-wrap">
+                              <Users size={32} />
+                            </div>
+                            <h3 id="um-empty-heading">
+                              {users.length === 0 ? 'No Team Members Yet' : 'No Team Members Found'}
+                            </h3>
+                            <p className="um-empty-description">
+                              {users.length === 0
+                                ? 'Your employee directory is clean and ready. Add your first team member or invite staff to get started.'
+                                : "We couldn't find any team members matching your search or filters. Try adjusting your query or resetting filters."}
                             </p>
-                            <button
-                              id="um-reset-filters-btn"
-                              className="um-btn-reset-filters"
-                              onClick={() => {
-                                setSearchQuery('');
-                                if (!filtersLocked) {
-                                  setDepartmentFilter('All');
-                                  setRoleFilter('All');
-                                  setStatusFilter('All');
-                                  setSortBy('default');
-                                }
-                              }}
-                            >
-                              Reset filters
-                            </button>
+                            {users.length === 0 ? (
+                              !isQAMember && (
+                                <button
+                                  id="um-empty-add-user-btn"
+                                  className="um-btn-create"
+                                  onClick={handleOpenCreateModal}
+                                  style={{ marginTop: 8 }}
+                                >
+                                  <Plus size={16} />
+                                  <span>{isAdmin ? 'Add First Employee' : 'Add First User'}</span>
+                                </button>
+                              )
+                            ) : (
+                              <button
+                                id="um-reset-filters-btn"
+                                className="um-btn-reset-filters"
+                                onClick={() => {
+                                  setSearchQuery('');
+                                  if (!filtersLocked) {
+                                    setDepartmentFilter('All');
+                                    setRoleFilter('All');
+                                    setStatusFilter('All');
+                                    setSortBy('default');
+                                  }
+                                }}
+                              >
+                                <RefreshCw size={14} />
+                                <span>Clear All Filters</span>
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

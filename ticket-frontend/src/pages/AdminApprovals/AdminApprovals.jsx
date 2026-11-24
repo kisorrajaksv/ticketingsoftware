@@ -13,6 +13,8 @@ import {
   XCircle
 } from 'lucide-react';
 import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
+import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import { formatIndianDate } from '../../utils/dateFormat';
 import '../../styles/admin.css';
@@ -247,11 +249,12 @@ function AdminApprovals() {
         </div>
       )}
 
-      {/* Admin Sidebar Navigation */}
-      <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
+      {/* Role Sidebar Navigation */}
+      <RoleSidebar roleName={currentUserRole} onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Content Area */}
       <main id="approvals-main-content" className="main-content">
+        <TopNavbar pageTitle="Approvals & Requests" />
         <div className="dashboard-container">
           <div className="projects-layout">
             {/* Header Card */}

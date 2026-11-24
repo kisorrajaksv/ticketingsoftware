@@ -44,6 +44,7 @@ const TESTING_PRIORITY_OPTIONS = [
   { value: 'Low', label: 'Low' }
 ];
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
 import './AdminProjectWorkspace.css';
 
@@ -804,15 +805,13 @@ export default function AdminProjectWorkspace() {
       )}
 
       {/* Sidebar based on role */}
-      {isDeveloper ? (
-        <RoleSidebar roleName="Developer" homeRoute="/developer" onLogout={() => setShowLogoutModal(true)} />
-      ) : isProjectLead ? (
-        <RoleSidebar roleName="Project Lead" homeRoute="/project-lead" onLogout={() => setShowLogoutModal(true)} />
-      ) : (
-        <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
-      )}
+      <RoleSidebar roleName={currentUserRole} onLogout={() => setShowLogoutModal(true)} />
 
       <div className="main-content">
+        <TopNavbar
+          pageTitle={activeProject?.name || 'Project Workspace'}
+          breadcrumbs={[{ label: 'Projects', to: '/admin/projects' }]}
+        />
         <main id="pw-main-content" className="project-workspace">
           <header id="pw-header" className="project-workspace-header">
             <button id="pw-back-btn" className="project-workspace-back" onClick={() => navigate(isDeveloper ? '/developer' : isProjectLead ? '/project-lead' : '/admin/projects')}>

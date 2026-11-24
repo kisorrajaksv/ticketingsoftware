@@ -53,6 +53,8 @@ import {
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../../utils/apiConfig';
 import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
+import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import RaiseBugTicketModal from '../../components/RaiseBugTicketModal/RaiseBugTicketModal';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
 import { formatIndianDate } from '../../utils/dateFormat';
@@ -166,6 +168,7 @@ export default function AdminProjectSheet() {
   const navigate = useNavigate();
   const location = useLocation();
   const isDeveloper = (localStorage.getItem('userRole') || '') === 'Developer';
+  const currentUserRole = localStorage.getItem('userRole') || 'QA Member';
 
   // Project metadata
   const [project, setProject] = useState(() => location.state?.project || {
@@ -2043,10 +2046,17 @@ export default function AdminProjectSheet() {
       )}
 
       {/* Main Left App Sidebar (collapsed for maximum sheet area) */}
-      <AdminSidebar defaultCollapsed onLogout={() => setShowLogoutModal(true)} />
+      <RoleSidebar roleName={currentUserRole} defaultCollapsed onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Google Sheets Application Viewport */}
       <main id="pjs-main-content" className="pjs-main" onKeyDown={handleKeyDown} tabIndex={0} ref={tableRef}>
+        <TopNavbar
+          pageTitle={project?.name ? `${project.name} - Test Execution Matrix` : 'Test Execution Matrix'}
+          breadcrumbs={[
+            { label: 'Projects', to: '/admin/projects' },
+            ...(projectId ? [{ label: project?.name || 'Project Workspace', to: `/admin/projects/${projectId}` }] : [])
+          ]}
+        />
         
         {/* 1. Google Sheets App Header Bar */}
         <header id="pjs-header" className="pjs-header">

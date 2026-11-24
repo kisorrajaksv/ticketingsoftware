@@ -18,6 +18,7 @@ import {
   Settings
 } from 'lucide-react';
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { formatIndianDate } from '../../utils/dateFormat';
 import '../../styles/admin.css';
 import '../../styles/RoleDashboard.css';
@@ -164,6 +165,7 @@ export default function QAMemberDashboard() {
       />
 
       <main id="qa-main-content" className="main-content">
+        <TopNavbar pageTitle="QA Testing Workspace" />
         {/* Dashboard Content */}
         <div className="role-dashboard-container">
           <div className="qa-dashboard-layout">
