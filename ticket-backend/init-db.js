@@ -300,15 +300,17 @@ export const initDatabase = async () => {
     // ========================
     const salt = await bcrypt.genSalt(10);
     const defaultHash = await bcrypt.hash('Kanavu@123', salt);
+    const adminHash = await bcrypt.hash('Admin@123', salt);
 
     // Insert essential role accounts if they don't already exist
     await pool.query(`
       INSERT INTO users (emp_id, full_name, email, password, department, role, status)
       VALUES 
-        ('EMP-001', 'Manager', 'manager@gmail.com', $1, 'Quality Assurance', 'Manager', 'Active'),
-        ('EMP-002', 'QA Lead', 'qalead@gmail.com', $1, 'Quality Assurance', 'QA Lead', 'Active')
+        ('EMP-000', 'System Admin', 'admin@gmail.com', $1, 'Management', 'Admin', 'Active'),
+        ('EMP-001', 'Manager', 'manager@gmail.com', $2, 'Quality Assurance', 'Manager', 'Active'),
+        ('EMP-002', 'QA Lead', 'qalead@gmail.com', $2, 'Quality Assurance', 'QA Lead', 'Active')
       ON CONFLICT (email) DO NOTHING;
-    `, [defaultHash]);
+    `, [adminHash, defaultHash]);
 
     // Backfill project_id on existing tickets if matching project_code
     await pool.query(`
@@ -330,24 +332,22 @@ export const initDatabase = async () => {
     // ========================
     // DEFAULT ROLES
     // ========================
-    const roleCount = await pool.query('SELECT COUNT(*) FROM roles');
-    if (parseInt(roleCount.rows[0].count, 10) === 0) {
-      await pool.query(`
-        INSERT INTO roles (role_name, description, permissions) VALUES
-          ('Manager', 'Complete workspace administration, team management, project governance, and system security controls', 
-           ARRAY['manage_users', 'manage_projects', 'manage_roles', 'view_reports', 'manage_tickets', 'approve_deployments']),
-          ('QA Lead', 'Oversees test strategies, test runs, sprint ticket approvals, and production release sign-offs', 
-           ARRAY['manage_tickets', 'view_reports', 'manage_projects', 'approve_deployments']),
-          ('QA Member', 'Executes manual and automated test cases, logs bug reports, and verifies defect fixes', 
-           ARRAY['manage_tickets', 'view_reports']),
-          ('Developer', 'Investigates assigned defect tickets, develops code fixes, and submits fixes for QA verification', 
-           ARRAY['manage_tickets']),
-          ('Project Lead', 'Directs roadmap execution, sprint velocity, cross-department ticket triage, and delivery milestones', 
-           ARRAY['manage_projects', 'manage_tickets', 'view_reports'])
-        ON CONFLICT (role_name) DO NOTHING;
-      `);
-      console.log('Default roles created: Manager, QA Lead, QA Member, Developer, Project Lead');
-    }
+    await pool.query(`
+      INSERT INTO roles (role_name, description, permissions) VALUES
+        ('Admin', 'Complete company administration, employee management, and system governance', 
+         ARRAY['manage_users', 'manage_projects', 'manage_roles', 'view_reports', 'manage_tickets', 'approve_deployments']),
+        ('Manager', 'Complete workspace administration, team management, project governance, and system security controls', 
+         ARRAY['manage_users', 'manage_projects', 'manage_roles', 'view_reports', 'manage_tickets', 'approve_deployments']),
+        ('QA Lead', 'Oversees test strategies, test runs, sprint ticket approvals, and production release sign-offs', 
+         ARRAY['manage_tickets', 'view_reports', 'manage_projects', 'approve_deployments']),
+        ('QA Member', 'Executes manual and automated test cases, logs bug reports, and verifies defect fixes', 
+         ARRAY['manage_tickets', 'view_reports']),
+        ('Developer', 'Investigates assigned defect tickets, develops code fixes, and submits fixes for QA verification', 
+         ARRAY['manage_tickets']),
+        ('Project Lead', 'Directs roadmap execution, sprint velocity, cross-department ticket triage, and delivery milestones', 
+         ARRAY['manage_projects', 'manage_tickets', 'view_reports'])
+      ON CONFLICT (role_name) DO NOTHING;
+    `);
 
     await backfillAllProjectTestCasesCounts(pool);
 

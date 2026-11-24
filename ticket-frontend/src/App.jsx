@@ -26,6 +26,7 @@ function RoleRoute({ allowedRoles, fallback = '/', children }) {
   }
 
   if (allowedRoles && !allowedRoles.includes(userRole)) {
+    if (userRole === 'Admin' || userRole === 'Super Admin') return <Navigate to="/admin/users" replace />;
     if (userRole === 'QA Member') return <Navigate to="/qa-member" replace />;
     if (userRole === 'Developer') return <Navigate to="/developer" replace />;
     if (userRole === 'Project Lead') return <Navigate to="/project-lead" replace />;
@@ -79,7 +80,15 @@ function App() {
         <Route
           path="/admin/users"
           element={
-            <RoleRoute allowedRoles={['Manager', 'QA Lead']}>
+            <RoleRoute allowedRoles={['Admin', 'Super Admin', 'Manager', 'QA Lead']}>
+              <AdminUsers />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/admin/employees"
+          element={
+            <RoleRoute allowedRoles={['Admin', 'Super Admin', 'Manager', 'QA Lead']}>
               <AdminUsers />
             </RoleRoute>
           }
@@ -87,7 +96,7 @@ function App() {
         <Route
           path="/admin/projects"
           element={
-            <RoleRoute allowedRoles={['Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Developer', 'Super Admin', 'Admin']}>
+            <RoleRoute allowedRoles={['Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Developer']}>
               <AdminProjects />
             </RoleRoute>
           }
@@ -95,7 +104,7 @@ function App() {
         <Route
           path="/admin/projects/:projectId"
           element={
-            <RoleRoute allowedRoles={['Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Developer', 'Super Admin', 'Admin']}>
+            <RoleRoute allowedRoles={['Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Developer']}>
               <AdminProjectWorkspace />
             </RoleRoute>
           }
@@ -105,7 +114,7 @@ function App() {
         <Route
           path="/admin/projects/:projectId/sheet"
           element={
-            <RoleRoute allowedRoles={['Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Super Admin', 'Developer']} fallback="/developer">
+            <RoleRoute allowedRoles={['Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Developer']} fallback="/developer">
               <AdminProjectSheet />
             </RoleRoute>
           }
@@ -118,7 +127,7 @@ function App() {
         <Route
           path="/admin/tickets"
           element={
-            <RoleRoute>
+            <RoleRoute allowedRoles={['Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Developer']}>
               <AdminTickets />
             </RoleRoute>
           }
@@ -126,7 +135,7 @@ function App() {
         <Route
           path="/admin/reports"
           element={
-            <RoleRoute>
+            <RoleRoute allowedRoles={['Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Developer']}>
               <AdminReports />
             </RoleRoute>
           }
@@ -150,7 +159,7 @@ function App() {
         <Route
           path="/admin/settings"
           element={
-            <RoleRoute>
+            <RoleRoute allowedRoles={['Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Developer']}>
               <AdminWorkspacePage section="settings" />
             </RoleRoute>
           }
