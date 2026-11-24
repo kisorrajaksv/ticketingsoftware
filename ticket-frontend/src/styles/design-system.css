@@ -556,7 +556,7 @@ table tbody tr:hover td,
   min-height: 100dvh;
   height: 100vh;
   height: 100dvh;
-  background: var(--color-canvas);
+  background: #F1F5F9;
   color: var(--color-ink);
 }
 
@@ -565,14 +565,15 @@ table tbody tr:hover td,
   min-width: 0;
   height: 100vh;
   height: 100dvh;
-  margin-left: 256px;
+  margin-left: 288px;
   overflow-x: hidden;
   overflow-y: auto;
+  background: #F1F5F9;
   transition: margin-left .22s ease;
 }
 
 .admin-layout .sidebar-collapsed ~ .main-content {
-  margin-left: 76px;
+  margin-left: 104px;
 }
 
 .admin-layout .header,
@@ -1439,12 +1440,12 @@ table tbody tr:hover td,
 
 .pjs-layout .pjs-main {
   min-width: 0;
-  margin-left: 256px;
+  margin-left: 288px;
   transition: margin-left .22s ease;
 }
 
 .pjs-layout .sidebar-collapsed ~ .pjs-main {
-  margin-left: 76px;
+  margin-left: 104px;
 }
 
 .pjs-header,
@@ -2152,9 +2153,7 @@ body:has(.login-container) #root {
   letter-spacing: -.035em;
 }
 
-.admin-layout .users-filter-bar,
-.admin-layout .um-controls-bar,
-.admin-layout .pj-filter-controls-row {
+.admin-layout .users-filter-bar {
   border: none;
   border-radius: 0;
   background: transparent;
@@ -2342,8 +2341,7 @@ body:has(.login-container) #root {
   }
 
   .admin-layout .users-filter-bar,
-  .admin-layout .um-controls-bar,
-  .admin-layout .pj-filter-controls-row {
+  .admin-layout .um-controls-bar {
     border: none;
     border-radius: 0;
     background: transparent;
@@ -3404,8 +3402,8 @@ body:has(.login-container) #root {
 
 .admin-layout.users-page .um-stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
   align-items: center;
   padding: 0;
   margin: 0;
@@ -3427,14 +3425,28 @@ body:has(.login-container) #root {
   border: 1.5px solid #e2e8f0 !important;
   border-radius: 14px !important;
   padding: 16px 20px !important;
-  min-height: 72px !important;
+  min-height: 76px !important;
   display: flex !important;
   flex-direction: row;
   align-items: center;
+  justify-content: space-between !important;
   gap: 16px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   min-width: 0;
+}
+
+.admin-layout.users-page .um-stat-card.card-total {
+  border-left: 4px solid #2563eb !important;
+}
+.admin-layout.users-page .um-stat-card.card-active {
+  border-left: 4px solid #16a34a !important;
+}
+.admin-layout.users-page .um-stat-card.card-inactive {
+  border-left: 4px solid #ea580c !important;
+}
+.admin-layout.users-page .um-stat-card.card-departments {
+  border-left: 4px solid #7c3aed !important;
 }
 
 .admin-layout.users-page .um-stat-card:hover {
@@ -3529,12 +3541,12 @@ body:has(.login-container) #root {
 }
 
 .admin-layout.users-page .um-controls-bar {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  padding: 0;
-  margin: 4px 0 16px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+  padding: 12px 18px;
+  margin: 6px 0 16px;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -3611,12 +3623,14 @@ body:has(.login-container) #root {
   flex-direction: row;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   width: auto;
 }
 
+.admin-layout.users-page .um-filter-selects .c-select-container,
 .admin-layout.users-page .um-filter-selects .c-select-filter {
-  min-width: 140px;
+  width: auto !important;
+  min-width: 145px;
 }
 
 .admin-layout.users-page .um-sort-lock-group {
@@ -3744,9 +3758,12 @@ body:has(.login-container) #root {
   padding-top: 6px;
 }
 
-@media (max-width: 1360px) {
+@media (max-width: 1200px) {
   .admin-layout.users-page .um-filter-selects {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex-wrap: wrap;
+  }
+  .admin-layout.users-page .um-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
 
@@ -3906,14 +3923,14 @@ body:has(.login-container) #root {
 .admin-layout .reports-header-card,
 .admin-layout .users-page-heading,
 .admin-layout .project-workspace-header {
-  position: sticky;
-  top: 0;
-  z-index: 15;
+  position: static;
+  top: auto;
+  z-index: auto;
   width: 100%;
   box-sizing: border-box;
-  background: rgba(241, 245, 249, 0.94);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border: none;
   border-bottom: 1px solid rgba(203, 213, 225, 0.65);
   border-radius: 0;
@@ -3960,19 +3977,19 @@ body:has(.login-container) #root {
 }
 
 .admin-layout.tickets-page .ticket-active-folder-banner {
-  position: sticky;
-  top: 8px;
-  z-index: 15;
+  position: static;
+  top: auto;
+  z-index: auto;
   width: 100%;
   box-sizing: border-box;
   align-self: start;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
 }
 
 .pjs-header {
-  position: sticky;
-  top: 0;
-  z-index: 15;
+  position: static;
+  top: auto;
+  z-index: auto;
 }
 
 @media (max-width: 760px) {

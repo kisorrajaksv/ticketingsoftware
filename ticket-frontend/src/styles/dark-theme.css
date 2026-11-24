@@ -111,8 +111,9 @@ html[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
    Sidebar, Top Headers & Utility Chrome
    ========================================================================== */
 html[data-theme='dark'] .sidebar {
-  background: #080d1a;
-  border-right: 1px solid #1e293b;
+  background: #111827;
+  border: 1.5px solid #1e293b;
+  border-radius: 20px;
 }
 
 html[data-theme='dark'] .sidebar-brand {

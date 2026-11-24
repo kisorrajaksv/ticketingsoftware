@@ -14,6 +14,8 @@ import {
   X
 } from 'lucide-react';
 import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
+import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import '../../styles/admin.css';
 import '../AdminUsers/AdminUsers.css';
 import './AdminRoles.css';
@@ -44,6 +46,7 @@ function AdminRoles() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const currentUserRole = localStorage.getItem('userRole') || 'Administrator';
 
   const fetchRoles = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -167,11 +170,12 @@ function AdminRoles() {
         </div>
       )}
 
-      {/* Admin Sidebar Navigation */}
-      <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
+      {/* Role Sidebar Navigation */}
+      <RoleSidebar roleName={currentUserRole} onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Content */}
       <main id="roles-main-content" className="main-content">
+        <TopNavbar pageTitle="Roles & Permissions" />
         <div className="dashboard-container">
           <div className="users-layout">
             {/* Header Card */}

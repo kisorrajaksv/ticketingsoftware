@@ -14,6 +14,7 @@ import {
   UsersRound
 } from 'lucide-react';
 import AdminSidebar, { SmallCubeLogo } from '../../components/AdminSidebar/AdminSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { formatIndianDate } from '../../utils/dateFormat';
 import '../../styles/admin.css';
 
@@ -178,6 +179,7 @@ function AdminDashboard() {
       />
 
       <main id="dash-main-content" className="main-content">
+        <TopNavbar pageTitle="Dashboard" />
         <div className="dashboard-container">
           <section id="dash-welcome-banner" className="welcome-banner">
             <div className="welcome-content">

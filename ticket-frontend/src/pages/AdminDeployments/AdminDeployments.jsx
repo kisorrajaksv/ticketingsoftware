@@ -11,6 +11,8 @@ import {
   X
 } from 'lucide-react';
 import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
+import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import { formatIndianDate } from '../../utils/dateFormat';
 import '../../styles/admin.css';
@@ -67,6 +69,7 @@ function AdminDeployments() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const currentUserRole = localStorage.getItem('userRole') || 'Administrator';
 
   const fetchDeployments = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -196,11 +199,12 @@ function AdminDeployments() {
         </div>
       )}
 
-      {/* Admin Sidebar Navigation */}
-      <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
+      {/* Role Sidebar Navigation */}
+      <RoleSidebar roleName={currentUserRole} onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Content Area */}
       <main id="deployments-main-content" className="main-content">
+        <TopNavbar pageTitle="Deployment Approvals" />
         <div className="dashboard-container">
           <div className="projects-layout">
             {/* Header Card */}

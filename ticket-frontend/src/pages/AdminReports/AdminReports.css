@@ -79,19 +79,21 @@
    ========================================================================== */
 .reports-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px 20px;
+  width: 100%;
 }
 
 .report-kpi-card {
   background: #FFFFFF;
   border: 1.5px solid #E2E8F0;
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 14px;
+  padding: 16px 20px;
+  min-height: 84px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   position: relative;
   overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -1268,7 +1270,16 @@
 /* ==========================================================================
    14. Responsive Breakpoints
    ========================================================================== */
+@media (max-width: 1024px) {
+  .reports-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
+  .reports-kpi-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .reports-header-card {
     padding: 4px 0 6px;
   }

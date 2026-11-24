@@ -26,7 +26,8 @@ import {
   Users,
   X
 } from 'lucide-react';
-import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
+import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import FolderEmblem from './FolderEmblem';
 import ProjectSpreadsheetView from './ProjectSpreadsheetView';
@@ -804,11 +805,12 @@ function AdminProjects() {
         </div>
       )}
 
-      {/* Admin Sidebar */}
-      <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
+      {/* Role-Based Sidebar */}
+      <RoleSidebar roleName={currentUserRole} onLogout={() => setShowLogoutModal(true)} />
 
       {/* Main Content Pane */}
       <main id="pj-main-content" className="main-content">
+        <TopNavbar pageTitle="Projects Directory" />
         {/* Projects Page Container */}
         <div className="pj-page-container">
           {/* 1. Projects Directory Header Row */}
@@ -816,6 +818,9 @@ function AdminProjects() {
             <div className="pj-title-group">
               <div className="pj-title-text">
                 <h1 id="pj-page-heading">Projects Directory</h1>
+                <p className="pj-subheader-subtitle">
+                  Track projects, monitor test execution progress, and manage QA workspace folders.
+                </p>
               </div>
             </div>
 
@@ -862,59 +867,63 @@ function AdminProjects() {
 
           {/* 2. Dashboard Metrics (2x2) + Search & Filter Panel */}
           <section id="pj-overview-section" className={`pj-overview-controls-row${isDeveloper ? ' pj-no-filters' : ''}`}>
-            {/* Left: Dashboard 2x2 Metric Cards */}
+            {/* Left: Dashboard 4 Metric Cards */}
             <div className="pj-dashboard-panel">
               <div className="pj-metrics-grid">
                 {/* Card 1: Total Projects */}
-                <div id="pj-metric-total" className="pj-metric-card">
+                <div id="pj-metric-total" className="pj-metric-card card-total">
                   <div className="pj-metric-left">
                     <div className="pj-metric-icon-box blue">
-                      <Folder size={24} />
+                      <Folder size={22} />
                     </div>
                     <div className="pj-metric-info">
                       <span className="pj-metric-label">Total Projects</span>
                       <span className="pj-metric-number">{stats.total}</span>
                     </div>
                   </div>
+                  <span className="pj-metric-badge badge-blue">Workspaces</span>
                 </div>
 
                 {/* Card 2: In Progress */}
-                <div id="pj-metric-in-progress" className="pj-metric-card">
+                <div id="pj-metric-in-progress" className="pj-metric-card card-in-progress">
                   <div className="pj-metric-left">
                     <div className="pj-metric-icon-box green">
-                      <PlayCircle size={24} />
+                      <PlayCircle size={22} />
                     </div>
                     <div className="pj-metric-info">
                       <span className="pj-metric-label">In Progress</span>
                       <span className="pj-metric-number">{stats.inProgress}</span>
                     </div>
                   </div>
+                  <span className="pj-metric-badge badge-green">Active QA</span>
                 </div>
 
                 {/* Card 3: Not Started */}
-                <div id="pj-metric-not-started" className="pj-metric-card">
+                <div id="pj-metric-not-started" className="pj-metric-card card-not-started">
                   <div className="pj-metric-left">
                     <div className="pj-metric-icon-box orange">
-                      <Clock size={24} />
+                      <Clock size={22} />
                     </div>
                     <div className="pj-metric-info">
                       <span className="pj-metric-label">Not Started</span>
                       <span className="pj-metric-number">{stats.notStarted}</span>
                     </div>
                   </div>
+                  <span className="pj-metric-badge badge-orange">Pipeline</span>
                 </div>
 
                 {/* Card 4: Completed */}
-                <div id="pj-metric-completed" className="pj-metric-card">
+                <div id="pj-metric-completed" className="pj-metric-card card-completed">
                   <div className="pj-metric-left">
                     <div className="pj-metric-icon-box purple">
-                      <FolderPlus size={24} />
+                      <FolderPlus size={22} />
                     </div>
                     <div className="pj-metric-info">
                       <span className="pj-metric-label">Completed</span>
                       <span className="pj-metric-number">{stats.completed}</span>
                     </div>
                   </div>
+                  <span className="pj-metric-badge badge-purple">Delivered</span>
                 </div>
               </div>
             </div>
@@ -988,27 +997,51 @@ function AdminProjects() {
 
           {/* 4. Projects Display: Sheet View, Grid View or List View */}
           {filteredProjects.length === 0 && viewMode !== 'sheet' ? (
-            <div className="pj-empty-state" style={{
-              background: '#FFFFFF',
-              border: '1.5px dashed #CBD5E1',
-              borderRadius: '16px',
-              padding: '48px 24px',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '12px',
-              margin: '20px 0'
-            }}>
-              <Folder size={42} color="#94A3B8" />
-              <h3 id="pj-empty-heading" style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#1E293B' }}>
-                {isDeveloper || isProjectLead ? 'No Assigned Projects Yet' : 'No Projects Created Yet'}
+            <div className="pj-empty-state-card" id="pj-empty-state">
+              <div className="pj-empty-icon-wrap">
+                <FolderPlus size={32} />
+              </div>
+              <h3 id="pj-empty-heading" className="pj-empty-heading">
+                {projects.length === 0
+                  ? (isDeveloper || isProjectLead)
+                    ? 'No Assigned Projects Yet'
+                    : 'No Projects Created Yet'
+                  : 'No Matching Projects Found'}
               </h3>
-              <p style={{ margin: 0, fontSize: '14px', color: '#64748B', maxWidth: '440px' }}>
-                {isDeveloper || isProjectLead
-                  ? 'You have not been assigned to any projects yet. Contact your Project Lead or Manager to get assigned.'
-                  : 'Your production workspace is clean and ready. Click the "+ Create Project" button above to initiate your first QA project.'}
+              <p className="pj-empty-description">
+                {projects.length === 0
+                  ? (isDeveloper || isProjectLead)
+                    ? 'You have not been assigned to any workspace projects yet. Contact your Project Lead or Manager to get assigned.'
+                    : 'Your workspace is clean and ready. Kickstart test operations by creating your first QA project.'
+                  : `No projects match "${searchQuery || 'current filters'}". Try adjusting your search keyword or clearing active filters.`}
               </p>
+
+              {projects.length === 0 && canManageProjects && (
+                <button
+                  id="pj-empty-create-btn"
+                  className="pj-btn-create-primary"
+                  onClick={openCreateModal}
+                  style={{ marginTop: '4px' }}
+                >
+                  <Plus size={18} strokeWidth={2.5} />
+                  <span>Create Your First Project</span>
+                </button>
+              )}
+
+              {projects.length > 0 && (
+                <button
+                  id="pj-empty-reset-filters-btn"
+                  className="pj-btn-reset-filters"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setDepartmentFilter('All Departments');
+                    setStatusFilter('All Statuses');
+                    setSortBy('Last Updated');
+                  }}
+                >
+                  Clear All Filters
+                </button>
+              )}
             </div>
           ) : viewMode === 'sheet' ? (
             <ProjectSpreadsheetView

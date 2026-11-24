@@ -32,6 +32,8 @@ import {
   UsersRound
 } from 'lucide-react';
 import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
+import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { applyTheme, getSavedTheme } from '../../utils/theme';
 import { formatIndianDateTime } from '../../utils/dateFormat';
 import '../../styles/admin.css';
@@ -510,6 +512,7 @@ function SettingsContent() {
 
   return (
     <main id="ws-settings-main-content" className="main-content">
+      <TopNavbar pageTitle="Application Settings" />
       <div className="ws-settings-page">
         <div className="ws-header-row">
           <div>
@@ -1198,12 +1201,13 @@ function AdminWorkspacePage({ section }) {
         </div>
       )}
 
-      <AdminSidebar onLogout={() => setShowLogoutModal(true)} />
+      <RoleSidebar roleName={localStorage.getItem('userRole') || ''} onLogout={() => setShowLogoutModal(true)} />
 
       {section === 'settings' ? (
         <SettingsContent />
       ) : (
         <main id="ws-main-content" className="main-content">
+          <TopNavbar pageTitle={page.title || "Workspace"} />
           <div className="dashboard-container users-page">
             <section id="ws-page-header-section" className="users-page-heading">
               <div>

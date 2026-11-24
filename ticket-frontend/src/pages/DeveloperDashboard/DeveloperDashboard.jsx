@@ -24,6 +24,7 @@ import {
   Lock
 } from 'lucide-react';
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
+import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
 import '../../styles/admin.css';
@@ -279,6 +280,7 @@ export default function DeveloperDashboard() {
       />
 
       <main id="dev-main-content" className="main-content">
+        <TopNavbar pageTitle="Developer Workspace" />
         {/* Developer Dashboard Container */}
         <div className="dev-container">
           {/* Welcome Banner */}
