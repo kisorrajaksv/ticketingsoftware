@@ -51,6 +51,8 @@ export const dispatchEmail = async ({
     return { success: false, error: 'Recipient email address missing' };
   }
 
+  let lastError = null;
+
   // 1. RESEND API (Top modern Nodemailer replacement - REST HTTP over HTTPS)
   if (process.env.RESEND_API_KEY) {
     try {
@@ -77,8 +79,10 @@ export const dispatchEmail = async ({
         console.log(`✅ [Resend API] Email delivered to ${to} (Message ID: ${data.id})`);
         return { success: true, simulated: false, provider: 'resend', messageId: data.id };
       }
-      console.warn(`⚠️ [Resend API] Error for ${to}:`, data?.message || data?.error || res.statusText);
+      lastError = data?.message || data?.error || res.statusText || 'Resend API error';
+      console.warn(`⚠️ [Resend API] Error for ${to}:`, lastError);
     } catch (err) {
+      lastError = err.message;
       console.warn(`⚠️ [Resend API] Network error for ${to}:`, err.message);
     }
   }
@@ -86,8 +90,8 @@ export const dispatchEmail = async ({
   // 2. BREVO / Sendinblue API (300 free emails/day - REST HTTP API)
   if (process.env.BREVO_API_KEY) {
     try {
-      const fromEmail = process.env.EMAIL_FROM_ADDRESS || 'no-reply@qasoftware.com';
-      const fromName = process.env.EMAIL_FROM_NAME || 'QA Software Workspace';
+      const fromEmail = (process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER || 'projectdemo691@gmail.com').trim();
+      const fromName = (process.env.EMAIL_FROM_NAME || 'QA Software Workspace').trim();
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
@@ -111,8 +115,10 @@ export const dispatchEmail = async ({
         console.log(`✅ [Brevo API] Email delivered to ${to} (Message ID: ${id})`);
         return { success: true, simulated: false, provider: 'brevo', messageId: id };
       }
-      console.warn(`⚠️ [Brevo API] Error for ${to}:`, data?.message || res.statusText);
+      lastError = data?.message || res.statusText || 'Brevo API error';
+      console.warn(`⚠️ [Brevo API] Error for ${to}:`, lastError);
     } catch (err) {
+      lastError = err.message;
       console.warn(`⚠️ [Brevo API] Network error for ${to}:`, err.message);
     }
   }
@@ -123,7 +129,7 @@ export const dispatchEmail = async ({
     try {
       const fromUser = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@qasoftware.com';
       const info = await transporter.sendMail({
-        from: `"QA Software Workspace" <${fromUser}>`,
+        from: fromUser.includes('<') ? fromUser : `"QA Software Workspace" <${fromUser}>`,
         replyTo: replyTo || fromUser,
         to,
         subject,
@@ -132,14 +138,25 @@ export const dispatchEmail = async ({
         headers
       });
 
+      const previewUrl = nodemailer.getTestMessageUrl(info);
       console.log(`✅ [Nodemailer] Email delivered to ${to} (Message ID: ${info.messageId})`);
-      return { success: true, simulated: false, provider: 'nodemailer', messageId: info.messageId };
+      if (previewUrl) {
+        console.log(`🔗 [Live Preview URL]: ${previewUrl}`);
+      }
+      return {
+        success: true,
+        simulated: false,
+        provider: 'nodemailer',
+        messageId: info.messageId,
+        previewUrl: previewUrl || undefined
+      };
     } catch (smtpErr) {
+      lastError = smtpErr.message;
       console.error(`❌ [Nodemailer] Delivery error for ${to}:`, smtpErr.message);
     }
   }
 
-  // 4. Console Dev Simulation (when no provider is active or delivery hit quota)
+  // 4. Console Dev Simulation (when no provider is active or delivery failed)
   console.log(`\n======================================================`);
   console.log(`📧 [EMAIL SERVICE - DEV CONSOLE SIMULATION]`);
   console.log(`To: ${to}`);
@@ -150,16 +167,21 @@ export const dispatchEmail = async ({
   if (department) console.log(`Department: ${department}`);
   if (password) console.log(`🔑 Temporary Password: ${password}`);
   if (code) console.log(`🔑 Verification OTP: ${code}`);
+  if (lastError) console.log(`⚠️ Reason live delivery failed: ${lastError}`);
   console.log(`🌐 Login URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
   console.log(`💡 Setup live email without Nodemailer: Add RESEND_API_KEY or BREVO_API_KEY to ticket-backend/.env`);
   console.log(`======================================================\n`);
 
   return {
-    success: true,
+    success: false,
     simulated: true,
+    delivery_attempted: Boolean(lastError),
+    error: lastError || 'No live email provider configured (credentials logged to console)',
     code,
     temporary_password: password,
-    message: 'Email credentials logged to server console (Add RESEND_API_KEY or BREVO_API_KEY to .env for live delivery).'
+    message: lastError
+      ? `Email delivery failed: ${lastError}. Credentials logged to server console.`
+      : 'Email credentials logged to server console (Add working EMAIL_USER / EMAIL_APP_PASSWORD, RESEND_API_KEY, or BREVO_API_KEY to .env for live delivery).'
   };
 };
 
@@ -168,15 +190,18 @@ export const dispatchEmail = async ({
  * Supports Gmail Service, Custom SMTP (Host/Port), with valid Gmail fallback.
  */
 export const createTransporter = () => {
-  // Option 1: Custom SMTP (SendGrid, Mailgun, Amazon SES, or custom mail server)
+  // Option 1: Custom SMTP (Ethereal, SendGrid, Mailgun, Amazon SES, or custom mail server)
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
+      host: process.env.SMTP_HOST.trim(),
       port: Number(process.env.SMTP_PORT) || 587,
       secure: process.env.SMTP_SECURE === 'true' || Number(process.env.SMTP_PORT) === 465,
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
+        user: process.env.SMTP_USER.trim(),
+        pass: process.env.SMTP_PASS.trim()
+      },
+      tls: {
+        rejectUnauthorized: false
       }
     });
   }
@@ -192,11 +217,62 @@ export const createTransporter = () => {
       auth: {
         user: gmailUser,
         pass: gmailPass
+      },
+      tls: {
+        rejectUnauthorized: false
       }
     });
   }
 
   return null;
+};
+
+/**
+ * Returns complete diagnostic health of configured email systems
+ */
+export const checkEmailStatus = async () => {
+  const status = {
+    configured: isEmailConfigured(),
+    provider: 'none',
+    user: (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim(),
+    from: (process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@qasoftware.com').trim(),
+    transporter_ready: false,
+    diagnostic: ''
+  };
+
+  if (process.env.RESEND_API_KEY) {
+    status.provider = 'resend';
+    status.transporter_ready = true;
+    status.diagnostic = 'Resend HTTP API key is configured.';
+    return status;
+  }
+  if (process.env.BREVO_API_KEY) {
+    status.provider = 'brevo';
+    status.transporter_ready = true;
+    status.diagnostic = 'Brevo HTTP API key is configured.';
+    return status;
+  }
+  if (process.env.SMTP_HOST) {
+    status.provider = 'custom_smtp';
+  } else if (process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD) {
+    status.provider = 'gmail_smtp';
+  }
+
+  const transporter = createTransporter();
+  if (transporter) {
+    try {
+      await transporter.verify();
+      status.transporter_ready = true;
+      status.diagnostic = 'SMTP connection verified successfully with mail host.';
+    } catch (vErr) {
+      status.transporter_ready = false;
+      status.diagnostic = `SMTP verification error: ${vErr.message}`;
+    }
+  } else {
+    status.diagnostic = 'No email credentials found in environment. Emails are logged to console.';
+  }
+
+  return status;
 };
 
 /**
@@ -227,8 +303,6 @@ export const sendWelcomeEmail = async ({
 }) => {
   const loginUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const fromUser = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'projectdemo691@gmail.com';
-
-  const transporter = createTransporter();
 
   const plainText = `
 Welcome to QA Software Workspace!
@@ -400,8 +474,6 @@ export const sendProjectAssignmentEmail = async ({
   const loginUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const fromUser = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'projectdemo691@gmail.com';
 
-  const transporter = createTransporter();
-
   const resolvedUserName = userName || 'Team Member';
   const resolvedManagerName = managerName || 'Management Team';
   const resolvedProjectName = projectName || 'Assigned Project';
@@ -527,8 +599,6 @@ export const sendPasswordResetEmail = async ({
 }) => {
   const loginUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const fromUser = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@qasoftware.com';
-
-  const transporter = createTransporter();
 
   const plainText = `
 Password Reset Request - QA Software Workspace
@@ -659,7 +729,6 @@ export const sendVerificationCodeEmail = async ({
   code
 }) => {
   const fromUser = (process.env.EMAIL_FROM || process.env.EMAIL_USER || 'qalead.ksv@gmail.com').trim();
-  const transporter = createTransporter();
 
   // Clean, spam-safe plain text version matching the HTML content
   const plainText = `

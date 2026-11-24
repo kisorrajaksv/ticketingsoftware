@@ -77,15 +77,22 @@ export default function AdminProjectWorkspace() {
   const isDeveloper = currentUserRole === 'Developer';
   const isProjectLead = currentUserRole === 'Project Lead';
   const isQAMember = currentUserRole === 'QA Member';
+  const isQALead = currentUserRole === 'QA Lead';
   const isManager = currentUserRole === 'Manager' || currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
 
-  // Access rules: Manager, QA Lead, Project Lead (plus Super Admin, Admin) can assign Project Leads & Team Members
-  const canAssignLeadAndDevs = ['Manager', 'QA Lead', 'Project Lead', 'Super Admin', 'Admin'].includes(currentUserRole);
-  // Everyone EXCEPT QA Members and Developers can upload documents and edit Application URL / GitHub Link
-  const canEditDocsAndLinks = !isQAMember && !isDeveloper;
-  // Only Project Lead and Manager can lock/unlock files & link fields and access Testing Request page
-  const canLockContent = isManager || isProjectLead;
+  // Access rules: Manager, QA Lead, Super Admin, Admin can assign Project Leads (NOT Project Lead)
+  const canAssignProjectLead = !isProjectLead && !isQAMember && !isDeveloper && ['Manager', 'QA Lead', 'Super Admin', 'Admin'].includes(currentUserRole);
+  // Manager, QA Lead, Project Lead (plus Super Admin, Admin) can assign Team Members
+  const canAssignTeamMembers = ['Manager', 'QA Lead', 'Project Lead', 'Super Admin', 'Admin'].includes(currentUserRole);
+  // Everyone EXCEPT QA Members can upload documents and edit Application URL / GitHub Link (when not locked)
+  // Developers CAN edit and upload when unlocked; when locked by Manager or QA Lead, they cannot edit/update
+  const canEditDocsAndLinks = !isQAMember;
+  // Manager, QA Lead, and Project Lead can lock/unlock files & link fields and access Testing Request page
+  const canLockContent = isManager || isProjectLead || isQALead;
   const canManageTestingRequest = isManager || isProjectLead;
+
+  // Assignment History is restricted to Manager and QA Lead only (hidden in all other sections)
+  const canViewAssignmentHistory = isManager || isQALead;
 
   const visibleWorkspaceFolders = useMemo(
     () =>
@@ -128,6 +135,14 @@ export default function AdminProjectWorkspace() {
   const [devAssignLoading, setDevAssignLoading] = useState(false);
   const [devAssignMsg, setDevAssignMsg] = useState({ text: '', type: '' });
   const [showDevHistory, setShowDevHistory] = useState(false);
+
+  // Filter team members assignable: for Project Lead, show only Developers
+  const assignableTeamMembers = useMemo(() => {
+    if (isProjectLead) {
+      return availableDevs.filter((dev) => dev.role === 'Developer');
+    }
+    return availableDevs;
+  }, [availableDevs, isProjectLead]);
 
   // Documents & Application Links State
   const [documents, setDocuments] = useState([]);
@@ -281,7 +296,9 @@ export default function AdminProjectWorkspace() {
     try {
       const [leadsRes, histRes] = await Promise.all([
         axios.get('http://localhost:5000/api/admin/project-leads', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`http://localhost:5000/api/admin/projects/${projectId}/lead-history`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] }))
+        canViewAssignmentHistory
+          ? axios.get(`http://localhost:5000/api/admin/projects/${projectId}/lead-history`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] }))
+          : Promise.resolve({ data: [] })
       ]);
       const rawLeads = Array.isArray(leadsRes.data) ? leadsRes.data : [];
       const filteredLeads = rawLeads.filter((u) => {
@@ -302,7 +319,9 @@ export default function AdminProjectWorkspace() {
       const [assignedRes, availRes, histRes] = await Promise.all([
         axios.get(`http://localhost:5000/api/admin/projects/${projectId}/developers`, { headers: { Authorization: `Bearer ${token}` } }),
         axios.get('http://localhost:5000/api/admin/developers', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`http://localhost:5000/api/admin/projects/${projectId}/developer-history`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] }))
+        canViewAssignmentHistory
+          ? axios.get(`http://localhost:5000/api/admin/projects/${projectId}/developer-history`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] }))
+          : Promise.resolve({ data: [] })
       ]);
       setAssignedDevs(Array.isArray(assignedRes.data) ? assignedRes.data : []);
       setAvailableDevs(Array.isArray(availRes.data) ? availRes.data : []);
@@ -662,7 +681,7 @@ export default function AdminProjectWorkspace() {
 
   const handleAssignProjectLead = async (e) => {
     e.preventDefault();
-    if (!canAssignLeadAndDevs) {
+    if (!canAssignProjectLead) {
       setLeadAssignMsg({ text: 'Access Denied: Only Manager and QA Lead can assign a Project Lead.', type: 'error' });
       return;
     }
@@ -696,7 +715,7 @@ export default function AdminProjectWorkspace() {
 
   const handleAssignDevelopers = async (e) => {
     e.preventDefault();
-    if (!canAssignLeadAndDevs) {
+    if (!canAssignTeamMembers) {
       setDevAssignMsg({ text: 'Access Denied: Only Manager, QA Lead, and Project Lead can assign team members.', type: 'error' });
       return;
     }
@@ -730,7 +749,7 @@ export default function AdminProjectWorkspace() {
   };
 
   const handleRemoveDeveloper = async (developerId) => {
-    if (!canAssignLeadAndDevs) {
+    if (!canAssignTeamMembers) {
       alert('Access Denied: Only Manager, QA Lead, and Project Lead can remove team members.');
       return;
     }
@@ -931,7 +950,7 @@ export default function AdminProjectWorkspace() {
             <section id="pw-lead-section" className="project-workspace-content">
               <div className="project-content-heading">
                 <div><span>PROJECT LEAD MANAGEMENT</span><h2 id="pw-lead-heading">Project Lead Allocation</h2></div>
-                {canAssignLeadAndDevs && (
+                {canAssignProjectLead && (
                   <button
                     id="pw-add-lead-btn"
                     className="pw-btn-action-primary"
@@ -965,51 +984,53 @@ export default function AdminProjectWorkspace() {
                 </div>
               </div>
 
-              {/* Lead Assignment History (Collapsible) */}
-              <div className="pw-section-sub" style={{ marginTop: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showLeadHistory ? 12 : 0 }}>
-                  <h3 id="pw-lead-history-heading" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <History size={15} /> Assignment History ({leadHistory.length})
-                  </h3>
-                  <button
-                    id="pw-lead-history-toggle-btn"
-                    type="button"
-                    className="pw-history-toggle-btn"
-                    onClick={() => setShowLeadHistory((prev) => !prev)}
-                  >
-                    {showLeadHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    <span>{showLeadHistory ? 'Hide History' : 'View History'}</span>
-                  </button>
-                </div>
-                {showLeadHistory && (
-                  leadHistory.length === 0 ? (
-                    <p className="project-workspace-empty" style={{ marginTop: 12 }}>No previous lead assignment history recorded for this project.</p>
-                  ) : (
-                    <div className="pw-table-wrap" style={{ marginTop: 12 }}>
-                      <table id="pw-lead-history-table" className="pw-table">
-                        <thead>
-                          <tr>
-                            <th>Project Lead</th>
-                            <th>Email</th>
-                            <th>Assigned By</th>
-                            <th>Assigned Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {leadHistory.map((h) => (
-                            <tr key={h.id}>
-                              <td><strong>{h.project_lead_name || h.lead_name || 'Project Lead'}</strong></td>
-                              <td>{h.project_lead_email || h.lead_email || '—'}</td>
-                              <td>{h.assigned_by || 'Admin'}</td>
-                              <td>{formatDate(h.assigned_at)}</td>
+              {/* Lead Assignment History (Collapsible) - Only for Manager & QA Lead */}
+              {canViewAssignmentHistory && (
+                <div className="pw-section-sub" style={{ marginTop: 24 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showLeadHistory ? 12 : 0 }}>
+                    <h3 id="pw-lead-history-heading" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <History size={15} /> Assignment History ({leadHistory.length})
+                    </h3>
+                    <button
+                      id="pw-lead-history-toggle-btn"
+                      type="button"
+                      className="pw-history-toggle-btn"
+                      onClick={() => setShowLeadHistory((prev) => !prev)}
+                    >
+                      {showLeadHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      <span>{showLeadHistory ? 'Hide History' : 'View History'}</span>
+                    </button>
+                  </div>
+                  {showLeadHistory && (
+                    leadHistory.length === 0 ? (
+                      <p className="project-workspace-empty" style={{ marginTop: 12 }}>No previous lead assignment history recorded for this project.</p>
+                    ) : (
+                      <div className="pw-table-wrap" style={{ marginTop: 12 }}>
+                        <table id="pw-lead-history-table" className="pw-table">
+                          <thead>
+                            <tr>
+                              <th>Project Lead</th>
+                              <th>Email</th>
+                              <th>Assigned By</th>
+                              <th>Assigned Date</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )
-                )}
-              </div>
+                          </thead>
+                          <tbody>
+                            {leadHistory.map((h) => (
+                              <tr key={h.id}>
+                                <td><strong>{h.project_lead_name || h.lead_name || 'Project Lead'}</strong></td>
+                                <td>{h.project_lead_email || h.lead_email || '—'}</td>
+                                <td>{h.assigned_by || 'Admin'}</td>
+                                <td>{formatDate(h.assigned_at)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
             </section>
           )}
 
@@ -1017,8 +1038,8 @@ export default function AdminProjectWorkspace() {
           {activeFolder === 'developers' && (
             <section id="pw-developers-section" className="project-workspace-content">
               <div className="project-content-heading">
-                <div><span>TEAM ALLOCATION</span><h2 id="pw-developers-heading">Assigned Team Members</h2></div>
-                {canAssignLeadAndDevs && (
+                <div><span>TEAM ALLOCATION</span><h2 id="pw-developers-heading">{isProjectLead ? 'Assigned Developers' : 'Assigned Team Members'}</h2></div>
+                {canAssignTeamMembers && (
                   <button
                     id="pw-add-devs-btn"
                     className="pw-btn-action-primary"
@@ -1028,7 +1049,7 @@ export default function AdminProjectWorkspace() {
                     }}
                   >
                     <UserPlus size={15} />
-                    <span>Add Team Members</span>
+                    <span>{isProjectLead ? 'Add Developers' : 'Add Team Members'}</span>
                   </button>
                 )}
               </div>
@@ -1037,7 +1058,7 @@ export default function AdminProjectWorkspace() {
               {assignedDevs.length === 0 ? (
                 <div className="pw-empty-box">
                   <Users size={32} color="#94A3B8" />
-                  <p>No team members assigned to this project yet.</p>
+                  <p>{isProjectLead ? 'No developers assigned to this project yet.' : 'No team members assigned to this project yet.'}</p>
                 </div>
               ) : (
                 <div className="pw-devs-grid">
@@ -1051,7 +1072,7 @@ export default function AdminProjectWorkspace() {
                         <span>{d.emp_id || 'EMP'} &bull; {d.developer_email}</span>
                         <small>Assigned by {d.assigned_by} on {formatDate(d.assigned_at)}</small>
                       </div>
-                      {canAssignLeadAndDevs && (
+                      {canAssignTeamMembers && (
                         <button
                           id={`pw-remove-dev-btn-${d.developer_id}`}
                           type="button"
@@ -1067,55 +1088,57 @@ export default function AdminProjectWorkspace() {
                 </div>
               )}
 
-              {/* Developer Assignment History (Collapsible) */}
-              <div className="pw-section-sub" style={{ marginTop: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showDevHistory ? 12 : 0 }}>
-                  <h3 id="pw-dev-history-heading" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <History size={15} /> Team Assignment History ({devHistory.length})
-                  </h3>
-                  <button
-                    id="pw-dev-history-toggle-btn"
-                    type="button"
-                    className="pw-history-toggle-btn"
-                    onClick={() => setShowDevHistory((prev) => !prev)}
-                  >
-                    {showDevHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    <span>{showDevHistory ? 'Hide History' : 'View History'}</span>
-                  </button>
-                </div>
-                {showDevHistory && (
-                  devHistory.length === 0 ? (
-                    <p className="project-workspace-empty" style={{ marginTop: 12 }}>No developer assignment history recorded yet.</p>
-                  ) : (
-                    <div className="pw-table-wrap" style={{ marginTop: 12 }}>
-                      <table id="pw-dev-history-table" className="pw-table">
-                        <thead>
-                          <tr>
-                            <th>Developer</th>
-                            <th>Email</th>
-                            <th>Status</th>
-                            <th>Assigned By</th>
-                            <th>Assigned Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {devHistory.map((h) => (
-                            <tr key={h.id}>
-                              <td><strong>{h.developer_name}</strong></td>
-                              <td>{h.developer_email}</td>
-                              <td>
-                                <span className={`pw-status-pill ${h.status.toLowerCase()}`}>{h.status}</span>
-                              </td>
-                              <td>{h.assigned_by}</td>
-                              <td>{formatDate(h.assigned_at)}</td>
+              {/* Developer Assignment History (Collapsible) - Only for Manager & QA Lead */}
+              {canViewAssignmentHistory && (
+                <div className="pw-section-sub" style={{ marginTop: 24 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showDevHistory ? 12 : 0 }}>
+                    <h3 id="pw-dev-history-heading" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <History size={15} /> Team Assignment History ({devHistory.length})
+                    </h3>
+                    <button
+                      id="pw-dev-history-toggle-btn"
+                      type="button"
+                      className="pw-history-toggle-btn"
+                      onClick={() => setShowDevHistory((prev) => !prev)}
+                    >
+                      {showDevHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      <span>{showDevHistory ? 'Hide History' : 'View History'}</span>
+                    </button>
+                  </div>
+                  {showDevHistory && (
+                    devHistory.length === 0 ? (
+                      <p className="project-workspace-empty" style={{ marginTop: 12 }}>No developer assignment history recorded yet.</p>
+                    ) : (
+                      <div className="pw-table-wrap" style={{ marginTop: 12 }}>
+                        <table id="pw-dev-history-table" className="pw-table">
+                          <thead>
+                            <tr>
+                              <th>Developer</th>
+                              <th>Email</th>
+                              <th>Status</th>
+                              <th>Assigned By</th>
+                              <th>Assigned Date</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )
-                )}
-              </div>
+                          </thead>
+                          <tbody>
+                            {devHistory.map((h) => (
+                              <tr key={h.id}>
+                                <td><strong>{h.developer_name}</strong></td>
+                                <td>{h.developer_email}</td>
+                                <td>
+                                  <span className={`pw-status-pill ${h.status.toLowerCase()}`}>{h.status}</span>
+                                </td>
+                                <td>{h.assigned_by}</td>
+                                <td>{formatDate(h.assigned_at)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
             </section>
           )}
 
@@ -1206,32 +1229,34 @@ export default function AdminProjectWorkspace() {
                   <div>
                     <h3 id="pw-links-heading">Application Links</h3>
                     <p>
-                      {linksMeta.links_locked
+                      {isQAMember
+                        ? 'Application and repository links for this project'
+                        : linksMeta.links_locked
                         ? `Locked (Read-Only)${linksMeta.links_locked_by ? ` by ${linksMeta.links_locked_by}` : ''}`
-                        : isQAMember
-                        ? 'Read-only access for QA Members'
                         : 'Enter the live Application URL and GitHub repository link for this project'}
                     </p>
                   </div>
                   <div className="pw-links-header-actions">
-                    <span className={`pw-lock-pill ${linksMeta.links_locked || isQAMember ? 'locked' : 'unlocked'}`}>
-                      {linksMeta.links_locked ? (
-                        <>
-                          <Lock size={12} />
-                          <span>Locked • Read Only</span>
-                        </>
-                      ) : !canEditDocsAndLinks ? (
-                        <>
-                          <Eye size={12} />
-                          <span>Read Only</span>
-                        </>
-                      ) : (
-                        <>
-                          <Unlock size={12} />
-                          <span>Editable</span>
-                        </>
-                      )}
-                    </span>
+                    {!isQAMember && (
+                      <span className={`pw-lock-pill ${linksMeta.links_locked ? 'locked' : 'unlocked'}`}>
+                        {linksMeta.links_locked ? (
+                          <>
+                            <Lock size={12} />
+                            <span>Locked • Read Only</span>
+                          </>
+                        ) : !canEditDocsAndLinks ? (
+                          <>
+                            <Eye size={12} />
+                            <span>Read Only</span>
+                          </>
+                        ) : (
+                          <>
+                            <Unlock size={12} />
+                            <span>Editable</span>
+                          </>
+                        )}
+                      </span>
+                    )}
                     {canLockContent && (
                       <button
                         id="pw-lock-links-btn"
@@ -1342,26 +1367,28 @@ export default function AdminProjectWorkspace() {
               <div className="pw-docs-section-bar">
                 <div className="pw-docs-section-title">
                   <h3 id="pw-uploaded-files-heading">Uploaded Files</h3>
-                  <span className={`pw-lock-pill ${linksMeta.documents_locked || !canEditDocsAndLinks ? 'locked' : 'unlocked'}`}>
-                    {linksMeta.documents_locked ? (
-                      <>
-                        <Lock size={12} />
-                        <span>
-                          Files Locked • Read Only{linksMeta.documents_locked_by ? ` by ${linksMeta.documents_locked_by}` : ''}
-                        </span>
-                      </>
-                    ) : !canEditDocsAndLinks ? (
-                      <>
-                        <Eye size={12} />
-                        <span>View & Download Only</span>
-                      </>
-                    ) : (
-                      <>
-                        <Unlock size={12} />
-                        <span>Editable</span>
-                      </>
-                    )}
-                  </span>
+                  {!isQAMember && (
+                    <span className={`pw-lock-pill ${linksMeta.documents_locked || !canEditDocsAndLinks ? 'locked' : 'unlocked'}`}>
+                      {linksMeta.documents_locked ? (
+                        <>
+                          <Lock size={12} />
+                          <span>
+                            Files Locked • Read Only{linksMeta.documents_locked_by ? ` by ${linksMeta.documents_locked_by}` : ''}
+                          </span>
+                        </>
+                      ) : !canEditDocsAndLinks ? (
+                        <>
+                          <Eye size={12} />
+                          <span>View & Download Only</span>
+                        </>
+                      ) : (
+                        <>
+                          <Unlock size={12} />
+                          <span>Editable</span>
+                        </>
+                      )}
+                    </span>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   {canLockContent && (
@@ -1423,8 +1450,10 @@ export default function AdminProjectWorkspace() {
                     No Documents Uploaded Yet
                   </h4>
                   <p style={{ margin: '0 auto 16px', fontSize: '13px', color: '#64748B', maxWidth: '440px' }}>
-                    {linksMeta.documents_locked
-                      ? 'Document uploads are currently locked (read-only) by Project Lead or Manager.'
+                    {isQAMember
+                      ? 'No documents have been uploaded for this project yet.'
+                      : linksMeta.documents_locked
+                      ? 'Document uploads are currently locked (read-only) by Manager or QA Lead.'
                       : canEditDocsAndLinks
                       ? 'Upload product specifications, test plans, architecture diagrams, or contract files for this project.'
                       : 'No documents have been uploaded for this project yet.'}
@@ -1471,7 +1500,7 @@ export default function AdminProjectWorkspace() {
                                     Empty (0 B)
                                   </span>
                                 )}
-                                {rowLocked && (
+                                {rowLocked && !isQAMember && (
                                   <span className="pw-file-locked-badge" title={doc.locked_by ? `Locked by ${doc.locked_by}` : 'Locked (Read-Only)'}>
                                     <Lock size={11} />
                                     <span>Locked</span>
@@ -1762,7 +1791,7 @@ export default function AdminProjectWorkspace() {
         <div id="pw-dev-modal-overlay" className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setIsDevModalOpen(false)}>
           <div id="pw-dev-modal" className="pw-modal-box" style={{ maxWidth: 580 }}>
             <div className="pw-modal-header">
-              <h3 id="pw-dev-modal-title">Add Team Members to Project</h3>
+              <h3 id="pw-dev-modal-title">{isProjectLead ? 'Add Developers to Project' : 'Add Team Members to Project'}</h3>
               <button id="pw-dev-modal-close-btn" className="pw-modal-close" onClick={() => setIsDevModalOpen(false)}><X size={18} /></button>
             </div>
             <form id="pw-assign-devs-form" onSubmit={handleAssignDevelopers}>
@@ -1773,34 +1802,42 @@ export default function AdminProjectWorkspace() {
                     <span>{devAssignMsg.text}</span>
                   </div>
                 )}
-                <label style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>Select Team Members (Developers & QA)</label>
+                <label style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>
+                  {isProjectLead ? 'Select Developers' : 'Select Team Members (Developers & QA)'}
+                </label>
                 <div className="pw-dev-select-grid">
-                  {availableDevs.map((dev) => {
-                    const isAlready = assignedDevs.some((d) => d.developer_id === dev.id);
-                    const isSelected = selectedDevIds.includes(dev.id);
-                    return (
-                      <div
-                        id={`pw-avail-dev-option-${dev.id}`}
-                        key={dev.id}
-                        className={`pw-dev-pick-item ${isSelected ? 'selected' : ''} ${isAlready ? 'disabled' : ''}`}
-                        onClick={() => !isAlready && toggleSelectDev(dev.id)}
-                      >
-                        <div className="pw-dev-pick-checkbox">
-                          {isSelected && <Check size={14} color="#fff" />}
+                  {assignableTeamMembers.length === 0 ? (
+                    <p style={{ fontSize: 13, color: '#64748B', padding: '12px 0' }}>
+                      {isProjectLead ? 'No available developers found.' : 'No available team members found.'}
+                    </p>
+                  ) : (
+                    assignableTeamMembers.map((dev) => {
+                      const isAlready = assignedDevs.some((d) => d.developer_id === dev.id);
+                      const isSelected = selectedDevIds.includes(dev.id);
+                      return (
+                        <div
+                          id={`pw-avail-dev-option-${dev.id}`}
+                          key={dev.id}
+                          className={`pw-dev-pick-item ${isSelected ? 'selected' : ''} ${isAlready ? 'disabled' : ''}`}
+                          onClick={() => !isAlready && toggleSelectDev(dev.id)}
+                        >
+                          <div className="pw-dev-pick-checkbox">
+                            {isSelected && <Check size={14} color="#fff" />}
+                          </div>
+                          <div className="pw-dev-pick-info">
+                            <strong style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {dev.full_name}
+                              <span style={{ fontSize: 11, fontWeight: 600, color: dev.role === 'QA Member' ? '#0284C7' : '#4F46E5', background: dev.role === 'QA Member' ? '#E0F2FE' : '#EEF2FF', padding: '1px 6px', borderRadius: 4 }}>
+                                {dev.role || 'Member'}
+                              </span>
+                            </strong>
+                            <span>{dev.email}</span>
+                            {isAlready && <span className="pw-tag-already">Already on Project</span>}
+                          </div>
                         </div>
-                        <div className="pw-dev-pick-info">
-                          <strong style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            {dev.full_name}
-                            <span style={{ fontSize: 11, fontWeight: 600, color: dev.role === 'QA Member' ? '#0284C7' : '#4F46E5', background: dev.role === 'QA Member' ? '#E0F2FE' : '#EEF2FF', padding: '1px 6px', borderRadius: 4 }}>
-                              {dev.role || 'Member'}
-                            </span>
-                          </strong>
-                          <span>{dev.email}</span>
-                          {isAlready && <span className="pw-tag-already">Already on Project</span>}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
               <div className="pw-modal-footer">
@@ -1808,7 +1845,7 @@ export default function AdminProjectWorkspace() {
                   Cancel
                 </button>
                 <button id="pw-dev-modal-submit-btn" type="submit" className="pw-btn-primary" disabled={devAssignLoading || selectedDevIds.length === 0}>
-                  {devAssignLoading ? 'Adding...' : `Add Team Members (${selectedDevIds.length})`}
+                  {devAssignLoading ? 'Adding...' : isProjectLead ? `Add Developers (${selectedDevIds.length})` : `Add Team Members (${selectedDevIds.length})`}
                 </button>
               </div>
             </form>

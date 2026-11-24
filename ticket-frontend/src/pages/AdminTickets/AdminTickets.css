@@ -63,6 +63,27 @@
   color: #1E40AF;
 }
 
+.ticket-tiny-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid #FEE2E2;
+  background: #FEF2F2;
+  color: #DC2626;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ticket-tiny-delete-btn:hover {
+  background: #DC2626;
+  border-color: #DC2626;
+  color: #FFFFFF;
+}
+
 .ticket-modal-overlay {
   position: fixed;
   z-index: 1200;

@@ -1734,11 +1734,6 @@ function AdminUsers() {
                       variant="form"
                       error={createFieldErrors.role}
                     />
-                    {!isAdmin && (
-                      <span style={{ fontSize: '0.78rem', color: '#b45309', marginTop: '4px', display: 'block' }}>
-                        ℹ️ Manager role access can only be assigned by System Administrator.
-                      </span>
-                    )}
                     {createFieldErrors.role && (
                       <span className="um-field-error">
                         <AlertCircle size={12} /> {createFieldErrors.role}
@@ -2022,11 +2017,6 @@ function AdminUsers() {
                       variant="form"
                       error={editFieldErrors.role}
                     />
-                    {!isAdmin && (
-                      <span style={{ fontSize: '0.78rem', color: '#b45309', marginTop: '4px', display: 'block' }}>
-                        ℹ️ Manager role access can only be assigned by System Administrator.
-                      </span>
-                    )}
                     {editFieldErrors.role && (
                       <span className="um-field-error">
                         <AlertCircle size={12} /> {editFieldErrors.role}

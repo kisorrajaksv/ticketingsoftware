@@ -646,17 +646,6 @@ export default function ProjectLeadDashboard() {
               <div className="pld-dev-section">
                 <div className="pld-dev-section-title">
                   <span>Currently Assigned Engineering Developers ({projectAssignedDevs.length})</span>
-                  {devHistory.length > 0 && (
-                    <button
-                      id="pld-dev-history-toggle-btn"
-                      type="button"
-                      className="pld-btn-hist-toggle"
-                      onClick={() => setShowDevHistory(!showDevHistory)}
-                    >
-                      <History size={13} />
-                      <span>{showDevHistory ? 'Hide History' : 'Assignment History'}</span>
-                    </button>
-                  )}
                 </div>
 
                 {projectAssignedDevs.length === 0 ? (
@@ -688,22 +677,6 @@ export default function ProjectLeadDashboard() {
                   </div>
                 )}
               </div>
-
-              {/* History view if toggled */}
-              {showDevHistory && (
-                <div className="pld-dev-section pld-history-box">
-                  <div className="pld-dev-section-title">Developer Assignment History</div>
-                  <div className="pld-history-list">
-                    {devHistory.map((h) => (
-                      <div key={h.id} className="pld-hist-row">
-                        <span><strong>{h.developer_name}</strong> ({h.developer_email})</span>
-                        <span className={`pld-hist-status ${h.status.toLowerCase()}`}>{h.status}</span>
-                        <small>Assigned by {h.assigned_by} on {formatIndianDate(h.assigned_at)}</small>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Bottom: Assign New Developers Form */}
               <form id="pld-assign-devs-form" onSubmit={handleAssignDevsToProject} className="pld-assign-form">

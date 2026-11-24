@@ -23,7 +23,8 @@ import {
   ExternalLink,
   Download,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Trash2
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import CustomSelect from '../CustomSelect/CustomSelect';
@@ -48,7 +49,8 @@ export default function TicketDetailModal({
   onClose,
   ticketId,
   userRole,
-  onTicketUpdated
+  onTicketUpdated,
+  onTicketDeleted
 }) {
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -91,6 +93,8 @@ export default function TicketDetailModal({
   const isDeveloper = currentUserRole.toLowerCase() === 'developer';
   const isProjectLead = currentUserRole.toLowerCase() === 'project lead';
   const isQA = ['qa member', 'qa lead', 'manager', 'super admin', 'admin', 'administrator'].includes(currentUserRole.toLowerCase());
+  const isQAMember = currentUserRole.toLowerCase() === 'qa member';
+  const [deletingTicket, setDeletingTicket] = useState(false);
 
   const isLockedByMe = Boolean(
     ticket?.locked_by &&
@@ -379,6 +383,31 @@ export default function TicketDetailModal({
     }
   };
 
+  const handleDeleteTicket = async () => {
+    if (!isQAMember) return;
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete bug ticket ${ticket?.ticket_code || ''}? This action cannot be undone.`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      setDeletingTicket(true);
+      const token = localStorage.getItem('token');
+      await axios.delete(`http://localhost:5000/api/admin/tickets/${ticketId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (onTicketDeleted) {
+        onTicketDeleted(ticketId);
+      } else if (onTicketUpdated) {
+        onTicketUpdated();
+      }
+      handleSafeClose();
+    } catch (err) {
+      setActionError(err.response?.data?.error || 'Failed to delete bug ticket.');
+      setDeletingTicket(false);
+    }
+  };
+
   const handleSafeClose = async () => {
     if (showResolutionForm && isLockedByMe) {
       try {
@@ -417,9 +446,24 @@ export default function TicketDetailModal({
               {ticket?.severity || 'Medium'} Severity
             </span>
           </div>
-          <button id="tdm-close-btn" type="button" className="tdm-close-btn" onClick={handleSafeClose} aria-label="Close dialog">
-            <X size={18} />
-          </button>
+          <div className="tdm-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {isQAMember && (
+              <button
+                id="tdm-header-delete-btn"
+                type="button"
+                className="tdm-header-delete-btn"
+                onClick={handleDeleteTicket}
+                disabled={deletingTicket}
+                title="Delete this bug ticket"
+                aria-label="Delete this bug ticket"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
+            <button id="tdm-close-btn" type="button" className="tdm-close-btn" onClick={handleSafeClose} aria-label="Close dialog">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
@@ -1045,6 +1089,24 @@ export default function TicketDetailModal({
                     )}
                   </div>
                 </div>
+
+                {/* 6. QA Member Delete Action (Bottom-Right) */}
+                {isQAMember && (
+                  <div id="tdm-delete-card" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px', padding: '4px 0' }}>
+                    <button
+                      id="tdm-bottom-delete-btn"
+                      type="button"
+                      className="tdm-tiny-delete-btn"
+                      onClick={handleDeleteTicket}
+                      disabled={deletingTicket}
+                      title="Delete this bug ticket"
+                      aria-label="Delete this bug ticket"
+                    >
+                      <Trash2 size={13} />
+                      <span>{deletingTicket ? 'Deleting...' : 'Delete Bug'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ) : null}

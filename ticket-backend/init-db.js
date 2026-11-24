@@ -301,6 +301,7 @@ export const initDatabase = async () => {
     const salt = await bcrypt.genSalt(10);
     const defaultHash = await bcrypt.hash('Kanavu@123', salt);
     const adminHash = await bcrypt.hash('Admin@123', salt);
+    const devHash = await bcrypt.hash('Developer@123', salt);
 
     // Insert essential role accounts if they don't already exist
     await pool.query(`
@@ -308,9 +309,10 @@ export const initDatabase = async () => {
       VALUES 
         ('EMP-000', 'System Admin', 'admin@gmail.com', $1, 'Management', 'Admin', 'Active'),
         ('EMP-001', 'Manager', 'manager@gmail.com', $2, 'Quality Assurance', 'Manager', 'Active'),
-        ('EMP-002', 'QA Lead', 'qalead@gmail.com', $2, 'Quality Assurance', 'QA Lead', 'Active')
+        ('EMP-002', 'QA Lead', 'qalead@gmail.com', $2, 'Quality Assurance', 'QA Lead', 'Active'),
+        ('EMP-006', 'Developer', 'developer@gmail.com', $3, 'Development', 'Developer', 'Active')
       ON CONFLICT (email) DO NOTHING;
-    `, [adminHash, defaultHash]);
+    `, [adminHash, defaultHash, devHash]);
 
     // Backfill project_id on existing tickets if matching project_code
     await pool.query(`

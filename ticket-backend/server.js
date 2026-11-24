@@ -4,7 +4,15 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pool from './db.js';
-import { sendWelcomeEmail, sendProjectAssignmentEmail, sendPasswordResetEmail, sendVerificationCodeEmail, generateTemporaryPassword } from './services/emailService.js';
+import {
+  sendWelcomeEmail,
+  sendProjectAssignmentEmail,
+  sendPasswordResetEmail,
+  sendVerificationCodeEmail,
+  generateTemporaryPassword,
+  checkEmailStatus,
+  dispatchEmail
+} from './services/emailService.js';
 import { initDatabase } from './init-db.js';
 import path from 'path';
 import fs from 'fs';
@@ -173,12 +181,15 @@ app.post(['/api/forgot-password/send-code', '/api/auth/forgot-password/send-code
 
     return res.json({
       success: true,
-      message: emailResult.simulated
-        ? 'Verification code generated! (Logged to console in dev mode)'
-        : `Verification code sent to ${user.email}. Please check your inbox.`,
+      message: emailResult.success
+        ? `Verification code sent to ${user.email}. Please check your inbox.`
+        : (emailResult.error
+          ? `Verification code generated, but email delivery failed (${emailResult.error}). For convenience, your code is shown below:`
+          : 'Verification code generated! (Logged to console in dev mode)'),
       email: user.email,
-      simulatedCode: emailResult.simulated ? code : null,
-      isSimulated: Boolean(emailResult.simulated)
+      simulatedCode: !emailResult.success ? code : null,
+      isSimulated: !emailResult.success,
+      previewUrl: emailResult.previewUrl || null
     });
   } catch (error) {
     console.error('Send verification code error:', error);
@@ -713,6 +724,56 @@ app.post('/api/admin/users/:id/resend-invite', async (req, res) => {
   }
 });
 
+// Admin: Check Email System Configuration & Health
+app.get('/api/admin/email-status', async (req, res) => {
+  try {
+    const status = await checkEmailStatus();
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to check email status: ' + err.message });
+  }
+});
+
+// Admin: Dispatch Test Email to verify live SMTP delivery
+app.post('/api/admin/test-email', async (req, res) => {
+  const { to } = req.body || {};
+  if (!to || !to.includes('@')) {
+    return res.status(400).json({ error: 'Please enter a valid recipient email address.' });
+  }
+
+  try {
+    const emailResult = await dispatchEmail({
+      to: to.trim(),
+      fullName: 'Test Recipient',
+      subject: '✅ QA Software Workspace - Email Configuration Test',
+      text: `Hello!\n\nThis is a test email sent from QA Software Workspace to verify that your email dispatch system is operational.\n\nTimestamp: ${new Date().toISOString()}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #1e293b; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+          <h2 style="color: #2563eb; margin: 0 0 12px;">✅ QA Software Workspace</h2>
+          <p style="font-size: 15px; color: #334155;">This is a test email confirming that your email service is successfully configured and delivering live messages.</p>
+          <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #475569; margin: 16px 0;">
+            <strong>Recipient:</strong> ${to}<br />
+            <strong>Timestamp:</strong> ${new Date().toLocaleString()}
+          </div>
+          <p style="font-size: 12px; color: #94a3b8; margin: 0;">QA Software Workspace Automation</p>
+        </div>
+      `
+    });
+
+    res.json({
+      success: emailResult.success,
+      email_status: emailResult,
+      previewUrl: emailResult.previewUrl || null,
+      message: emailResult.success
+        ? `Test email delivered successfully to ${to} (Provider: ${emailResult.provider || 'SMTP'})!`
+        : `Email delivery failed: ${emailResult.error || 'Check server logs'}`
+    });
+  } catch (err) {
+    console.error('Test email dispatch error:', err);
+    res.status(500).json({ error: 'Failed to send test email: ' + err.message });
+  }
+});
+
 // Admin Users: Update user (Protected accounts cannot be edited)
 app.put('/api/admin/users/:id', async (req, res) => {
   const authorization = req.headers.authorization;
@@ -1026,7 +1087,7 @@ app.post('/api/admin/projects', async (req, res) => {
   if (!user) {
     return res.status(401).json({ error: 'Authentication required' });
   }
-  if (user.role === 'Developer' || user.role === 'QA Member') {
+  if (user.role === 'Developer' || user.role === 'QA Member' || user.role === 'Project Lead') {
     return res.status(403).json({ error: 'You do not have permission to create projects.' });
   }
 
@@ -1675,6 +1736,7 @@ const findProjectWithRoles = async (projectIdOrCode, user) => {
 
   const proj = projRes.rows[0];
   const isManager = ['Manager', 'Super Admin', 'Admin'].includes(user.role);
+  const isQALead = user.role === 'QA Lead';
   const isAssignedLead = Boolean(
     (proj.project_lead_id && String(proj.project_lead_id) === String(user.id)) ||
     (proj.lead_name && user.full_name && proj.lead_name.trim().toLowerCase() === user.full_name.trim().toLowerCase()) ||
@@ -1688,10 +1750,11 @@ const findProjectWithRoles = async (projectIdOrCode, user) => {
     proj,
     isManager,
     isProjectLead,
+    isQALead,
     isQAMember,
     isDeveloper,
-    canLockOrRequest: isManager || isProjectLead,
-    canEditDocsAndLinks: !isQAMember && !isDeveloper
+    canLockOrRequest: isManager || isProjectLead || isQALead,
+    canEditDocsAndLinks: !isQAMember
   };
 };
 
@@ -2081,7 +2144,7 @@ app.post('/api/admin/projects/:id/documents', async (req, res) => {
     }
 
     if (ctx.proj.documents_locked) {
-      return res.status(423).json({ error: 'Uploaded documents are locked (read-only). Ask a Project Lead or Manager to unlock them first.' });
+      return res.status(423).json({ error: 'Uploaded documents are locked (read-only). Ask a Manager or QA Lead to unlock them first.' });
     }
 
     let finalFileUrl = file_url;
@@ -2146,7 +2209,7 @@ app.delete('/api/admin/projects/:id/documents/:docId', async (req, res) => {
     }
 
     if (ctx.proj.documents_locked || docRes.rows[0].is_locked) {
-      return res.status(423).json({ error: 'This document is locked (read-only). Ask a Project Lead or Manager to unlock it first.' });
+      return res.status(423).json({ error: 'This document is locked (read-only). Ask a Manager or QA Lead to unlock it first.' });
     }
 
     await pool.query(
@@ -2183,7 +2246,7 @@ app.put('/api/admin/projects/:id/documents/:docId/lock', async (req, res) => {
     if (!ctx) return res.status(404).json({ error: 'Project not found.' });
 
     if (!ctx.canLockOrRequest) {
-      return res.status(403).json({ error: 'Access denied. Only Project Lead and Manager can lock or unlock files.' });
+      return res.status(403).json({ error: 'Access denied. Only Manager, QA Lead, and Project Lead can lock or unlock files.' });
     }
 
     const lockerName = nextLocked ? (user.full_name || user.email || user.role) : null;
@@ -2251,7 +2314,7 @@ app.put('/api/admin/projects/:id/links', async (req, res) => {
     }
 
     if (ctx.proj.links_locked) {
-      return res.status(423).json({ error: 'Application links are locked (read-only). Ask a Project Lead or Manager to unlock them first.' });
+      return res.status(423).json({ error: 'Application links are locked (read-only). Ask a Manager or QA Lead to unlock them first.' });
     }
 
     const appUrlCheck = normalizeSafeUrl(req.body?.application_url);
@@ -2295,7 +2358,7 @@ app.put('/api/admin/projects/:id/locks', async (req, res) => {
     if (!ctx) return res.status(404).json({ error: 'Project not found.' });
 
     if (!ctx.canLockOrRequest) {
-      return res.status(403).json({ error: 'Access denied. Only Project Lead and Manager can lock or unlock project files and fields.' });
+      return res.status(403).json({ error: 'Access denied. Only Manager, QA Lead, and Project Lead can lock or unlock project files and fields.' });
     }
 
     const lockerName = nextLocked ? (user.full_name || user.email || user.role) : null;
@@ -2859,6 +2922,49 @@ app.put('/api/admin/tickets/:id/status', async (req, res) => {
   } catch (error) {
     console.error('Error updating ticket status:', error);
     res.status(500).json({ error: 'Failed to update ticket status.' });
+  }
+});
+
+// DELETE /api/admin/tickets/:id - Delete defect ticket (QA Member only)
+app.delete('/api/admin/tickets/:id', async (req, res) => {
+  const user = await getUserFromReq(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (user.role !== 'QA Member') {
+    return res.status(403).json({ error: 'Access denied. Only QA Members can delete bug tickets.' });
+  }
+
+  const { id } = req.params;
+  try {
+    const ticketRes = await pool.query('SELECT id, ticket_code, project_id FROM tickets WHERE id = $1', [id]);
+    if (ticketRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Ticket not found.' });
+    }
+    const ticket = ticketRes.rows[0];
+
+    // Delete ticket (ticket_history is CASCADE deleted via FK)
+    await pool.query('DELETE FROM tickets WHERE id = $1', [id]);
+
+    // Recalculate project tickets_count if project_id exists
+    if (ticket.project_id) {
+      await pool.query(
+        `UPDATE projects
+         SET tickets_count = (SELECT COUNT(*) FROM tickets WHERE project_id = $1)
+         WHERE id = $1`,
+        [ticket.project_id]
+      );
+    }
+
+    if (io) {
+      io.emit('ticket_deleted', { id: Number(id), ticket_code: ticket.ticket_code });
+    }
+
+    res.json({ message: 'Bug ticket deleted successfully.', deletedId: id });
+  } catch (error) {
+    console.error('Error deleting bug ticket:', error);
+    res.status(500).json({ error: 'Failed to delete bug ticket.' });
   }
 });
 

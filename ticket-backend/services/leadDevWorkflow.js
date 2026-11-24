@@ -249,16 +249,23 @@ export function registerWorkflowRoutes(app, io) {
       );
 
       // Send email notification to Project Lead
-      try {
-        await sendProjectAssignmentEmail({
-          to: leadUser.email,
-          userName: leadUser.full_name,
-          managerName: user.full_name || 'Manager',
-          projectName: project.name,
-          projectCode: project.project_code
-        });
-      } catch (mailErr) {
-        console.warn('Failed to send project assignment email to lead:', mailErr.message);
+      if (leadUser?.email) {
+        try {
+          const mailStatus = await sendProjectAssignmentEmail({
+            to: leadUser.email,
+            userName: leadUser.full_name,
+            managerName: user.full_name || 'Manager',
+            projectName: project.name,
+            projectCode: project.project_code
+          });
+          if (mailStatus?.success) {
+            console.log(`✅ Project assignment email delivered to lead: ${leadUser.email}`);
+          } else {
+            console.warn(`⚠️ Project assignment email to lead logged: ${mailStatus?.error || mailStatus?.message}`);
+          }
+        } catch (mailErr) {
+          console.warn('Failed to send project assignment email to lead:', mailErr.message);
+        }
       }
 
       res.json({
@@ -271,10 +278,15 @@ export function registerWorkflowRoutes(app, io) {
     }
   });
 
-  // Get Project Lead assignment history
+  // Get Project Lead assignment history (Restricted to Manager and QA Lead)
   app.get('/api/admin/projects/:id/lead-history', async (req, res) => {
     const user = await getUserFromReq(req);
     if (!user) return res.status(401).json({ error: 'Authentication required' });
+
+    const canViewHistory = ['Manager', 'QA Lead', 'Super Admin', 'Admin'].includes(user.role);
+    if (!canViewHistory) {
+      return res.status(403).json({ error: 'Access denied. Assignment history is restricted to Manager and QA Lead.' });
+    }
 
     try {
       const result = await pool.query(
@@ -306,10 +318,14 @@ export function registerWorkflowRoutes(app, io) {
     if (!user) return res.status(401).json({ error: 'Authentication required' });
 
     try {
+      // For Project Lead, show only Developers. For Manager/Admin/QA Lead, show Developers & QA Members.
+      const isLead = user.role === 'Project Lead';
+      const roleFilter = isLead ? "role = 'Developer'" : "role IN ('Developer', 'QA Member')";
+
       const result = await pool.query(
         `SELECT id, emp_id, full_name, email, department, role, status
          FROM users 
-         WHERE role IN ('Developer', 'QA Member') AND status = 'Active'
+         WHERE ${roleFilter} AND status = 'Active'
          ORDER BY role ASC, full_name ASC`
       );
       res.json(result.rows);
@@ -368,6 +384,16 @@ export function registerWorkflowRoutes(app, io) {
         return res.status(403).json({ error: 'Only Managers, QA Leads, and Project Leads can assign team members to this project.' });
       }
 
+      // Project Lead can only assign Developers
+      if (user.role === 'Project Lead') {
+        for (const devId of developer_ids) {
+          const chk = await pool.query('SELECT role FROM users WHERE id = $1', [devId]);
+          if (chk.rows.length > 0 && chk.rows[0].role !== 'Developer') {
+            return res.status(403).json({ error: 'Project Leads can only assign Developers to projects.' });
+          }
+        }
+      }
+
       const assignedDevs = [];
       for (const devId of developer_ids) {
         const devUserRes = await pool.query('SELECT id, full_name, email, role FROM users WHERE id = $1', [devId]);
@@ -396,16 +422,23 @@ export function registerWorkflowRoutes(app, io) {
         );
 
         // Send email notification to assigned team member
-        try {
-          await sendProjectAssignmentEmail({
-            to: devUser.email,
-            userName: devUser.full_name,
-            managerName: user.full_name || 'Manager',
-            projectName: project.name,
-            projectCode: project.project_code
-          });
-        } catch (mailErr) {
-          console.warn('Failed to send project assignment email to member:', mailErr.message);
+        if (devUser?.email) {
+          try {
+            const mailStatus = await sendProjectAssignmentEmail({
+              to: devUser.email,
+              userName: devUser.full_name,
+              managerName: user.full_name || 'Manager',
+              projectName: project.name,
+              projectCode: project.project_code
+            });
+            if (mailStatus?.success) {
+              console.log(`✅ Project assignment email delivered to member: ${devUser.email}`);
+            } else {
+              console.warn(`⚠️ Project assignment email to member logged: ${mailStatus?.error || mailStatus?.message}`);
+            }
+          } catch (mailErr) {
+            console.warn('Failed to send project assignment email to member:', mailErr.message);
+          }
         }
       }
 
@@ -451,10 +484,15 @@ export function registerWorkflowRoutes(app, io) {
     }
   });
 
-  // Developer assignment history for a project
+  // Developer assignment history for a project (Restricted to Manager and QA Lead)
   app.get('/api/admin/projects/:id/developer-history', async (req, res) => {
     const user = await getUserFromReq(req);
     if (!user) return res.status(401).json({ error: 'Authentication required' });
+
+    const canViewHistory = ['Manager', 'QA Lead', 'Super Admin', 'Admin'].includes(user.role);
+    if (!canViewHistory) {
+      return res.status(403).json({ error: 'Access denied. Assignment history is restricted to Manager and QA Lead.' });
+    }
 
     try {
       const result = await pool.query(

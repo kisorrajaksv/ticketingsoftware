@@ -301,7 +301,9 @@ function AdminProjects() {
   const currentUserRole = localStorage.getItem('userRole') || 'Manager';
   const isQAMember = currentUserRole === 'QA Member';
   const isDeveloper = currentUserRole === 'Developer';
+  const isProjectLead = currentUserRole === 'Project Lead';
   const canManageProjects = !isQAMember && !isDeveloper;
+  const canCreateProject = !isQAMember && !isDeveloper && !isProjectLead;
 
   // Fetch projects from backend
   const fetchProjects = useCallback(async () => {
@@ -461,6 +463,7 @@ function AdminProjects() {
   };
 
   const openCreateModal = () => {
+    if (!canCreateProject) return;
     setIsEditing(false);
     setEditId(null);
     setFormData({
@@ -600,6 +603,11 @@ function AdminProjects() {
           prev.map((p) => (p.id === editId ? { ...p, ...updatedProject } : p))
         );
       } else {
+        if (!canCreateProject) {
+          setFormError('Project Leads do not have permission to create projects.');
+          setSubmitting(false);
+          return;
+        }
         // Create Project
         let newProject = {
           ...formData,
@@ -841,7 +849,7 @@ function AdminProjects() {
               </div>
 
               {/* + Create Project Primary Button */}
-              {canManageProjects && (
+              {canCreateProject && (
                 <button id="pj-create-project-btn" className="pj-btn-create-primary" onClick={openCreateModal}>
                   <Plus size={18} strokeWidth={2.5} />
                   <span>Create Project</span>
@@ -994,10 +1002,10 @@ function AdminProjects() {
             }}>
               <Folder size={42} color="#94A3B8" />
               <h3 id="pj-empty-heading" style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#1E293B' }}>
-                {isDeveloper ? 'No Assigned Projects Yet' : 'No Projects Created Yet'}
+                {isDeveloper || isProjectLead ? 'No Assigned Projects Yet' : 'No Projects Created Yet'}
               </h3>
               <p style={{ margin: 0, fontSize: '14px', color: '#64748B', maxWidth: '440px' }}>
-                {isDeveloper
+                {isDeveloper || isProjectLead
                   ? 'You have not been assigned to any projects yet. Contact your Project Lead or Manager to get assigned.'
                   : 'Your production workspace is clean and ready. Click the "+ Create Project" button above to initiate your first QA project.'}
               </p>
@@ -1006,7 +1014,7 @@ function AdminProjects() {
             <ProjectSpreadsheetView
               projects={projects}
               onUpdateProject={canManageProjects ? handleUpdateProjectCell : undefined}
-              onAddRow={canManageProjects ? handleAddSheetRow : undefined}
+              onAddRow={canCreateProject ? handleAddSheetRow : undefined}
               onDeleteRow={canManageProjects ? handleDeleteProject : undefined}
               onOpenProjectSheet={(project) => navigate(`/admin/projects/${project.id}/sheet`)}
               searchQuery={isDeveloper ? '' : searchQuery}

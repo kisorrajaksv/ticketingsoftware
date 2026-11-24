@@ -20,7 +20,8 @@ import {
   Ticket,
   Upload,
   Video,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
@@ -193,6 +194,29 @@ function AdminTickets() {
   const currentUserRole = localStorage.getItem('userRole') || 'Administrator';
   const isDeveloper = currentUserRole === 'Developer';
   const isProjectLead = currentUserRole === 'Project Lead';
+  const isQAMember = currentUserRole === 'QA Member';
+
+  const handleDeleteTicket = async (ticketId, ticketCode, event) => {
+    if (event) event.stopPropagation();
+    if (!isQAMember) return;
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete bug ticket ${ticketCode || ''}? This action cannot be undone.`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const token = getValidToken();
+      await axios.delete(`http://localhost:5000/api/admin/tickets/${ticketId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setTickets((prev) => prev.filter((t) => t.id !== ticketId));
+      if (selectedTicketId === ticketId) {
+        setSelectedTicketId(null);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete bug ticket.');
+    }
+  };
 
   const fetchData = useCallback(async () => {
     const token = getValidToken();
@@ -597,6 +621,11 @@ function AdminTickets() {
             fetchData();
           }}
           onTicketUpdated={() => fetchData()}
+          onTicketDeleted={(deletedId) => {
+            setTickets((prev) => prev.filter((t) => t.id !== deletedId));
+            setSelectedTicketId(null);
+            fetchData();
+          }}
         />
       )}
 
@@ -1022,19 +1051,33 @@ function AdminTickets() {
                             {t.assigned_to || 'Unassigned'}
                           </td>
                           <td>
-                            <button
-                              id={`tickets-view-btn-${t.id}`}
-                              type="button"
-                              className="ticket-view-button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setSelectedTicketId(t.id);
-                              }}
-                              aria-label={`View details for ${t.ticket_code}`}
-                            >
-                              <Eye size={15} />
-                              <span>Details</span>
-                            </button>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              <button
+                                id={`tickets-view-btn-${t.id}`}
+                                type="button"
+                                className="ticket-view-button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setSelectedTicketId(t.id);
+                                }}
+                                aria-label={`View details for ${t.ticket_code}`}
+                              >
+                                <Eye size={15} />
+                                <span>Details</span>
+                              </button>
+                              {isQAMember && (
+                                <button
+                                  id={`tickets-delete-btn-${t.id}`}
+                                  type="button"
+                                  className="ticket-tiny-delete-btn"
+                                  onClick={(event) => handleDeleteTicket(t.id, t.ticket_code, event)}
+                                  title={`Delete ${t.ticket_code}`}
+                                  aria-label={`Delete ${t.ticket_code}`}
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))
