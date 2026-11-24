@@ -25,6 +25,9 @@ import { getValidToken } from '../../utils/auth';
 // Helper to route each role to its dedicated dashboard
 export const getRoleHomeRoute = (role) => {
   switch (role) {
+    case 'Admin':
+    case 'Super Admin':
+      return '/admin/users';
     case 'Developer':
       return '/developer';
     case 'Project Lead':

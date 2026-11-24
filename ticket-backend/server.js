@@ -39,7 +39,7 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey_change_in_production';
 
 // Protected inbuilt system emails that cannot be edited or deleted
-const PROTECTED_SYSTEM_EMAILS = ['manager@gmail.com', 'qalead@gmail.com'];
+const PROTECTED_SYSTEM_EMAILS = ['admin@gmail.com', 'manager@gmail.com', 'qalead@gmail.com'];
 const DEFAULT_USER_PASSWORD = 'Welcome@123';
 
 // Middleware
@@ -577,6 +577,15 @@ app.post('/api/admin/users', async (req, res) => {
     return res.status(400).json({ error: 'This email is reserved for an inbuilt system account.' });
   }
 
+  const requester = await getUserFromReq(req);
+  if (requester && requester.role === 'Manager') {
+    if (role === 'Manager' || role === 'Admin' || role === 'Super Admin') {
+      return res.status(403).json({
+        error: 'Managers are not authorized to create Manager or Admin accounts. Only a System Administrator can assign Manager access.'
+      });
+    }
+  }
+
   try {
     // Check for existing email or employee ID
     const existingCheck = await pool.query(
@@ -724,11 +733,33 @@ app.put('/api/admin/users/:id', async (req, res) => {
     }
 
     const existingUser = userCheck.rows[0];
+    const requester = await getUserFromReq(req);
 
-    // Enforce that manager@gmail.com and qalead@gmail.com cannot be edited
-    if (PROTECTED_SYSTEM_EMAILS.includes(existingUser.email.toLowerCase())) {
+    // If requester is a Manager:
+    if (requester && requester.role === 'Manager') {
+      if (existingUser.role === 'Manager' || existingUser.role === 'Admin' || existingUser.role === 'Super Admin') {
+        return res.status(403).json({
+          error: 'Managers cannot modify accounts with the Manager or Admin role. Only a System Administrator can modify this user.'
+        });
+      }
+      if (role === 'Manager' || role === 'Admin' || role === 'Super Admin') {
+        return res.status(403).json({
+          error: 'Managers are not authorized to assign the Manager or Admin role. Only a System Administrator can grant Manager access.'
+        });
+      }
+    }
+
+    // Root admin email cannot be changed by anyone
+    if (existingUser.email.toLowerCase() === 'admin@gmail.com' && email && email.toLowerCase().trim() !== 'admin@gmail.com') {
       return res.status(403).json({
-        error: `Inbuilt system user (${existingUser.email}) is protected and cannot be edited or modified.`
+        error: 'The primary System Administrator email cannot be modified.'
+      });
+    }
+
+    // Default protected accounts (manager@gmail.com, qalead@gmail.com) cannot have their email changed by non-admins
+    if (PROTECTED_SYSTEM_EMAILS.includes(existingUser.email.toLowerCase()) && requester?.role !== 'Admin' && requester?.role !== 'Super Admin') {
+      return res.status(403).json({
+        error: `Inbuilt system user (${existingUser.email}) is protected and cannot be edited by Manager.`
       });
     }
 
@@ -800,11 +831,28 @@ app.delete('/api/admin/users/:id', async (req, res) => {
     }
 
     const targetUser = userCheck.rows[0];
+    const requester = await getUserFromReq(req);
 
-    // Enforce that manager@gmail.com and qalead@gmail.com cannot be deleted
-    if (PROTECTED_SYSTEM_EMAILS.includes(targetUser.email.toLowerCase())) {
+    // If requester is a Manager, prevent deleting Manager or Admin accounts
+    if (requester && requester.role === 'Manager') {
+      if (targetUser.role === 'Manager' || targetUser.role === 'Admin' || targetUser.role === 'Super Admin') {
+        return res.status(403).json({
+          error: 'Managers cannot delete Manager or Admin accounts. Only a System Administrator can delete this account.'
+        });
+      }
+    }
+
+    // Root Admin account cannot be deleted by anyone
+    if (targetUser.email.toLowerCase() === 'admin@gmail.com') {
       return res.status(403).json({
-        error: `Inbuilt system user (${targetUser.email}) is protected and cannot be deleted.`
+        error: 'The primary System Administrator account is protected and cannot be deleted.'
+      });
+    }
+
+    // Inbuilt protected accounts (manager@gmail.com, qalead@gmail.com) cannot be deleted by non-admins
+    if (PROTECTED_SYSTEM_EMAILS.includes(targetUser.email.toLowerCase()) && requester?.role !== 'Admin' && requester?.role !== 'Super Admin') {
+      return res.status(403).json({
+        error: `Inbuilt system user (${targetUser.email}) is protected and cannot be deleted by Manager.`
       });
     }
 
@@ -2515,6 +2563,56 @@ app.post('/api/admin/roles', async (req, res) => {
   } catch (error) {
     console.error('Error creating role:', error);
     res.status(500).json({ error: 'Failed to create role in database.' });
+  }
+});
+
+// Admin Roles: Update role permissions & description
+app.put(['/api/admin/roles/:id', '/api/admin/roles/by-name/:role_name'], async (req, res) => {
+  const user = await getUserFromReq(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  // Only Admin or Manager can modify roles
+  if (user.role !== 'Admin' && user.role !== 'Super Admin' && user.role !== 'Manager') {
+    return res.status(403).json({ error: 'Permission denied. Only Administrators can modify role permissions.' });
+  }
+
+  const { id, role_name } = req.params;
+  const { permissions, description } = req.body;
+
+  try {
+    let targetRole;
+    if (id && !isNaN(Number(id))) {
+      const roleCheck = await pool.query('SELECT * FROM roles WHERE id = $1', [id]);
+      if (roleCheck.rows.length === 0) return res.status(404).json({ error: 'Role not found' });
+      targetRole = roleCheck.rows[0];
+    } else {
+      const name = role_name || id;
+      const roleCheck = await pool.query('SELECT * FROM roles WHERE LOWER(role_name) = LOWER($1)', [name]);
+      if (roleCheck.rows.length === 0) return res.status(404).json({ error: 'Role not found' });
+      targetRole = roleCheck.rows[0];
+    }
+
+    if (user.role === 'Manager' && (targetRole.role_name === 'Admin' || targetRole.role_name === 'Manager')) {
+      return res.status(403).json({ error: 'Managers cannot modify Admin or Manager role permissions. Contact System Administrator.' });
+    }
+
+    const perms = Array.isArray(permissions) ? permissions : targetRole.permissions;
+    const desc = description !== undefined ? description : targetRole.description;
+
+    const updated = await pool.query(
+      `UPDATE roles SET permissions = $1, description = $2 WHERE id = $3 RETURNING *`,
+      [perms, desc, targetRole.id]
+    );
+
+    res.json({
+      message: `${targetRole.role_name} role permissions updated successfully`,
+      role: updated.rows[0]
+    });
+  } catch (error) {
+    console.error('Error updating role:', error);
+    res.status(500).json({ error: 'Failed to update role permissions' });
   }
 });
 

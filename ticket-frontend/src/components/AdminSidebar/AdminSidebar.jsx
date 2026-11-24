@@ -31,6 +31,10 @@ export const MAIN_ADMIN_NAV = [
   { label: 'Application Settings', to: '/admin/settings', icon: Settings, end: true }
 ];
 
+export const ADMIN_NAV = [
+  { label: 'Employees', to: '/admin/users', icon: Users, end: true }
+];
+
 const mainMenuNav = MAIN_ADMIN_NAV;
 
 export const QA_MEMBER_NAV = [
@@ -77,6 +81,7 @@ function AdminSidebar({
   navItems
 }) {
   const currentRole = typeof window !== 'undefined' ? (window.localStorage.getItem('userRole') || '') : '';
+  const isAdmin = currentRole === 'Admin' || currentRole === 'Super Admin';
   const isQAMember = currentRole === 'QA Member';
   const isProjectLead = currentRole === 'Project Lead';
   const isDeveloper = currentRole === 'Developer';
@@ -85,7 +90,11 @@ function AdminSidebar({
   let roleWorkspaceRole = 'Admin console';
   let roleNavItems = mainMenuNav;
 
-  if (isProjectLead) {
+  if (isAdmin) {
+    roleHomeRoute = '/admin/users';
+    roleWorkspaceRole = 'Admin console';
+    roleNavItems = ADMIN_NAV;
+  } else if (isProjectLead) {
     roleHomeRoute = '/project-lead';
     roleWorkspaceRole = 'Project Lead console';
     roleNavItems = PROJECT_LEAD_NAV;

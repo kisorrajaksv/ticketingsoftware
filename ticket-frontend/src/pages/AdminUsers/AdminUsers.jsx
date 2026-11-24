@@ -51,6 +51,39 @@ const AVAILABLE_ROLES = [
   'Project Lead'
 ];
 
+const SYSTEM_PERMISSIONS = [
+  {
+    id: 'manage_users',
+    label: 'Manage Employees & Users',
+    desc: 'Create, edit, view team members and assign roles (excluding Manager/Admin accounts)'
+  },
+  {
+    id: 'manage_projects',
+    label: 'Manage Projects & Workspaces',
+    desc: 'Create projects, configure workspaces, lock links and documents, and assign project leads'
+  },
+  {
+    id: 'manage_tickets',
+    label: 'Manage Bug Tickets',
+    desc: 'Full ticket lifecycle control: creating, triaging, assigning, and resolving bug tickets'
+  },
+  {
+    id: 'view_reports',
+    label: 'View Reports & Analytics',
+    desc: 'Access QA quality metrics, test run reports, and project performance summaries'
+  },
+  {
+    id: 'approve_deployments',
+    label: 'Approve Releases & Deployments',
+    desc: 'Sign off on staging and production deployment requests and release approvals'
+  },
+  {
+    id: 'manage_roles',
+    label: 'Manage Role Configurations',
+    desc: 'Configure company roles and permission matrices'
+  }
+];
+
 const AVAILABLE_DEPARTMENTS = [
   'Quality Assurance',
   'Development',
@@ -191,9 +224,120 @@ function AdminUsers() {
   const [submitting, setSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState(null);
 
-  const currentUserRole = localStorage.getItem('userRole') || 'Administrator';
+  const currentUserRole = localStorage.getItem('userRole') || '';
+  const isAdmin = currentUserRole === 'Admin' || currentUserRole === 'Super Admin';
+  const isManager = currentUserRole === 'Manager';
   const isQAMember = currentUserRole === 'QA Member';
   const [formError, setFormError] = useState('');
+
+  // Manager role permissions modal state (for Admin)
+  const [isPermsModalOpen, setIsPermsModalOpen] = useState(false);
+  const [currentRolePerms, setCurrentRolePerms] = useState([]);
+  const [savingPerms, setSavingPerms] = useState(false);
+  const [permsSuccessMsg, setPermsSuccessMsg] = useState('');
+  const [permsErrorMsg, setPermsErrorMsg] = useState('');
+
+  const modalRoleOptions = useMemo(() => {
+    // If Admin: can assign Manager, Project Lead, QA Lead, QA Member, Developer, Admin
+    // If Manager: can only assign Project Lead, QA Lead, QA Member, Developer
+    const roles = isAdmin
+      ? ['Manager', 'Project Lead', 'QA Lead', 'QA Member', 'Developer', 'Admin']
+      : ['Project Lead', 'QA Lead', 'QA Member', 'Developer'];
+
+    return roles.map((role) => ({
+      value: role,
+      label: role === 'Project Lead' ? 'Project Lead (Project Manager)' : role,
+      icon: <ShieldCheck size={15} color="#64748b" />
+    }));
+  }, [isAdmin]);
+
+  const canEditUser = useCallback((user) => {
+    if (!user) return false;
+    if (isQAMember) return false;
+    if (isAdmin) return true;
+    if (user.role === 'Manager' || user.role === 'Admin' || user.role === 'Super Admin' || PROTECTED_EMAILS.includes(user.email?.toLowerCase())) {
+      return false;
+    }
+    return true;
+  }, [isAdmin, isQAMember]);
+
+  const canDeleteUser = useCallback((user) => {
+    if (!user) return false;
+    if (isQAMember) return false;
+    if (isAdmin) {
+      return user.email?.toLowerCase() !== 'admin@gmail.com';
+    }
+    if (user.role === 'Manager' || user.role === 'Admin' || user.role === 'Super Admin' || PROTECTED_EMAILS.includes(user.email?.toLowerCase())) {
+      return false;
+    }
+    return true;
+  }, [isAdmin, isQAMember]);
+
+  const handleOpenPermissionsModal = async () => {
+    setPermsSuccessMsg('');
+    setPermsErrorMsg('');
+    setIsPermsModalOpen(true);
+
+    try {
+      const token = getValidToken();
+      const res = await axios.get('http://localhost:5000/api/admin/roles', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const mgrRole = res.data.find((r) => r.role_name === 'Manager');
+      if (mgrRole) {
+        setCurrentRolePerms(mgrRole.permissions || []);
+      } else {
+        setCurrentRolePerms([
+          'manage_users',
+          'manage_projects',
+          'manage_tickets',
+          'view_reports',
+          'approve_deployments'
+        ]);
+      }
+    } catch (err) {
+      console.error('Failed to load Manager role permissions:', err);
+      setPermsErrorMsg('Failed to load role permissions from server.');
+    }
+  };
+
+  const handleTogglePermission = (permId) => {
+    setCurrentRolePerms((prev) => {
+      if (prev.includes(permId)) {
+        return prev.filter((p) => p !== permId);
+      } else {
+        return [...prev, permId];
+      }
+    });
+  };
+
+  const handleSavePermissions = async () => {
+    setSavingPerms(true);
+    setPermsErrorMsg('');
+    setPermsSuccessMsg('');
+
+    try {
+      const token = getValidToken();
+      await axios.put(
+        'http://localhost:5000/api/admin/roles/by-name/Manager',
+        { permissions: currentRolePerms },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setPermsSuccessMsg('Manager role permissions updated successfully!');
+      setSuccessToast({
+        title: 'Permissions Saved',
+        message: 'Manager role access controls updated in database.'
+      });
+      setTimeout(() => {
+        setIsPermsModalOpen(false);
+      }, 1000);
+    } catch (err) {
+      console.error('Failed to save permissions:', err);
+      setPermsErrorMsg(err.response?.data?.error || 'Failed to save role permissions.');
+    } finally {
+      setSavingPerms(false);
+    }
+  };
 
   const createFileInputRef = useRef(null);
   const editFileInputRef = useRef(null);
@@ -535,7 +679,7 @@ function AdminUsers() {
 
   // Open Edit Modal
   const openEditModal = (user) => {
-    if (isProtectedUser(user.email)) return;
+    if (!canEditUser(user)) return;
     setFormError('');
     setEditFieldErrors({});
     let rawPhone = user.phone || '';
@@ -708,7 +852,7 @@ function AdminUsers() {
 
   // Delete User Confirmation
   const confirmDeleteUser = async () => {
-    if (!userToDelete || isProtectedUser(userToDelete.email)) return;
+    if (!userToDelete || !canDeleteUser(userToDelete)) return;
 
     const token = localStorage.getItem('token');
     setSubmitting(true);
@@ -899,25 +1043,56 @@ function AdminUsers() {
             <header id="um-header-section" className="um-header-container">
               <div className="um-header-left">
                 <div className="um-header-titles">
-                  <h1 id="um-page-heading">{isQAMember ? 'Team Directory & Users' : 'User Management'}</h1>
+                  <h1 id="um-page-heading">
+                    {isAdmin ? 'Employee Management' : isQAMember ? 'Team Directory & Users' : 'User Management'}
+                  </h1>
                   <p>
-                    {isQAMember
+                    {isAdmin
+                      ? 'Company-wide employee directory, role assignments, and governance. Create, update, or remove company employees and manage role access.'
+                      : isQAMember
                       ? 'Explore workspace team members, departments, roles, and employee contact details. QA Member directory mode active.'
                       : 'Add and manage team members, departments, roles, and employee IDs. Control access and permissions across the QA workspace.'}
                   </p>
                 </div>
               </div>
 
-              {!isQAMember && (
-                <button
-                  id="um-create-user-btn"
-                  className="um-btn-create"
-                  onClick={handleOpenCreateModal}
-                >
-                  <Plus size={18} />
-                  <span>Create User</span>
-                </button>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {isAdmin && (
+                  <button
+                    id="um-manage-role-perms-btn"
+                    type="button"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: '#eff6ff',
+                      color: '#1d4ed8',
+                      border: '1px solid #bfdbfe',
+                      padding: '10px 18px',
+                      borderRadius: '10px',
+                      fontWeight: '600',
+                      fontSize: '0.88rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onClick={handleOpenPermissionsModal}
+                  >
+                    <ShieldCheck size={18} color="#2563eb" />
+                    <span>Manager Role Permissions</span>
+                  </button>
+                )}
+
+                {!isQAMember && (
+                  <button
+                    id="um-create-user-btn"
+                    className="um-btn-create"
+                    onClick={handleOpenCreateModal}
+                  >
+                    <Plus size={18} />
+                    <span>{isAdmin ? 'Add Employee' : 'Create User'}</span>
+                  </button>
+                )}
+              </div>
             </header>
 
             {/* QA Member Read-Only Notice */}
@@ -1215,7 +1390,7 @@ function AdminUsers() {
                                 </button>
 
                                 {/* Resend Credentials Email Action */}
-                                {!isQAMember && !protectedAcc && (
+                                {!isQAMember && canEditUser(user) && (
                                   <button
                                     id={`um-resend-invite-btn-${user.id}`}
                                     className="um-btn-icon"
@@ -1229,12 +1404,12 @@ function AdminUsers() {
 
                                 {/* Edit Action */}
                                 {!isQAMember && (
-                                  protectedAcc ? (
+                                  !canEditUser(user) ? (
                                     <button
                                       id={`um-edit-locked-btn-${user.id}`}
                                       className="um-btn-icon is-locked"
                                       disabled
-                                      title="Protected system user cannot be edited"
+                                      title={user.role === 'Manager' || user.role === 'Admin' ? "Manager & Admin accounts can only be modified by System Administrator" : "Protected system user cannot be edited"}
                                     >
                                       <Lock size={14} />
                                     </button>
@@ -1252,12 +1427,12 @@ function AdminUsers() {
 
                                 {/* Delete / More Action */}
                                 {!isQAMember && (
-                                  protectedAcc ? (
+                                  !canDeleteUser(user) ? (
                                     <button
                                       id={`um-delete-locked-btn-${user.id}`}
                                       className="um-btn-icon is-locked"
                                       disabled
-                                      title="Protected system user cannot be deleted"
+                                      title={user.email?.toLowerCase() === 'admin@gmail.com' ? "Primary Administrator account cannot be deleted" : "Manager & Admin accounts can only be managed by System Administrator"}
                                     >
                                       <Lock size={14} />
                                     </button>
@@ -1520,12 +1695,17 @@ function AdminUsers() {
                         }));
                         if (formError) setFormError('');
                       }}
-                      options={MODAL_ROLE_OPTIONS}
+                      options={modalRoleOptions}
                       placeholder="Select Role"
                       icon={<ShieldCheck size={16} color="#64748b" />}
                       variant="form"
                       error={createFieldErrors.role}
                     />
+                    {!isAdmin && (
+                      <span style={{ fontSize: '0.78rem', color: '#b45309', marginTop: '4px', display: 'block' }}>
+                        ℹ️ Manager role access can only be assigned by System Administrator.
+                      </span>
+                    )}
                     {createFieldErrors.role && (
                       <span className="um-field-error">
                         <AlertCircle size={12} /> {createFieldErrors.role}
@@ -1803,12 +1983,17 @@ function AdminUsers() {
                         }));
                         if (formError) setFormError('');
                       }}
-                      options={MODAL_ROLE_OPTIONS}
+                      options={modalRoleOptions}
                       placeholder="Select Role"
                       icon={<ShieldCheck size={16} color="#64748b" />}
                       variant="form"
                       error={editFieldErrors.role}
                     />
+                    {!isAdmin && (
+                      <span style={{ fontSize: '0.78rem', color: '#b45309', marginTop: '4px', display: 'block' }}>
+                        ℹ️ Manager role access can only be assigned by System Administrator.
+                      </span>
+                    )}
                     {editFieldErrors.role && (
                       <span className="um-field-error">
                         <AlertCircle size={12} /> {editFieldErrors.role}
@@ -2046,6 +2231,159 @@ function AdminUsers() {
                 onClick={confirmDeleteUser}
               >
                 {submitting ? 'Deleting...' : 'Delete User'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MANAGER ROLE PERMISSIONS MODAL (ADMIN ONLY) */}
+      {isPermsModalOpen && (
+        <div
+          id="um-perms-modal-overlay"
+          className="um-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !savingPerms) setIsPermsModalOpen(false);
+          }}
+        >
+          <div
+            id="um-perms-modal"
+            className="um-modal-card"
+            style={{ maxWidth: '640px', width: '100%', borderRadius: '16px' }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="perms-modal-title"
+          >
+            <div className="um-modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  background: '#eff6ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#2563eb'
+                }}>
+                  <ShieldCheck size={22} />
+                </div>
+                <div>
+                  <h3 id="perms-modal-title" style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+                    Manager Role Permissions & Access Control
+                  </h3>
+                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '4px 0 0 0' }}>
+                    Configure system module permissions and capabilities granted to the Manager role.
+                  </p>
+                </div>
+              </div>
+              <button
+                className="um-modal-close"
+                onClick={() => setIsPermsModalOpen(false)}
+                disabled={savingPerms}
+                aria-label="Close dialog"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="um-modal-body" style={{ padding: '20px 24px' }}>
+              {permsSuccessMsg && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#ecfdf5',
+                  color: '#065f46',
+                  border: '1px solid #a7f3d0',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                  fontSize: '0.88rem'
+                }}>
+                  <ShieldCheck size={16} />
+                  <span>{permsSuccessMsg}</span>
+                </div>
+              )}
+
+              {permsErrorMsg && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#fef2f2',
+                  color: '#991b1b',
+                  border: '1px solid #fecaca',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                  fontSize: '0.88rem'
+                }}>
+                  <AlertCircle size={16} />
+                  <span>{permsErrorMsg}</span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {SYSTEM_PERMISSIONS.map((perm) => {
+                  const isChecked = currentRolePerms.includes(perm.id);
+                  return (
+                    <label
+                      key={perm.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        border: isChecked ? '1px solid #93c5fd' : '1px solid #e2e8f0',
+                        background: isChecked ? '#f0f7ff' : '#f8fafc',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => handleTogglePermission(perm.id)}
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          marginTop: '2px',
+                          accentColor: '#2563eb',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: '600', fontSize: '0.9rem', color: isChecked ? '#1e3a8a' : '#1e293b' }}>
+                          {perm.label}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px', lineHeight: 1.4 }}>
+                          {perm.desc}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="um-modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                className="um-btn-cancel"
+                onClick={() => setIsPermsModalOpen(false)}
+                disabled={savingPerms}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="um-btn-create"
+                onClick={handleSavePermissions}
+                disabled={savingPerms}
+              >
+                {savingPerms ? 'Saving Changes...' : 'Save Permissions'}
               </button>
             </div>
           </div>
