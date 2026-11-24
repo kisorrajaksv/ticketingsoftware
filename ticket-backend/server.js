@@ -638,7 +638,8 @@ app.post('/api/admin/users', async (req, res) => {
         ? (emailStatus.simulated ? 'User created. Credentials logged to server console (live SMTP not configured).' : 'User created and credentials email successfully delivered!')
         : 'User created, but email delivery failed: ' + (emailStatus.error || 'Unknown error'),
       user: newUser,
-      email_status: emailStatus
+      email_status: emailStatus,
+      temporary_password: generatedPlainPassword
     });
   } catch (error) {
     console.error('Error creating user:', error);
@@ -687,12 +688,14 @@ app.post('/api/admin/users/:id/resend-invite', async (req, res) => {
         message: emailStatus.simulated
           ? 'Credentials generated and logged to console (SMTP unconfigured).'
           : 'Credentials email successfully resent to ' + targetUser.email,
-        email_status: emailStatus
+        email_status: emailStatus,
+        temporary_password: temporaryPassword
       });
     } else {
-      return res.status(500).json({
-        error: 'Failed to deliver credentials email: ' + (emailStatus.error || 'SMTP delivery error'),
-        email_status: emailStatus
+      return res.status(200).json({
+        message: 'Password reset in database, but email delivery failed: ' + (emailStatus.error || 'SMTP delivery error'),
+        email_status: emailStatus,
+        temporary_password: temporaryPassword
       });
     }
   } catch (err) {

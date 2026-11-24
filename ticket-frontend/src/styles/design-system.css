@@ -565,14 +565,14 @@ table tbody tr:hover td,
   min-width: 0;
   height: 100vh;
   height: 100dvh;
-  margin-left: 236px;
+  margin-left: 256px;
   overflow-x: hidden;
   overflow-y: auto;
   transition: margin-left .22s ease;
 }
 
 .admin-layout .sidebar-collapsed ~ .main-content {
-  margin-left: 68px;
+  margin-left: 76px;
 }
 
 .admin-layout .header,
@@ -1439,12 +1439,12 @@ table tbody tr:hover td,
 
 .pjs-layout .pjs-main {
   min-width: 0;
-  margin-left: 236px;
+  margin-left: 256px;
   transition: margin-left .22s ease;
 }
 
 .pjs-layout .sidebar-collapsed ~ .pjs-main {
-  margin-left: 68px;
+  margin-left: 76px;
 }
 
 .pjs-header,
@@ -3345,12 +3345,9 @@ body:has(.login-container) #root {
 }
 
 .admin-layout.users-page .users-page-layout {
-  display: grid;
-  grid-template-columns: minmax(350px, 1.02fr) minmax(420px, 1.38fr);
-  column-gap: 32px;
-  row-gap: 22px;
-  align-items: center;
-  max-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   width: 100%;
   margin: 0;
   padding: 0;
@@ -3367,7 +3364,6 @@ body:has(.login-container) #root {
   padding: 0;
 }
 
-.admin-layout.users-page .users-page-layout > *:not(.um-stats-grid):not(.um-controls-bar),
 .admin-layout.tickets-page .projects-layout > *:not(.tickets-overview):not(.users-filter-bar) {
   grid-column: 1 / -1;
 }
@@ -3409,10 +3405,11 @@ body:has(.login-container) #root {
 .admin-layout.users-page .um-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px 18px;
+  gap: 16px 20px;
   align-items: center;
-  padding: 4px 0 18px;
+  padding: 0;
   margin: 0;
+  width: 100%;
 }
 
 .admin-layout.tickets-page .tickets-overview,
@@ -3428,13 +3425,13 @@ body:has(.login-container) #root {
 .admin-layout.users-page .um-stat-card {
   background: #ffffff !important;
   border: 1.5px solid #e2e8f0 !important;
-  border-radius: 12px !important;
-  padding: 10px 14px !important;
-  min-height: 56px !important;
+  border-radius: 14px !important;
+  padding: 16px 20px !important;
+  min-height: 72px !important;
   display: flex !important;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   min-width: 0;
@@ -3444,7 +3441,7 @@ body:has(.login-container) #root {
   transform: translateY(-2px);
   background: #ffffff !important;
   border-color: #cbd5e1 !important;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06) !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06) !important;
 }
 
 .admin-layout.tickets-page .overview-card,
@@ -3531,7 +3528,23 @@ body:has(.login-container) #root {
   margin: 0 !important;
 }
 
-.admin-layout.users-page .um-controls-bar,
+.admin-layout.users-page .um-controls-bar {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  margin: 4px 0 16px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+}
+
 .admin-layout.tickets-page .users-filter-bar {
   background: transparent;
   border: none;
@@ -3545,7 +3558,23 @@ body:has(.login-container) #root {
   gap: 10px;
 }
 
-.admin-layout.users-page .um-search-container,
+.admin-layout.users-page .um-search-container {
+  flex: 1;
+  min-width: 280px;
+  max-width: 440px;
+  height: 42px;
+  min-height: 42px;
+  border-radius: 9px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  padding: 0 16px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
 .admin-layout.tickets-page .users-search-box {
   width: 100%;
   min-width: 0;
@@ -3562,8 +3591,8 @@ body:has(.login-container) #root {
 
 .admin-layout.users-page .um-search-container:focus-within,
 .admin-layout.tickets-page .users-search-box:focus-within {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .admin-layout.users-page .um-search-container input,
@@ -3573,27 +3602,33 @@ body:has(.login-container) #root {
   border: none;
   outline: none;
   background: transparent;
-  font-size: 12px;
+  font-size: 13px;
+  color: #0f172a;
 }
 
 .admin-layout.users-page .um-filter-selects {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: 10px;
-  width: 100%;
+  display: flex;
+  flex-direction: row;
   align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: auto;
+}
+
+.admin-layout.users-page .um-filter-selects .c-select-filter {
+  min-width: 140px;
 }
 
 .admin-layout.users-page .um-sort-lock-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
-  width: 100%;
+  width: auto;
 }
 
 .admin-layout.users-page .um-sort-lock-group .c-select-filter {
-  flex: 1;
+  min-width: 130px;
 }
 
 .admin-layout.users-page .um-fix-filter-chip {

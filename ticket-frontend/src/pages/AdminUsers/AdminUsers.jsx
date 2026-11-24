@@ -562,16 +562,31 @@ function AdminUsers() {
     setResendingUserId(targetUser.id);
     const token = localStorage.getItem('token');
     try {
-      await axios.post(
+      const response = await axios.post(
         `http://localhost:5000/api/admin/users/${targetUser.id}/resend-invite`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setSuccessToast({
-        title: 'Credentials Email Resent',
-        message: `Welcome credentials have been sent successfully to ${targetUser.email}.`
-      });
-      setTimeout(() => setSuccessToast(null), 6000);
+      const emailStatus = response.data?.email_status;
+      const temporaryPass = response.data?.temporary_password;
+
+      if (emailStatus?.success && !emailStatus?.simulated) {
+        setSuccessToast({
+          title: 'Credentials Email Resent',
+          message: `Welcome credentials have been sent successfully to ${targetUser.email}.`
+        });
+      } else {
+        const errorMsg = emailStatus?.error || 'Email could not be delivered';
+        const isQuota = errorMsg.includes('Daily user sending limit exceeded') || errorMsg.includes('550');
+        setSuccessToast({
+          title: 'Password Reset (Email Not Delivered)',
+          type: 'warning',
+          message: isQuota
+            ? `New temporary password generated for ${targetUser.full_name}, but Google Mail daily quota is exceeded. Temporary Password: ${temporaryPass || '(check console)'}. Share this password with the user directly.`
+            : `Password reset, but email delivery failed (${errorMsg}). Temporary Password: ${temporaryPass || '(check console)'}`
+        });
+      }
+      setTimeout(() => setSuccessToast(null), 12000);
     } catch (err) {
       setFormError(err.response?.data?.error || 'Failed to resend credentials email.');
     } finally {
@@ -628,11 +643,27 @@ function AdminUsers() {
       setUsers((prev) => [...prev, response.data.user]);
       setIsCreateModalOpen(false);
       setFormData(initialFormData);
-      setSuccessToast({
-        title: 'User Created & Invitation Sent',
-        message: `Account for ${response.data.user.full_name} (${response.data.user.role}) was created successfully. A welcome email with secure login credentials was dispatched to ${response.data.user.email}.`
-      });
-      setTimeout(() => setSuccessToast(null), 6000);
+
+      const emailStatus = response.data?.email_status;
+      const temporaryPass = response.data?.temporary_password;
+
+      if (emailStatus?.success && !emailStatus?.simulated) {
+        setSuccessToast({
+          title: 'User Created & Invitation Sent',
+          message: `Account for ${response.data.user.full_name} (${response.data.user.role}) was created successfully. A welcome email with secure login credentials was dispatched to ${response.data.user.email}.`
+        });
+      } else {
+        const errorMsg = emailStatus?.error || 'Email could not be delivered';
+        const isQuota = errorMsg.includes('Daily user sending limit exceeded') || errorMsg.includes('550');
+        setSuccessToast({
+          title: 'User Created (Action Required: Email Not Delivered)',
+          type: 'warning',
+          message: isQuota
+            ? `Account for ${response.data.user.full_name} was created, but Google Mail reported: "Daily sending limit exceeded". Please provide the temporary password directly: ${temporaryPass || '(check console)'}. To restore email dispatch, update EMAIL_USER in ticket-backend/.env with fresh credentials.`
+            : `Account for ${response.data.user.full_name} was created, but email delivery failed: ${errorMsg}. Temporary Password: ${temporaryPass || '(check console)'}`
+        });
+      }
+      setTimeout(() => setSuccessToast(null), 14000);
     } catch (error) {
       console.error('Error creating user:', error);
       setFormError(
@@ -875,9 +906,11 @@ function AdminUsers() {
         <div className="dashboard-container">
           {/* Email Invitation / Action Success Toast */}
           {successToast && (
-            <div id="um-success-toast" className="um-success-toast" role="alert">
+            <div id="um-success-toast" className={`um-success-toast${successToast.type === 'warning' ? ' um-toast-warning' : ''}`} role="alert">
               <div className="um-success-toast-content">
-                <span className="um-toast-check">✓</span>
+                <span className={`um-toast-check${successToast.type === 'warning' ? ' um-toast-warn-icon' : ''}`}>
+                  {successToast.type === 'warning' ? '!' : '✓'}
+                </span>
                 <div>
                   <strong>{successToast.title}</strong>
                   <p>{successToast.message}</p>

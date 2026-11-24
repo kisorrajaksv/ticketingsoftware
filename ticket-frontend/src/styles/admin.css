@@ -35,14 +35,14 @@
   flex: 1;
   height: 100vh;
   height: 100dvh;
-  margin-left: 236px;
+  margin-left: 256px;
   overflow-x: hidden;
   overflow-y: auto;
   transition: margin-left 0.22s ease;
 }
 
 .sidebar-collapsed ~ .main-content {
-  margin-left: 68px;
+  margin-left: 76px;
 }
 
 /* Header & Top Navigation Bar */
@@ -939,10 +939,13 @@
 /* ==========================================================================
    Responsive Breakpoints
    ========================================================================== */
-@media (max-width: 1024px) {
+@media (max-width: 760px) {
   .main-content {
     margin-left: 0;
   }
+}
+
+@media (max-width: 1024px) {
   .dashboard-panels {
     grid-template-columns: 1fr;
   }

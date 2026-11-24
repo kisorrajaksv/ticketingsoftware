@@ -214,6 +214,23 @@ export default function ProjectLeadDashboard() {
 
   const displayName = userName || (userEmail ? userEmail.split('@')[0] : 'Project Lead');
 
+  const summary = dashboardData?.summary || {
+    totalAssignedProjects: 0,
+    totalTestCases: 0,
+    passedTestCases: 0,
+    failedTestCases: 0,
+    blockedTestCases: 0,
+    totalSheets: 0,
+    totalBugTickets: 0,
+    openTickets: 0,
+    inProgressTickets: 0,
+    resolvedTickets: 0,
+    closedTickets: 0,
+    reopenedTickets: 0
+  };
+
+  const projects = dashboardData?.projects || [];
+
   // Filtered Tickets
   const filteredTickets = useMemo(() => {
     return tickets.filter((t) => {
@@ -239,23 +256,6 @@ export default function ProjectLeadDashboard() {
       ...projects.map((p) => ({ value: String(p.id), label: p.name }))
     ];
   }, [projects]);
-
-  const summary = dashboardData?.summary || {
-    totalAssignedProjects: 0,
-    totalTestCases: 0,
-    passedTestCases: 0,
-    failedTestCases: 0,
-    blockedTestCases: 0,
-    totalSheets: 0,
-    totalBugTickets: 0,
-    openTickets: 0,
-    inProgressTickets: 0,
-    resolvedTickets: 0,
-    closedTickets: 0,
-    reopenedTickets: 0
-  };
-
-  const projects = dashboardData?.projects || [];
 
   return (
     <div className="admin-layout">

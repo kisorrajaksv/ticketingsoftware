@@ -13,11 +13,154 @@ if (!process.env.EMAIL_USER && !process.env.SMTP_USER) {
 
 /**
  * Returns true if real email credentials are configured in environment
+ * Supports modern HTTP REST APIs (Resend, Brevo, SendGrid) and legacy SMTP
  */
 export const isEmailConfigured = () => {
+  const hasResend = Boolean(process.env.RESEND_API_KEY);
+  const hasBrevo = Boolean(process.env.BREVO_API_KEY);
+  const hasSendGrid = Boolean(process.env.SENDGRID_API_KEY);
   const hasCustomSmtp = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-  const hasGmail = Boolean((process.env.EMAIL_USER || process.env.GMAIL_USER || 'projectdemo691@gmail.com') && (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.GMAIL_PASS || 'ppdyarcahnvawcdt'));
-  return hasCustomSmtp || hasGmail;
+  const hasGmail = Boolean(
+    (process.env.EMAIL_USER || process.env.GMAIL_USER) &&
+    (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.GMAIL_PASS)
+  );
+  return hasResend || hasBrevo || hasSendGrid || hasCustomSmtp || hasGmail;
+};
+
+/**
+ * Universal email dispatcher:
+ * 1. Checks modern HTTP REST email providers (Resend, Brevo, SendGrid) - NO Nodemailer/SMTP required
+ * 2. Falls back to Nodemailer SMTP/Gmail if configured
+ * 3. Falls back to clear console logging with credentials if no provider or delivery fails
+ */
+export const dispatchEmail = async ({
+  to,
+  fullName = '',
+  subject,
+  text,
+  html,
+  replyTo,
+  headers = {},
+  empId,
+  role,
+  password,
+  code,
+  department
+}) => {
+  if (!to) {
+    return { success: false, error: 'Recipient email address missing' };
+  }
+
+  // 1. RESEND API (Top modern Nodemailer replacement - REST HTTP over HTTPS)
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const from = process.env.EMAIL_FROM || 'QA Software <onboarding@resend.dev>';
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY.trim()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from,
+          to: [to],
+          subject,
+          text,
+          html,
+          ...(replyTo ? { reply_to: replyTo } : {}),
+          ...(headers && Object.keys(headers).length ? { headers } : {})
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.id) {
+        console.log(`✅ [Resend API] Email delivered to ${to} (Message ID: ${data.id})`);
+        return { success: true, simulated: false, provider: 'resend', messageId: data.id };
+      }
+      console.warn(`⚠️ [Resend API] Error for ${to}:`, data?.message || data?.error || res.statusText);
+    } catch (err) {
+      console.warn(`⚠️ [Resend API] Network error for ${to}:`, err.message);
+    }
+  }
+
+  // 2. BREVO / Sendinblue API (300 free emails/day - REST HTTP API)
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const fromEmail = process.env.EMAIL_FROM_ADDRESS || 'no-reply@qasoftware.com';
+      const fromName = process.env.EMAIL_FROM_NAME || 'QA Software Workspace';
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': process.env.BREVO_API_KEY.trim(),
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: fromName, email: fromEmail },
+          to: [{ email: to, name: fullName || to }],
+          subject,
+          textContent: text,
+          htmlContent: html,
+          ...(replyTo ? { replyTo: { email: replyTo } } : {})
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && (data?.messageId || data?.messageIds)) {
+        const id = data.messageId || data.messageIds[0];
+        console.log(`✅ [Brevo API] Email delivered to ${to} (Message ID: ${id})`);
+        return { success: true, simulated: false, provider: 'brevo', messageId: id };
+      }
+      console.warn(`⚠️ [Brevo API] Error for ${to}:`, data?.message || res.statusText);
+    } catch (err) {
+      console.warn(`⚠️ [Brevo API] Network error for ${to}:`, err.message);
+    }
+  }
+
+  // 3. Nodemailer SMTP / Gmail fallback (if configured)
+  const transporter = createTransporter();
+  if (transporter) {
+    try {
+      const fromUser = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@qasoftware.com';
+      const info = await transporter.sendMail({
+        from: `"QA Software Workspace" <${fromUser}>`,
+        replyTo: replyTo || fromUser,
+        to,
+        subject,
+        text,
+        html,
+        headers
+      });
+
+      console.log(`✅ [Nodemailer] Email delivered to ${to} (Message ID: ${info.messageId})`);
+      return { success: true, simulated: false, provider: 'nodemailer', messageId: info.messageId };
+    } catch (smtpErr) {
+      console.error(`❌ [Nodemailer] Delivery error for ${to}:`, smtpErr.message);
+    }
+  }
+
+  // 4. Console Dev Simulation (when no provider is active or delivery hit quota)
+  console.log(`\n======================================================`);
+  console.log(`📧 [EMAIL SERVICE - DEV CONSOLE SIMULATION]`);
+  console.log(`To: ${to}`);
+  console.log(`Subject: ${subject}`);
+  if (fullName) console.log(`Full Name: ${fullName}`);
+  if (empId) console.log(`Employee ID: ${empId}`);
+  if (role) console.log(`Role: ${role}`);
+  if (department) console.log(`Department: ${department}`);
+  if (password) console.log(`🔑 Temporary Password: ${password}`);
+  if (code) console.log(`🔑 Verification OTP: ${code}`);
+  console.log(`🌐 Login URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+  console.log(`💡 Setup live email without Nodemailer: Add RESEND_API_KEY or BREVO_API_KEY to ticket-backend/.env`);
+  console.log(`======================================================\n`);
+
+  return {
+    success: true,
+    simulated: true,
+    code,
+    temporary_password: password,
+    message: 'Email credentials logged to server console (Add RESEND_API_KEY or BREVO_API_KEY to .env for live delivery).'
+  };
 };
 
 /**
@@ -38,9 +181,9 @@ export const createTransporter = () => {
     });
   }
 
-  // Option 2: Gmail with Google App Password (with verified working credentials fallback)
-  const gmailUser = (process.env.EMAIL_USER || process.env.GMAIL_USER || 'projectdemo691@gmail.com').trim();
-  const gmailPassRaw = (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.GMAIL_PASS || 'ppdyarcahnvawcdt').trim();
+  // Option 2: Gmail with Google App Password (only if explicitly set in .env)
+  const gmailUser = (process.env.EMAIL_USER || process.env.GMAIL_USER || '').trim();
+  const gmailPassRaw = (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.GMAIL_PASS || '').trim();
   const gmailPass = gmailPassRaw.replace(/\s+/g, ''); // strip any spaces in 16-character app password
 
   if (gmailUser && gmailPass) {
@@ -225,50 +368,17 @@ The QA Software Administration Team
 </html>
 `.trim();
 
-  // If no SMTP configured, log to console in dev mode
-  if (!transporter) {
-    console.log(`\n======================================================`);
-    console.log(`📧 [EMAIL SERVICE - DEV CONSOLE SIMULATION]`);
-    console.log(`To: ${to}`);
-    console.log(`Subject: 🎉 Welcome to QA Software - Your Workspace Credentials`);
-    console.log(`Employee ID: ${empId}`);
-    console.log(`Full Name: ${fullName}`);
-    console.log(`Department: ${department}`);
-    console.log(`Role: ${role}`);
-    console.log(`🔑 Generated Password: ${password}`);
-    console.log(`🌐 Login URL: ${loginUrl}`);
-    console.log(`💡 Real SMTP Configuration: Add EMAIL_USER & EMAIL_APP_PASSWORD to ticket-backend/.env`);
-    console.log(`======================================================\n`);
-
-    return {
-      success: true,
-      simulated: true,
-      message: 'Email logged to terminal console (SMTP credentials not yet configured in .env).'
-    };
-  }
-
-  try {
-    const info = await transporter.sendMail({
-      from: `"QA Software Workspace" <${fromUser}>`,
-      to,
-      subject: `🎉 Welcome to QA Software - Your Workspace Credentials`,
-      text: plainText,
-      html: htmlContent
-    });
-
-    console.log(`✅ Welcome email successfully delivered to ${to} (Message ID: ${info.messageId})`);
-    return {
-      success: true,
-      simulated: false,
-      messageId: info.messageId
-    };
-  } catch (error) {
-    console.error(`❌ Nodemailer delivery error for ${to}:`, error.message);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+  return await dispatchEmail({
+    to,
+    fullName,
+    subject: `🎉 Welcome to QA Software - Your Workspace Credentials`,
+    text: plainText,
+    html: htmlContent,
+    empId,
+    role,
+    department,
+    password
+  });
 };
 
 /**
@@ -397,44 +507,13 @@ Project Management Team
 </html>
 `.trim();
 
-  // If no SMTP configured, log to console in dev mode
-  if (!transporter) {
-    console.log(`\n======================================================`);
-    console.log(`📧 [PROJECT ASSIGNMENT EMAIL - DEV CONSOLE SIMULATION]`);
-    console.log(`To: ${to}`);
-    console.log(`Subject: New Project Assigned: ${resolvedProjectName}`);
-    console.log(`Content:\n${plainText}`);
-    console.log(`======================================================\n`);
-
-    return {
-      success: true,
-      simulated: true,
-      message: 'Email logged to terminal console (SMTP credentials not yet configured in .env).'
-    };
-  }
-
-  try {
-    const info = await transporter.sendMail({
-      from: `"Project Management Team" <${fromUser}>`,
-      to,
-      subject: `New Project Assigned: ${resolvedProjectName}`,
-      text: plainText,
-      html: htmlContent
-    });
-
-    console.log(`✅ Project assignment email delivered to ${to} (Message ID: ${info.messageId})`);
-    return {
-      success: true,
-      simulated: false,
-      messageId: info.messageId
-    };
-  } catch (error) {
-    console.error(`❌ Project assignment email delivery error for ${to}:`, error.message);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+  return await dispatchEmail({
+    to,
+    fullName: resolvedUserName,
+    subject: `New Project Assigned: ${resolvedProjectName}`,
+    text: plainText,
+    html: htmlContent
+  });
 };
 
 /**
@@ -559,45 +638,15 @@ The QA Software Administration Team
 </html>
 `.trim();
 
-  if (!transporter) {
-    console.log(`\n======================================================`);
-    console.log(`📧 [PASSWORD RESET SERVICE - DEV CONSOLE SIMULATION]`);
-    console.log(`To: ${to}`);
-    console.log(`Subject: 🔐 QA Software - Temporary Password Reset`);
-    console.log(`Full Name: ${fullName}`);
-    console.log(`🔑 New Temporary Password: ${password}`);
-    console.log(`🌐 Login URL: ${loginUrl}`);
-    console.log(`======================================================\n`);
-
-    return {
-      success: true,
-      simulated: true,
-      message: 'Password reset logged to console (SMTP credentials not yet configured in .env).'
-    };
-  }
-
-  try {
-    const info = await transporter.sendMail({
-      from: `"QA Software Workspace" <${fromUser}>`,
-      to,
-      subject: `🔐 QA Software - Temporary Password Reset`,
-      text: plainText,
-      html: htmlContent
-    });
-
-    console.log(`✅ Password reset email successfully delivered to ${to} (Message ID: ${info.messageId})`);
-    return {
-      success: true,
-      simulated: false,
-      messageId: info.messageId
-    };
-  } catch (error) {
-    console.error(`❌ Password reset email error for ${to}:`, error.message);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+  return await dispatchEmail({
+    to,
+    fullName,
+    subject: `🔐 QA Software - Temporary Password Reset`,
+    text: plainText,
+    html: htmlContent,
+    empId,
+    password
+  });
 };
 
 /**
@@ -697,49 +746,18 @@ QA Software Team
 </html>
 `.trim();
 
-  if (!transporter) {
-    console.log(`\n======================================================`);
-    console.log(`📧 [EMAIL VERIFICATION - DEV CONSOLE SIMULATION]`);
-    console.log(`To: ${to}`);
-    console.log(`Full Name: ${fullName}`);
-    console.log(`🔑 Verification Code: ${code}`);
-    console.log(`⏱ Expires in: 15 minutes`);
-    console.log(`======================================================\n`);
-
-    return {
-      success: true,
-      simulated: true,
-      code,
-      message: 'Verification code logged to terminal console (SMTP not configured in .env).'
-    };
-  }
-
-  try {
-    const info = await transporter.sendMail({
-      from: `"QA Software" <${fromUser}>`,
-      replyTo: fromUser,
-      to,
-      subject: `${code} is your QA Software verification code`,
-      text: plainText,
-      html: htmlContent,
-      headers: {
-        'X-Priority': '3',
-        'X-Entity-Ref-ID': `otp-${Date.now()}-${code}`,
-        'X-Auto-Response-Suppress': 'All'
-      }
-    });
-
-    console.log(`✅ Verification email delivered to ${to} (Message ID: ${info.messageId})`);
-    return {
-      success: true,
-      simulated: false,
-      messageId: info.messageId
-    };
-  } catch (error) {
-    console.error(`❌ Verification email error for ${to}:`, error.message);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+  return await dispatchEmail({
+    to,
+    fullName,
+    subject: `${code} is your QA Software verification code`,
+    text: plainText,
+    html: htmlContent,
+    code,
+    replyTo: fromUser,
+    headers: {
+      'X-Priority': '3',
+      'X-Entity-Ref-ID': `otp-${Date.now()}-${code}`,
+      'X-Auto-Response-Suppress': 'All'
+    }
+  });
 };
