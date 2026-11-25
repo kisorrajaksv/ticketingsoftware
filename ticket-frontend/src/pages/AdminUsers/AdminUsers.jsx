@@ -1196,7 +1196,7 @@ function AdminUsers() {
                     <span className="um-stat-number">{stats.total}</span>
                   </div>
                 </div>
-                <span className="um-stat-badge badge-blue">Directory</span>
+                <span className="um-stat-badge badge-blue">All Members</span>
               </div>
 
               {/* Card 2: Active Users */}
@@ -1210,7 +1210,7 @@ function AdminUsers() {
                     <span className="um-stat-number">{stats.active}</span>
                   </div>
                 </div>
-                <span className="um-stat-badge badge-green">Verified</span>
+                <span className="um-stat-badge badge-green">Active</span>
               </div>
 
               {/* Card 3: Inactive Users */}
@@ -1220,11 +1220,11 @@ function AdminUsers() {
                     <UserX size={22} />
                   </div>
                   <div className="um-stat-info">
-                    <span className="um-stat-label">Inactive / Pending</span>
+                    <span className="um-stat-label">Inactive Members</span>
                     <span className="um-stat-number">{stats.inactive}</span>
                   </div>
                 </div>
-                <span className="um-stat-badge badge-orange">Offboarded</span>
+                <span className="um-stat-badge badge-orange">Inactive</span>
               </div>
 
               {/* Card 4: Departments */}
@@ -1238,7 +1238,7 @@ function AdminUsers() {
                     <span className="um-stat-number">{stats.departments}</span>
                   </div>
                 </div>
-                <span className="um-stat-badge badge-purple">Org Units</span>
+                <span className="um-stat-badge badge-purple">Departments</span>
               </div>
             </section>
 
