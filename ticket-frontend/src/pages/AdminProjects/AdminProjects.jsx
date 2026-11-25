@@ -92,37 +92,12 @@ const MODAL_PROJECT_STATUS_OPTIONS = [
 // Default empty projects array
 const EXACT_DEFAULT_PROJECTS = [];
 
-export const generateProjectCode = (nameVal, existingProjects = []) => {
-  if (!nameVal || !nameVal.trim()) return '';
-
-  // Split into words by spaces, hyphens or underscores
-  const words = nameVal
-    .trim()
-    .split(/[\s\-_]+/)
-    .map((w) => w.replace(/[^a-zA-Z0-9]/g, ''))
-    .filter(Boolean);
-
-  if (words.length === 0) return '';
-
-  let codeKey = '';
-  if (words.length > 1) {
-    // Multi-word project: take first letters of the words (acronym, e.g. "Customer Support Portal" -> "CSP")
-    codeKey = words.map((w) => w.charAt(0).toUpperCase()).join('');
-  } else {
-    // Single word project: shorten word to 3-4 uppercase characters (e.g. "Hospital" -> "HOSP", "Dee" -> "DEE")
-    const singleWord = words[0].toUpperCase();
-    codeKey = singleWord.length > 4 ? singleWord.slice(0, 4) : singleWord;
-  }
-
-  if (!codeKey) return '';
-
-  const prefix = `PRJ-${codeKey}`;
+export const getNextProjectCode = (existingProjects = []) => {
   let maxNum = 0;
-  const regex = new RegExp(`^${prefix}-([0-9]+)$`);
   if (Array.isArray(existingProjects)) {
     existingProjects.forEach((p) => {
       if (p && p.project_code) {
-        const match = p.project_code.match(regex);
+        const match = String(p.project_code).trim().match(/^PRJ-KSV-([0-9]+)$/i);
         if (match) {
           const num = parseInt(match[1], 10);
           if (!isNaN(num) && num > maxNum) {
@@ -132,8 +107,12 @@ export const generateProjectCode = (nameVal, existingProjects = []) => {
       }
     });
   }
-  const nextNum = String(maxNum + 1).padStart(4, '0');
-  return `${prefix}-${nextNum}`;
+  const nextNum = maxNum + 1;
+  return `PRJ-KSV-${String(nextNum).padStart(3, '0')}`;
+};
+
+export const generateProjectCode = (_nameVal, existingProjects = []) => {
+  return getNextProjectCode(existingProjects);
 };
 
 export const getTodayDateString = () => {
@@ -420,13 +399,7 @@ function AdminProjects() {
     // Validation: Only allow alphabetic characters and spaces for Project Name & Client Name
     if (name === 'name' || name === 'client_name') {
       const cleanAlpha = value.replace(/[^a-zA-Z\s]/g, '');
-      setFormData((prev) => {
-        const updated = { ...prev, [name]: cleanAlpha };
-        if (name === 'name' && !isEditing) {
-          updated.project_code = generateProjectCode(cleanAlpha, projects);
-        }
-        return updated;
-      });
+      setFormData((prev) => ({ ...prev, [name]: cleanAlpha }));
       if (formError) setFormError('');
       return;
     }
@@ -469,6 +442,7 @@ function AdminProjects() {
     setEditId(null);
     setFormData({
       ...initialProjectForm,
+      project_code: getNextProjectCode(projects),
       start_date: getTodayDateString(),
       team_members: ''
     });
@@ -514,7 +488,7 @@ function AdminProjects() {
 
     // 2. Project Code validation
     if (!formData.project_code?.trim()) {
-      setFormError('Please enter or generate a Project Code (Format: PRJ-PRJ_NAME-0001).');
+      setFormError('Please enter or generate a Project Code (Format: PRJ-KSV-001).');
       return;
     }
 
@@ -625,6 +599,7 @@ function AdminProjects() {
         }
 
         setProjects((prev) => [newProject, ...prev]);
+        fetchProjects();
       }
 
       setIsModalOpen(false);
@@ -1372,7 +1347,7 @@ function AdminProjects() {
                       type="text"
                       name="project_code"
                       autoComplete="off"
-                      placeholder="e.g. PRJ-CSP-0001"
+                      placeholder="e.g. PRJ-KSV-001"
                       value={formData.project_code}
                       readOnly
                       required
