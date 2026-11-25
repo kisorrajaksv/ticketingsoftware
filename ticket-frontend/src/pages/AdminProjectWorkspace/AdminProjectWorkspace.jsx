@@ -46,13 +46,13 @@ const TESTING_PRIORITY_OPTIONS = [
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
+import { useRealtimeSync } from '../../hooks/useRealtimeSync';
 import './AdminProjectWorkspace.css';
 
 const WORKSPACE_FOLDERS = [
   { id: 'sheet', label: 'Sheet', detail: 'Project test sheets', icon: FileSpreadsheet },
   { id: 'tickets', label: 'Tickets', detail: 'Issues for this project', icon: Ticket },
-  { id: 'lead', label: 'Project Lead', detail: 'Lead allocation & history', icon: ShieldCheck },
-  { id: 'developers', label: 'Team', detail: 'Developers & QA Members', icon: Users },
+  { id: 'members', label: 'Project Members', detail: 'Lead, Developers & QA', icon: Users },
   { id: 'documents', label: 'Documents', detail: 'Project document record', icon: FileText },
   { id: 'testing-request', label: 'Testing Request', detail: 'Start testing approval', icon: Send, restrictedToLeadAndManager: true },
   { id: 'details', label: 'Details', detail: 'Project information', icon: Folder }
@@ -664,10 +664,24 @@ export default function AdminProjectWorkspace() {
     ]).finally(() => setLoading(false));
   }, [projectId]);
 
+  useRealtimeSync(['projects', 'tickets', 'sheets', 'approvals'], () => {
+    fetchProjectData();
+    fetchLeadsAndHistory();
+    fetchDevsAndHistory();
+    fetchTickets();
+    fetchDocuments();
+    fetchProjectLinks();
+    if (canManageTestingRequest) fetchTestingRequests();
+  });
+
   const openFolder = (folderId) => {
     if (folderId === 'sheet') {
       navigate(`/admin/projects/${projectId}/sheet`, { state: { project: project || { id: projectId, project_code: `PRJ-${projectId}` } } });
       return;
+    }
+    if (folderId === 'members') {
+      fetchLeadsAndHistory();
+      fetchDevsAndHistory();
     }
     if (folderId === 'documents') {
       fetchDocuments();
@@ -945,9 +959,10 @@ export default function AdminProjectWorkspace() {
             </section>
           )}
 
-          {/* Tab 3: Project Lead Assignment (Section 2.2) */}
-          {activeFolder === 'lead' && (
-            <section id="pw-lead-section" className="project-workspace-content">
+          {/* Tab 3: Merged Project Members (Project Lead + Team Allocation) */}
+          {activeFolder === 'members' && (
+            <section id="pw-members-section" className="project-workspace-content">
+              {/* Part 1: Project Lead Allocation */}
               <div className="project-content-heading">
                 <div><span>PROJECT LEAD MANAGEMENT</span><h2 id="pw-lead-heading">Project Lead Allocation</h2></div>
                 {canAssignProjectLead && (
@@ -1031,12 +1046,10 @@ export default function AdminProjectWorkspace() {
                   )}
                 </div>
               )}
-            </section>
-          )}
 
-          {/* Tab 4: Team Allocation (Section 4) */}
-          {activeFolder === 'developers' && (
-            <section id="pw-developers-section" className="project-workspace-content">
+              <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: '28px 0' }} />
+
+              {/* Part 2: Team Allocation (Developers & QA Members) */}
               <div className="project-content-heading">
                 <div><span>TEAM ALLOCATION</span><h2 id="pw-developers-heading">{isProjectLead ? 'Assigned Developers' : 'Assigned Team Members'}</h2></div>
                 {canAssignTeamMembers && (

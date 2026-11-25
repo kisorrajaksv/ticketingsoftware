@@ -16,6 +16,7 @@ import {
 import AdminSidebar, { SmallCubeLogo } from '../../components/AdminSidebar/AdminSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { formatIndianDate } from '../../utils/dateFormat';
+import { useRealtimeSync } from '../../hooks/useRealtimeSync';
 import '../../styles/admin.css';
 
 const initialStats = {
@@ -91,6 +92,10 @@ function AdminDashboard() {
       window.removeEventListener('popstate', handlePopState);
     };
   }, [navigate, refreshStats]);
+
+  useRealtimeSync(['dashboard', 'projects', 'tickets', 'users', 'approvals'], () => {
+    refreshStats();
+  });
 
   const confirmLogout = () => {
     localStorage.removeItem('token');

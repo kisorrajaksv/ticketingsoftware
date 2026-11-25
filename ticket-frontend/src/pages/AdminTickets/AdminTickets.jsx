@@ -30,6 +30,7 @@ import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
 import FolderEmblem from '../AdminProjects/FolderEmblem';
 import { getValidToken, clearAuthSession } from '../../utils/auth';
+import { useRealtimeSync } from '../../hooks/useRealtimeSync';
 import '../../styles/admin.css';
 import '../AdminUsers/AdminUsers.css';
 import '../AdminProjects/AdminProjects.css';
@@ -236,6 +237,8 @@ function AdminTickets() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useRealtimeSync(['tickets', 'projects'], fetchData);
 
   const projectOptions = useMemo(() => {
     if (!projects || projects.length === 0) {

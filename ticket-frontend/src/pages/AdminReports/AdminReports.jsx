@@ -28,6 +28,7 @@ import {
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { formatIndianDate } from '../../utils/dateFormat';
+import { useRealtimeSync } from '../../hooks/useRealtimeSync';
 import '../../styles/admin.css';
 import '../AdminUsers/AdminUsers.css';
 import './AdminReports.css';
@@ -142,6 +143,8 @@ export default function AdminReports() {
   useEffect(() => {
     fetchReportsData();
   }, [fetchReportsData]);
+
+  useRealtimeSync(['reports', 'projects', 'sheets', 'tickets', 'users'], fetchReportsData);
 
   const confirmLogout = () => {
     localStorage.clear();

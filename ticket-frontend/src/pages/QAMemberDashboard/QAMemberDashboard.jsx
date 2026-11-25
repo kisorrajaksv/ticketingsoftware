@@ -20,6 +20,7 @@ import {
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { formatIndianDate } from '../../utils/dateFormat';
+import { useRealtimeSync } from '../../hooks/useRealtimeSync';
 import '../../styles/admin.css';
 import '../../styles/RoleDashboard.css';
 import './QAMemberDashboard.css';
@@ -40,6 +41,10 @@ export default function QAMemberDashboard() {
   const [loading, setLoading] = useState(true);
   const [ticketSearch, setTicketSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+
+  useRealtimeSync(['tickets', 'projects', 'sheets', 'dashboard'], () => {
+    fetchData();
+  });
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('token');

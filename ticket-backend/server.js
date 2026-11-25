@@ -56,6 +56,70 @@ app.use(express.json({ limit: '150mb' }));
 app.use(express.urlencoded({ limit: '150mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Global Real-Time Sync Broadcaster for any successful mutating API request
+app.use('/api', (req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return next();
+  }
+  const reqPath = req.path || '';
+  if (reqPath === '/login' || reqPath.startsWith('/forgot-password')) {
+    return next();
+  }
+
+  res.on('finish', () => {
+    if (res.statusCode < 200 || res.statusCode >= 400) return;
+
+    const modules = new Set(['dashboard']);
+    if (
+      reqPath.includes('/projects') ||
+      reqPath.includes('/sheets') ||
+      reqPath.includes('/lead') ||
+      reqPath.includes('/developers') ||
+      reqPath.includes('/documents') ||
+      reqPath.includes('/links') ||
+      reqPath.includes('/testing-request')
+    ) {
+      modules.add('projects');
+      modules.add('sheets');
+      modules.add('reports');
+      modules.add('tickets');
+    }
+    if (reqPath.includes('/tickets')) {
+      modules.add('tickets');
+      modules.add('projects');
+      modules.add('reports');
+    }
+    if (reqPath.includes('/users')) {
+      modules.add('users');
+      modules.add('reports');
+    }
+    if (reqPath.includes('/approvals')) {
+      modules.add('approvals');
+      modules.add('projects');
+    }
+    if (reqPath.includes('/deployments')) {
+      modules.add('deployments');
+      modules.add('projects');
+    }
+    if (reqPath.includes('/roles')) {
+      modules.add('roles');
+      modules.add('users');
+    }
+    if (reqPath.includes('/notifications')) {
+      modules.add('notifications');
+    }
+
+    io.emit('workspace_sync', {
+      modules: Array.from(modules),
+      path: reqPath,
+      method: req.method,
+      timestamp: Date.now()
+    });
+  });
+
+  next();
+});
+
 // Basic test route
 app.get('/api/test', async (req, res) => {
   try {
@@ -1027,40 +1091,8 @@ app.get('/api/admin/projects', async (req, res) => {
           AND project_id IS NOT NULL
         )
       )`;
-    } else if (user.role === 'QA Member') {
-      params.push(user.id, userName, userEmail);
-      query += ` WHERE (
-        -- Tagged in project test sheet (col_assigned or tester)
-        p.id IN (
-          SELECT project_id FROM project_sheets 
-          WHERE (rows::text ILIKE '%' || $2 || '%' OR rows::text ILIKE '%' || $3 || '%')
-        )
-        -- Tagged via bug tickets raised or assigned
-        OR p.id IN (
-          SELECT project_id FROM tickets 
-          WHERE (raised_by_id = $1 OR LOWER(TRIM(raised_by)) = LOWER(TRIM($2)) OR LOWER(TRIM(raised_by)) = LOWER(TRIM($3)) OR assigned_developer_id = $1 OR LOWER(TRIM(assigned_to)) = LOWER(TRIM($2)) OR LOWER(TRIM(assigned_to)) = LOWER(TRIM($3)))
-          AND project_id IS NOT NULL
-        )
-        -- Tagged via project developer / team assignments
-        OR p.id IN (
-          SELECT project_id FROM project_developer_assignments 
-          WHERE (developer_id = $1 OR LOWER(TRIM(developer_email)) = LOWER(TRIM($3)) OR LOWER(TRIM(developer_name)) = LOWER(TRIM($2))) 
-          AND status = 'Active'
-        )
-        -- Tagged as project lead / tester
-        OR p.project_lead_id = $1
-        OR LOWER(TRIM(p.lead_name)) = LOWER(TRIM($2))
-        OR LOWER(TRIM(p.lead_name)) = LOWER(TRIM($3))
-        -- Fallback: If this QA member is not yet tagged to any specific project, show all active projects so their workspace is ready
-        OR NOT EXISTS (
-          SELECT 1 FROM project_sheets WHERE (rows::text ILIKE '%' || $2 || '%' OR rows::text ILIKE '%' || $3 || '%')
-          UNION
-          SELECT 1 FROM tickets WHERE (raised_by_id = $1 OR LOWER(TRIM(raised_by)) = LOWER(TRIM($2)) OR LOWER(TRIM(raised_by)) = LOWER(TRIM($3))) AND project_id IS NOT NULL
-          UNION
-          SELECT 1 FROM project_developer_assignments WHERE (developer_id = $1 OR LOWER(TRIM(developer_email)) = LOWER(TRIM($3)) OR LOWER(TRIM(developer_name)) = LOWER(TRIM($2))) AND status = 'Active'
-        )
-      )`;
     }
+    // Note: Manager, QA Lead, QA Member, Admin, Super Admin can view and work on all projects
 
     query += ` ORDER BY p.id ASC`;
 
@@ -1673,18 +1705,39 @@ app.put('/api/admin/projects/:id/sheets/:sheetId', async (req, res) => {
           ? String(prevRow[statusColId] || prevRow.status || prevRow.col_status || '').trim().toLowerCase()
           : '';
 
-        if (testedStatuses.has(newStatus) && newStatus !== prevStatus) {
-          const updated = {
-            ...row,
-            tested_by: user.full_name,
-            tested_by_id: user.id,
-            executed_by: user.full_name,
-            execution_date: row.execution_date || row.col_date || todayIso
-          };
-          if (!String(updated.col_assigned || '').trim() && user.role === 'QA Member') {
-            updated.col_assigned = user.full_name;
+        if (testedStatuses.has(newStatus)) {
+          const statusChanged = newStatus !== prevStatus;
+          const hasExistingTester =
+            (prevRow && (prevRow.tested_by_id || prevRow.tested_by || prevRow.col_assigned)) ||
+            row.tested_by_id ||
+            row.tested_by ||
+            row.col_assigned;
+
+          if (statusChanged || !hasExistingTester) {
+            const updated = {
+              ...row,
+              tested_by: user.full_name,
+              tested_by_id: user.id,
+              executed_by: user.full_name,
+              execution_date: row.execution_date || row.col_date || todayIso
+            };
+            if (!String(updated.col_assigned || '').trim() && user.role === 'QA Member') {
+              updated.col_assigned = user.full_name;
+            }
+            return updated;
           }
-          return updated;
+
+          // Preserve tester metadata from prevRow when frontend auto-save sends stale row object
+          if (prevRow) {
+            return {
+              ...row,
+              tested_by: row.tested_by || prevRow.tested_by,
+              tested_by_id: row.tested_by_id ?? prevRow.tested_by_id,
+              executed_by: row.executed_by || prevRow.executed_by,
+              execution_date: row.execution_date || row.col_date || prevRow.execution_date,
+              col_assigned: String(row.col_assigned || '').trim() ? row.col_assigned : (prevRow.col_assigned || '')
+            };
+          }
         }
         return row;
       });

@@ -27,6 +27,7 @@ import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
+import { useRealtimeSync } from '../../hooks/useRealtimeSync';
 import '../../styles/admin.css';
 import './DeveloperDashboard.css';
 
@@ -64,6 +65,11 @@ export default function DeveloperDashboard() {
 
   // Selected Ticket for detail / resolution modal
   const [selectedTicketId, setSelectedTicketId] = useState(null);
+
+  useRealtimeSync(['tickets', 'projects', 'dashboard'], () => {
+    fetchStats();
+    fetchTickets();
+  });
 
   const fetchStats = async () => {
     try {

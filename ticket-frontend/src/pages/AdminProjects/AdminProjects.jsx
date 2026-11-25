@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useRealtimeSync } from '../../hooks/useRealtimeSync';
 import {
   AlertTriangle,
   Building2,
@@ -311,6 +312,8 @@ function AdminProjects() {
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  useRealtimeSync(['projects', 'sheets', 'tickets', 'approvals'], fetchProjects);
 
   // Close card context menu on click outside
   useEffect(() => {
