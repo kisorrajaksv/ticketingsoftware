@@ -11,9 +11,7 @@ import {
   AlertCircle,
   Copy,
   Check,
-  ShieldCheck,
-  Layers,
-  Sparkles
+  ShieldCheck
 } from 'lucide-react';
 import { applyTheme } from '../../utils/theme';
 import './Login.css';
@@ -317,39 +315,6 @@ function Login() {
             <p className="hero-subtitle">
               Next-generation quality management, continuous test execution matrix, and release workflow automation.
             </p>
-
-            {/* Glassmorphism Feature Cards */}
-            <div className="hero-features-grid">
-              <div className="hero-feature-item">
-                <div className="feature-icon-badge badge-cyan">
-                  <Sparkles size={16} />
-                </div>
-                <div className="feature-info">
-                  <span className="feature-title">Real-Time Defect Tracking</span>
-                  <span className="feature-desc">Interactive ticket triage, reproduction steps, and activity timeline.</span>
-                </div>
-              </div>
-
-              <div className="hero-feature-item">
-                <div className="feature-icon-badge badge-blue">
-                  <Layers size={16} />
-                </div>
-                <div className="feature-info">
-                  <span className="feature-title">Spreadsheet Test Matrix</span>
-                  <span className="feature-desc">High-speed matrix execution, sprint sheets, and instant reporting.</span>
-                </div>
-              </div>
-
-              <div className="hero-feature-item">
-                <div className="feature-icon-badge badge-emerald">
-                  <ShieldCheck size={16} />
-                </div>
-                <div className="feature-info">
-                  <span className="feature-title">Multi-Role Governance</span>
-                  <span className="feature-desc">Granular RBAC approvals for QA Leads, Project Leads & Admins.</span>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Bottom Trust & Status Row */}
