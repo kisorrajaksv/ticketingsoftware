@@ -3369,7 +3369,6 @@ body:has(.login-container) #root {
   grid-column: 1 / -1;
 }
 
-.admin-layout.users-page .um-header-container,
 .admin-layout.tickets-page .projects-header-row,
 .admin-layout .ws-settings-page .ws-header-row {
   background: transparent;
@@ -3386,7 +3385,6 @@ body:has(.login-container) #root {
   flex-wrap: wrap;
 }
 
-.admin-layout.users-page .um-header-titles h1,
 .admin-layout.tickets-page .projects-header-info h2,
 .admin-layout .ws-settings-page .ws-header-row h1 {
   font-family: 'Outfit', 'Plus Jakarta Sans', 'Inter', sans-serif !important;
@@ -3398,19 +3396,8 @@ body:has(.login-container) #root {
   margin: 0 !important;
 }
 
-.admin-layout.users-page .um-header-titles p,
 .admin-layout.tickets-page .projects-header-info p {
   display: none !important;
-}
-
-.admin-layout.users-page .um-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  align-items: center;
-  padding: 0;
-  margin: 0;
-  width: 100%;
 }
 
 .admin-layout.tickets-page .tickets-overview,
@@ -3808,13 +3795,11 @@ body:has(.login-container) #root {
     gap: 18px;
   }
 
-  .admin-layout.users-page .um-header-container,
   .admin-layout.tickets-page .projects-header-row,
   .admin-layout .ws-settings-page .ws-header-row {
     padding: 4px 0 12px;
   }
 
-  .admin-layout.users-page .um-header-titles h1,
   .admin-layout.tickets-page .projects-header-info h2,
   .admin-layout .ws-settings-page .ws-header-row h1 {
     font-size: 24px !important;
@@ -3905,7 +3890,6 @@ body:has(.login-container) #root {
 }
 
 .admin-layout .pj-page-container .pj-subheader,
-.admin-layout.users-page .um-header-container,
 .admin-layout .projects-header-row,
 .admin-layout .reports-header-card,
 .admin-layout .ws-settings-page .ws-header-row,
@@ -3929,7 +3913,6 @@ body:has(.login-container) #root {
 }
 
 .admin-layout .pj-page-container .pj-subheader,
-.admin-layout.users-page .um-header-container,
 .admin-layout .projects-header-row,
 .admin-layout .reports-header-card,
 .admin-layout .users-page-heading,
@@ -3950,13 +3933,11 @@ body:has(.login-container) #root {
   margin: 0;
 }
 
-.admin-layout.users-page .um-header-container,
 .admin-layout.tickets-page .projects-header-row {
   align-self: start;
 }
 
 .admin-layout .pj-title-text h1,
-.admin-layout.users-page .um-header-titles h1,
 .admin-layout .projects-header-info h2,
 .admin-layout .reports-header-text h2,
 .admin-layout .ws-settings-page .ws-header-row h1,

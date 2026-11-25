@@ -37,6 +37,7 @@ import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { applyTheme, getSavedTheme } from '../../utils/theme';
 import { formatIndianDateTime } from '../../utils/dateFormat';
 import '../../styles/admin.css';
+import '../AdminUsers/AdminUsers.css';
 import './AdminWorkspacePage.css';
 
 const sections = {
@@ -513,14 +514,30 @@ function SettingsContent() {
   return (
     <main id="ws-settings-main-content" className="main-content">
       <TopNavbar pageTitle="Application Settings" />
-      <div className="ws-settings-page">
-        <div className="ws-header-row">
-          <div>
-            <h1 id="ws-settings-heading">Application Settings</h1>
-          </div>
-        </div>
+      <div className="dashboard-container">
+        <div className="users-page-layout ws-settings-layout">
+          {/* Executive Header Container matching Users, Projects & Tickets */}
+          <header id="ws-settings-header-section" className="um-header-container">
+            <div className="um-header-left">
+              <div className="um-header-icon-box">
+                <Settings size={24} color="#2563EB" />
+              </div>
+              <div className="um-header-titles">
+                <h1 id="ws-settings-heading">Application Settings</h1>
+                <p>
+                  Configure system appearance, profile details, security credentials, and workspace announcements.
+                </p>
+              </div>
+            </div>
 
-        <div className="ws-grid">
+            <div className="um-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span className="reports-live-badge">
+                <span className="reports-pulse-dot" /> Preferences Active
+              </span>
+            </div>
+          </header>
+
+          <div className="ws-grid">
           {/* 1. THEME SECTION */}
           <section id="ws-theme-section" className="ws-card ws-col-half">
               <div className="ws-card-header">
@@ -1148,6 +1165,7 @@ function SettingsContent() {
                 </div>
               </div>
             </section>
+          </div>
         </div>
       </div>
     </main>

@@ -1,0 +1,28 @@
+/* ==========================================================================
+   DEPLOYMENT APPROVALS WORKSPACE STYLES - EXECUTIVE BLUE & DARK NAVY
+   Strictly adheres to .agent/skills/frontend-ui-design-system/SKILL.md
+   ========================================================================== */
+
+.deployments-page-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 40px;
+}
+
+.deployments-table-card {
+  width: 100%;
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -14,6 +14,8 @@ import {
   Eye,
   Headphones,
   IdCard,
+  LayoutGrid,
+  List,
   Lock,
   LogOut,
   Mail,
@@ -40,9 +42,10 @@ import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import { formatIndianDate } from '../../utils/dateFormat';
 import { getValidToken } from '../../utils/auth';
 import '../../styles/admin.css';
+import '../AdminTickets/AdminTickets.css';
 import './AdminUsers.css';
 
-const PROTECTED_EMAILS = ['manager@gmail.com', 'qalead@gmail.com'];
+const PROTECTED_EMAILS = ['admin@gmail.com'];
 
 const AVAILABLE_ROLES = [
   'Manager',
@@ -211,6 +214,7 @@ function AdminUsers() {
   };
 
   // Modals
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [viewingUser, setViewingUser] = useState(null);
@@ -1076,49 +1080,68 @@ function AdminUsers() {
           )}
 
           <div className="users-page-layout">
-            {/* Page Header */}
+            {/* Page Header matching Projects & Tickets Workspace */}
             <header id="um-header-section" className="um-header-container">
               <div className="um-header-left">
                 <div className="um-header-icon-box">
-                  <Users size={24} color="#2563EB" />
+                  <Users size={22} color="#2563EB" />
                 </div>
                 <div className="um-header-titles">
                   <h1 id="um-page-heading">
-                    {isAdmin ? 'Employee Management' : isQAMember ? 'Team Directory & Users' : 'User Management'}
+                    {isAdmin ? 'User Management' : isQAMember ? 'Team Directory' : 'User Management'}
                   </h1>
                   <p>
-                    {isAdmin
-                      ? 'Company-wide employee directory, role assignments, and governance. Create, update, or remove company employees and manage role access.'
-                      : isQAMember
-                      ? 'Explore workspace team members, departments, roles, and employee contact details. QA Member directory mode active.'
-                      : 'Add and manage team members, departments, roles, and employee IDs. Control access and permissions across the QA workspace.'}
+                    Manage team members, employee credentials, roles, and department permissions.
                   </p>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div className="um-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Segmented View Switcher matching Tickets & Projects */}
+                <div id="um-view-switcher" className="ticket-view-toggle" role="group" aria-label="User directory view">
+                  <button
+                    id="um-view-grid-btn"
+                    type="button"
+                    className={`ticket-view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                    onClick={() => setViewMode('grid')}
+                  >
+                    <LayoutGrid size={15} />
+                    <span>Cards Grid</span>
+                  </button>
+                  <button
+                    id="um-view-table-btn"
+                    type="button"
+                    className={`ticket-view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                    onClick={() => setViewMode('table')}
+                  >
+                    <List size={15} />
+                    <span>Table View</span>
+                  </button>
+                </div>
+
                 {isAdmin && (
                   <button
                     id="um-manage-role-perms-btn"
                     type="button"
+                    className="ticket-view-button"
                     style={{
-                      display: 'flex',
+                      height: '38px',
+                      padding: '0 14px',
+                      borderRadius: '8px',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      background: '#eff6ff',
-                      color: '#1d4ed8',
-                      border: '1px solid #bfdbfe',
-                      padding: '10px 18px',
-                      borderRadius: '10px',
+                      gap: '7px',
+                      fontSize: '13px',
                       fontWeight: '600',
-                      fontSize: '0.88rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
+                      background: '#ffffff',
+                      color: '#1e40af',
+                      border: '1px solid #bfdbfe',
+                      cursor: 'pointer'
                     }}
                     onClick={handleOpenPermissionsModal}
                   >
-                    <ShieldCheck size={18} color="#2563eb" />
-                    <span>Manager Role Permissions</span>
+                    <ShieldCheck size={16} color="#2563eb" />
+                    <span>Permissions</span>
                   </button>
                 )}
 
@@ -1311,8 +1334,197 @@ function AdminUsers() {
               </div>
             </div>
 
-            {/* Users Table Card */}
-            <section id="um-table-section" className="um-table-card">
+            {/* Section Header with Pill Badge matching Tickets */}
+            <div className="ticket-folders-section-header" style={{ marginBottom: '14px' }}>
+              <div className="ticket-folders-section-title">
+                <Users size={18} color="#2563eb" />
+                <span>{isAdmin ? 'Employee Records' : 'Team Members'}</span>
+                <span className="ticket-folders-total-pill">
+                  {filteredUsers.length} {filteredUsers.length === 1 ? 'Member' : 'Members'}
+                </span>
+              </div>
+            </div>
+
+            {viewMode === 'grid' ? (
+              <section id="um-cards-section" className="um-users-cards-grid">
+                {loading ? (
+                  <div className="um-empty-state-card" style={{ gridColumn: '1 / -1' }}>
+                    <RefreshCw size={24} className="animate-spin" style={{ color: '#2563eb', margin: '0 auto 12px' }} />
+                    <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
+                      Loading workspace users directory...
+                    </p>
+                  </div>
+                ) : filteredUsers.length === 0 ? (
+                  <div className="um-empty-state-card" style={{ gridColumn: '1 / -1' }}>
+                    <div className="um-empty-icon-wrap">
+                      <Users size={32} />
+                    </div>
+                    <h3 id="um-empty-heading">
+                      {users.length === 0 ? 'No Team Members Yet' : 'No Team Members Found'}
+                    </h3>
+                    <p className="um-empty-description">
+                      {users.length === 0
+                        ? 'Your employee directory is clean and ready. Add your first team member or invite staff to get started.'
+                        : "We couldn't find any team members matching your search or filters. Try adjusting your query or resetting filters."}
+                    </p>
+                    {users.length === 0 ? (
+                      !isQAMember && (
+                        <button
+                          id="um-empty-add-user-btn"
+                          className="um-btn-create"
+                          onClick={handleOpenCreateModal}
+                          style={{ marginTop: 8 }}
+                        >
+                          <Plus size={16} />
+                          <span>{isAdmin ? 'Add First Employee' : 'Add First User'}</span>
+                        </button>
+                      )
+                    ) : (
+                      <button
+                        id="um-reset-filters-btn"
+                        className="um-btn-reset-filters"
+                        onClick={() => {
+                          setSearchQuery('');
+                          if (!filtersLocked) {
+                            setDepartmentFilter('All');
+                            setRoleFilter('All');
+                            setStatusFilter('All');
+                            setSortBy('default');
+                          }
+                        }}
+                      >
+                        Clear All Filters
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  filteredUsers.map((user, index) => {
+                    const initials = getInitials(user.full_name);
+                    const avatarStyle = getAvatarColor(user.full_name, index);
+                    const canEdit = canEditUser(user);
+                    const canDelete = canDeleteUser(user);
+
+                    return (
+                      <article id={`um-user-card-${user.id}`} key={user.id} className="um-user-card">
+                        <div className="um-user-card-header">
+                          <div className="um-user-avatar-wrap">
+                            {user.avatar ? (
+                              <img src={user.avatar} alt={user.full_name} className="um-avatar-img" />
+                            ) : (
+                              <div className="um-avatar-placeholder" style={avatarStyle}>
+                                {initials}
+                              </div>
+                            )}
+                            <span className={`um-status-indicator ${(user.status || 'Active').toLowerCase()}`} />
+                          </div>
+
+                          <div className="um-user-card-badges">
+                            <span className={`um-status-badge ${(user.status || 'Active').toLowerCase()}`}>
+                              <span className="status-dot" />
+                              {user.status || 'Active'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="um-user-card-body">
+                          <div className="um-user-card-name-row">
+                            <h3 className="um-user-card-name">{user.full_name}</h3>
+                            <span className="um-emp-id-pill">
+                              <IdCard size={12} />
+                              <span>{user.emp_id || `EMP-${String(user.id).padStart(3, '0')}`}</span>
+                            </span>
+                          </div>
+
+                          <div className="um-user-card-tags">
+                            {renderRoleBadge(user.role)}
+                            {renderDepartmentBadge(user.department)}
+                          </div>
+
+                          <div className="um-user-card-contact-list">
+                            <div className="um-contact-item" title={user.email}>
+                              <Mail size={13} color="#64748b" />
+                              <span className="um-contact-text">{user.email}</span>
+                            </div>
+                            {user.phone && (
+                              <div className="um-contact-item">
+                                <Calendar size={13} color="#64748b" />
+                                <span className="um-contact-text">{user.phone}</span>
+                              </div>
+                            )}
+                            <div className="um-contact-item joined-date">
+                              <Calendar size={13} color="#94a3b8" />
+                              <span className="um-contact-text" style={{ color: '#94a3b8' }}>
+                                Joined {formatIndianDate(user.created_at)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {!isQAMember && (
+                          <div className="um-user-card-footer">
+                            <button
+                              id={`um-card-resend-btn-${user.id}`}
+                              type="button"
+                              className="um-card-action-btn invite"
+                              disabled={resendingUserId === user.id}
+                              title="Resend welcome email with temporary credentials"
+                              onClick={() => handleResendInvite(user)}
+                            >
+                              <MailCheck size={14} />
+                              <span>{resendingUserId === user.id ? 'Sending...' : 'Invite'}</span>
+                            </button>
+
+                            {!canEdit ? (
+                              <button
+                                className="um-card-action-btn edit disabled"
+                                disabled
+                                title="Primary Admin account is protected"
+                              >
+                                <Lock size={14} />
+                                <span>Locked</span>
+                              </button>
+                            ) : (
+                              <button
+                                id={`um-card-edit-btn-${user.id}`}
+                                type="button"
+                                className="um-card-action-btn edit"
+                                title="Edit user"
+                                onClick={() => openEditModal(user)}
+                              >
+                                <Pencil size={14} />
+                                <span>Edit</span>
+                              </button>
+                            )}
+
+                            {!canDelete ? (
+                              <button
+                                className="um-card-action-btn delete disabled"
+                                disabled
+                                title="Protected account cannot be deleted"
+                              >
+                                <Lock size={14} />
+                              </button>
+                            ) : (
+                              <button
+                                id={`um-card-delete-btn-${user.id}`}
+                                type="button"
+                                className="um-card-action-btn delete"
+                                title="Delete user"
+                                onClick={() => setUserToDelete(user)}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })
+                )}
+              </section>
+            ) : (
+              /* Users Table Card */
+              <section id="um-table-section" className="um-table-card">
               <div className="um-table-scroll">
                 <table id="um-users-table" className="um-table">
                   <thead>
@@ -1542,6 +1754,7 @@ function AdminUsers() {
                 </table>
               </div>
             </section>
+          )}
           </div>
         </div>
       </main>
