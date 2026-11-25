@@ -7,53 +7,63 @@
   padding-bottom: 40px;
 }
 
-/* Page Header */
+/* Page Header - Identical to Projects Workspace Floating White Card */
+.admin-layout.users-page .um-header-container,
 .um-header-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  background: #ffffff;
-  padding: 18px 22px;
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 16px !important;
+  background: #ffffff !important;
+  padding: 18px 24px !important;
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
+.admin-layout.users-page .um-header-left,
 .um-header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
 }
 
+.admin-layout.users-page .um-header-icon-box,
 .um-header-icon-box {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: #eff6ff;
-  color: #2563eb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 1px solid #dbeafe;
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 12px !important;
+  background: #eff6ff !important;
+  color: #2563eb !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  border: 1px solid #dbeafe !important;
 }
 
+.admin-layout.users-page .um-header-titles h1,
 .um-header-titles h1 {
-  font-size: var(--fs-h1, 1.375rem);
-  font-weight: 800;
-  color: #0f172a;
-  margin: 0 0 3px 0;
-  letter-spacing: -0.025em;
+  font-family: 'Outfit', 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif !important;
+  font-size: 22px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  margin: 0 0 3px 0 !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.2 !important;
 }
 
+.admin-layout.users-page .um-header-titles p,
 .um-header-titles p {
-  font-size: var(--fs-body, 0.84375rem);
-  color: #64748b;
-  margin: 0;
-  max-width: 720px;
-  line-height: 1.5;
+  display: block !important;
+  font-size: 13.5px !important;
+  color: #64748b !important;
+  margin: 0 !important;
+  max-width: 720px !important;
+  line-height: 1.45 !important;
 }
 
 .um-btn-create {

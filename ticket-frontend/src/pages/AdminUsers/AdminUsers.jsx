@@ -1080,22 +1080,18 @@ function AdminUsers() {
           )}
 
           <div className="users-page-layout">
-            {/* Page Header */}
+            {/* Page Header matching Projects & Tickets Workspace */}
             <header id="um-header-section" className="um-header-container">
               <div className="um-header-left">
                 <div className="um-header-icon-box">
-                  <Users size={24} color="#2563EB" />
+                  <Users size={22} color="#2563EB" />
                 </div>
                 <div className="um-header-titles">
                   <h1 id="um-page-heading">
-                    {isAdmin ? 'Employee Management' : isQAMember ? 'Team Directory & Users' : 'User Management'}
+                    {isAdmin ? 'User Management' : isQAMember ? 'Team Directory' : 'User Management'}
                   </h1>
                   <p>
-                    {isAdmin
-                      ? 'Company-wide employee directory, role assignments, and governance. Create, update, or remove company employees and manage role access.'
-                      : isQAMember
-                      ? 'Explore workspace team members, departments, roles, and employee contact details. QA Member directory mode active.'
-                      : 'Add and manage team members, departments, roles, and employee IDs. Control access and permissions across the QA workspace.'}
+                    Manage team members, employee credentials, roles, and department permissions.
                   </p>
                 </div>
               </div>
@@ -1103,15 +1099,6 @@ function AdminUsers() {
               <div className="um-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {/* Segmented View Switcher matching Tickets & Projects */}
                 <div id="um-view-switcher" className="ticket-view-toggle" role="group" aria-label="User directory view">
-                  <button
-                    id="um-view-table-btn"
-                    type="button"
-                    className={`ticket-view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-                    onClick={() => setViewMode('table')}
-                  >
-                    <List size={15} />
-                    <span>Table View</span>
-                  </button>
                   <button
                     id="um-view-grid-btn"
                     type="button"
@@ -1121,30 +1108,40 @@ function AdminUsers() {
                     <LayoutGrid size={15} />
                     <span>Cards Grid</span>
                   </button>
+                  <button
+                    id="um-view-table-btn"
+                    type="button"
+                    className={`ticket-view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                    onClick={() => setViewMode('table')}
+                  >
+                    <List size={15} />
+                    <span>Table View</span>
+                  </button>
                 </div>
 
                 {isAdmin && (
                   <button
                     id="um-manage-role-perms-btn"
                     type="button"
+                    className="ticket-view-button"
                     style={{
-                      display: 'flex',
+                      height: '38px',
+                      padding: '0 14px',
+                      borderRadius: '8px',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      background: '#eff6ff',
-                      color: '#1d4ed8',
-                      border: '1px solid #bfdbfe',
-                      padding: '10px 18px',
-                      borderRadius: '10px',
+                      gap: '7px',
+                      fontSize: '13px',
                       fontWeight: '600',
-                      fontSize: '0.88rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
+                      background: '#ffffff',
+                      color: '#1e40af',
+                      border: '1px solid #bfdbfe',
+                      cursor: 'pointer'
                     }}
                     onClick={handleOpenPermissionsModal}
                   >
-                    <ShieldCheck size={18} color="#2563eb" />
-                    <span>Manager Role Permissions</span>
+                    <ShieldCheck size={16} color="#2563eb" />
+                    <span>Permissions</span>
                   </button>
                 )}
 
