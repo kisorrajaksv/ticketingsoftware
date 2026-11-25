@@ -370,9 +370,7 @@ html[data-theme='dark'] .admin-layout .users-filter-bar,
 html[data-theme='dark'] .um-controls-bar,
 html[data-theme='dark'] .admin-layout .um-controls-bar,
 html[data-theme='dark'] .pj-controls-bar,
-html[data-theme='dark'] .qa-daily-filter-card,
-html[data-theme='dark'] .reports-header-card,
-html[data-theme='dark'] .reports-view-selector-bar {
+html[data-theme='dark'] .reports-header-card {
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
@@ -2475,6 +2473,61 @@ html[data-theme='dark'] .tab-count-pill {
   background: #1e293b;
   border-color: #334155;
   color: #cbd5e1;
+}
+
+html[data-theme='dark'] .reports-view-selector-bar {
+  background: #111827 !important;
+  border: 1.5px solid #1e293b !important;
+  border-radius: 14px !important;
+}
+
+html[data-theme='dark'] .report-nav-tab {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .report-nav-tab:hover {
+  background: rgba(37, 99, 235, 0.2);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+html[data-theme='dark'] .report-nav-tab.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+html[data-theme='dark'] .qa-daily-filter-card {
+  background: #111827 !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 12px !important;
+}
+
+html[data-theme='dark'] .qa-period-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .qa-period-btn:hover {
+  background: rgba(37, 99, 235, 0.2);
+  color: #93c5fd;
+}
+
+html[data-theme='dark'] .qa-period-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+html[data-theme='dark'] .qa-date-picker-wrap {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme='dark'] .qa-date-picker-wrap input[type="date"] {
+  color: #f1f5f9;
 }
 
 html[data-theme='dark'] .reports-live-badge {

@@ -182,6 +182,13 @@ function NotificationCenter({ collapsed = false }) {
           return [incoming, ...prev];
         });
         window.dispatchEvent(new Event('notifications-updated'));
+        if (
+          incoming.type?.includes('approval') ||
+          incoming.type?.includes('testing_request') ||
+          incoming.link === '/admin/approvals'
+        ) {
+          window.dispatchEvent(new CustomEvent('workspace-approvals-updated'));
+        }
         setLiveToast(incoming);
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => setLiveToast(null), 6000);
@@ -192,6 +199,13 @@ function NotificationCenter({ collapsed = false }) {
 
       socket.on('new_notification', handleIncomingNotification);
       socket.on(`notification_user_${userId}`, handleIncomingNotification);
+
+      socket.on('approval_created', () => {
+        window.dispatchEvent(new CustomEvent('workspace-approvals-updated'));
+      });
+      socket.on('approval_updated', () => {
+        window.dispatchEvent(new CustomEvent('workspace-approvals-updated'));
+      });
     };
 
     connectSocket();
