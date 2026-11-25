@@ -1147,54 +1147,25 @@
   }
 }
 
-.tdm-header-delete-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: 1px solid #FEE2E2;
-  background: #FEF2F2;
-  color: #DC2626;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.tdm-header-delete-btn:hover:not(:disabled) {
-  background: #DC2626;
-  border-color: #DC2626;
-  color: #FFFFFF;
-}
-
-.tdm-header-delete-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .tdm-tiny-delete-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid #FEE2E2;
-  background: #FEF2F2;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  background: transparent;
   color: #DC2626;
-  font-size: 12px;
-  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, transform 0.15s ease;
 }
 
 .tdm-tiny-delete-btn:hover:not(:disabled) {
-  background: #DC2626;
-  border-color: #DC2626;
-  color: #FFFFFF;
+  color: #B91C1C;
+  transform: scale(1.12);
 }
 
 .tdm-tiny-delete-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 

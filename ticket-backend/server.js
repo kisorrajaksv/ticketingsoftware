@@ -1639,6 +1639,58 @@ app.put('/api/admin/projects/:id/sheets/:sheetId', async (req, res) => {
       return res.status(404).json({ error: 'Sheet tab not found.' });
     }
 
+    // Stamp tester identity & execution date whenever a row's status transitions to a tested state
+    let processedRows = rows;
+    if (Array.isArray(rows)) {
+      const existingSheet = existing.rows[0];
+      const prevRowsList = Array.isArray(existingSheet.rows) ? existingSheet.rows : [];
+      const prevRowsById = new Map();
+      prevRowsList.forEach((pr) => {
+        if (pr && pr.id) prevRowsById.set(pr.id, pr);
+      });
+
+      const activeCols = Array.isArray(columns)
+        ? columns
+        : (Array.isArray(existingSheet.columns) ? existingSheet.columns : []);
+      const statusCol = activeCols.find(
+        (c) =>
+          c.type === 'status' ||
+          c.id?.toLowerCase().includes('status') ||
+          c.id?.toLowerCase().includes('signoff') ||
+          c.id?.toLowerCase().includes('coverage')
+      );
+      const statusColId = statusCol ? statusCol.id : 'col_status';
+      const testedStatuses = new Set([
+        'pass', 'passed', 'fail', 'failed', 'recommendation', 'rec',
+        'in progress', 'progress', 'working', 'blocked', 'skipped'
+      ]);
+      const todayIso = new Date().toISOString().split('T')[0];
+
+      processedRows = rows.map((row) => {
+        if (!row || typeof row !== 'object') return row;
+        const newStatus = String(row[statusColId] || row.status || row.col_status || '').trim().toLowerCase();
+        const prevRow = row.id ? prevRowsById.get(row.id) : null;
+        const prevStatus = prevRow
+          ? String(prevRow[statusColId] || prevRow.status || prevRow.col_status || '').trim().toLowerCase()
+          : '';
+
+        if (testedStatuses.has(newStatus) && newStatus !== prevStatus) {
+          const updated = {
+            ...row,
+            tested_by: user.full_name,
+            tested_by_id: user.id,
+            executed_by: user.full_name,
+            execution_date: row.execution_date || row.col_date || todayIso
+          };
+          if (!String(updated.col_assigned || '').trim() && user.role === 'QA Member') {
+            updated.col_assigned = user.full_name;
+          }
+          return updated;
+        }
+        return row;
+      });
+    }
+
     const updateRes = await pool.query(
       `UPDATE project_sheets SET
         sheet_name = COALESCE($1, sheet_name),
@@ -1652,7 +1704,7 @@ app.put('/api/admin/projects/:id/sheets/:sheetId', async (req, res) => {
       [
         sheet_name !== undefined ? sheet_name.trim() : null,
         columns !== undefined ? JSON.stringify(columns) : null,
-        rows !== undefined ? JSON.stringify(rows) : null,
+        processedRows !== undefined ? JSON.stringify(processedRows) : null,
         formatting !== undefined ? JSON.stringify(formatting) : null,
         tab_color !== undefined ? tab_color : null,
         sheetId,

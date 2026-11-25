@@ -2464,17 +2464,37 @@ export function registerWorkflowRoutes(app, io) {
             // Check if this row is assigned to or tested by this QA member
             let isRowMatch = false;
 
-            const rowAssignee = String(row.col_assigned || row.assigned_to || row.tested_by || row.executed_by || row.col_qa_lead || '').trim().toLowerCase();
-            if (rowAssignee && (rowAssignee === qaNameClean || rowAssignee === qaEmailClean || qaNameClean.includes(rowAssignee) || rowAssignee.includes(qaNameClean))) {
-              isRowMatch = true;
-            }
+            if (row.tested_by_id !== undefined && row.tested_by_id !== null && row.tested_by_id !== '') {
+              isRowMatch = Number(row.tested_by_id) === Number(qa.id);
+            } else {
+              const rowAssignee = String(row.col_assigned || row.assigned_to || row.tested_by || row.executed_by || row.col_qa_lead || '').trim().toLowerCase();
+              if (rowAssignee && (rowAssignee === qaNameClean || rowAssignee === qaEmailClean)) {
+                isRowMatch = true;
+              }
 
-            if (!isRowMatch && assignCols.length > 0) {
-              for (const ac of assignCols) {
-                const val = String(row[ac.id] || '').trim().toLowerCase();
-                if (val && (val === qaNameClean || val === qaEmailClean || qaNameClean.includes(val) || val.includes(qaNameClean))) {
+              if (!isRowMatch && assignCols.length > 0) {
+                for (const ac of assignCols) {
+                  const val = String(row[ac.id] || '').trim().toLowerCase();
+                  if (val && (val === qaNameClean || val === qaEmailClean)) {
+                    isRowMatch = true;
+                    break;
+                  }
+                }
+              }
+
+              // Fallback: if row has a linked bug ticket, attribute to the ticket raiser
+              if (!isRowMatch && (row.ticket_id || row.ticket_code)) {
+                const linkedTicket = allTickets.find(
+                  (t) =>
+                    (row.ticket_id && Number(t.id) === Number(row.ticket_id)) ||
+                    (row.ticket_code && t.ticket_code === row.ticket_code)
+                );
+                if (
+                  linkedTicket &&
+                  (Number(linkedTicket.raised_by_id) === Number(qa.id) ||
+                    (linkedTicket.raised_by || '').trim().toLowerCase() === qaNameClean)
+                ) {
                   isRowMatch = true;
-                  break;
                 }
               }
             }

@@ -447,19 +447,6 @@ export default function TicketDetailModal({
             </span>
           </div>
           <div className="tdm-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {isQAMember && (
-              <button
-                id="tdm-header-delete-btn"
-                type="button"
-                className="tdm-header-delete-btn"
-                onClick={handleDeleteTicket}
-                disabled={deletingTicket}
-                title="Delete this bug ticket"
-                aria-label="Delete this bug ticket"
-              >
-                <Trash2 size={15} />
-              </button>
-            )}
             <button id="tdm-close-btn" type="button" className="tdm-close-btn" onClick={handleSafeClose} aria-label="Close dialog">
               <X size={18} />
             </button>
@@ -1090,9 +1077,9 @@ export default function TicketDetailModal({
                   </div>
                 </div>
 
-                {/* 6. QA Member Delete Action (Bottom-Right) */}
+                {/* 6. QA Member Delete Action (Bottom-Right, Icon Only) */}
                 {isQAMember && (
-                  <div id="tdm-delete-card" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px', padding: '4px 0' }}>
+                  <div id="tdm-delete-card" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', padding: '4px 0' }}>
                     <button
                       id="tdm-bottom-delete-btn"
                       type="button"
@@ -1103,7 +1090,6 @@ export default function TicketDetailModal({
                       aria-label="Delete this bug ticket"
                     >
                       <Trash2 size={13} />
-                      <span>{deletingTicket ? 'Deleting...' : 'Delete Bug'}</span>
                     </button>
                   </div>
                 )}

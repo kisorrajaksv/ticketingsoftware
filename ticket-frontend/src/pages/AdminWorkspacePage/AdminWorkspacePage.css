@@ -449,9 +449,16 @@
   padding: 9px 12px;
   border-radius: 9px;
   border: 1px solid var(--color-line);
-  background: var(--color-surface);
+  background-color: var(--color-surface);
   color: var(--color-ink);
   font-size: 13px;
+}
+
+.ws-field select {
+  padding-right: 34px;
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 15px 15px;
 }
 
 .ws-field input[readonly] {

@@ -4,7 +4,6 @@ import axios from 'axios';
 import {
   BarChart3,
   CheckCircle2,
-  ChevronDown,
   Download,
   FolderKanban,
   LogOut,
@@ -105,9 +104,21 @@ export default function AdminReports() {
       if (qaRes.data) {
         // Filter safeguard: ensure QA Lead or Manager are strictly excluded
         const rawMembers = Array.isArray(qaRes.data.qaMembers) ? qaRes.data.qaMembers : [];
-        const strictlyQAMembers = rawMembers.filter(
+        let strictlyQAMembers = rawMembers.filter(
           (m) => (m.role || '').toLowerCase() === 'qa member'
         );
+
+        // If logged in as a QA Member, show ONLY their own report
+        if (userRole.toLowerCase() === 'qa member') {
+          const currentUserId = localStorage.getItem('userId');
+          const currentUserEmail = (localStorage.getItem('userEmail') || '').toLowerCase().trim();
+          strictlyQAMembers = strictlyQAMembers.filter(
+            (m) =>
+              (currentUserId && String(m.id) === String(currentUserId)) ||
+              (currentUserEmail && (m.email || '').toLowerCase().trim() === currentUserEmail)
+          );
+        }
+
         setQaMembersReport(strictlyQAMembers);
         setQaOverall(qaRes.data.summary || null);
 
@@ -137,9 +148,9 @@ export default function AdminReports() {
     navigate('/', { replace: true });
   };
 
-  // Exclusive Toggle Handler: Opening one report closes the other
+  // Direct Tab Switcher: Clicking a navigation tab switches to that report view
   const handleToggleReport = (reportKey) => {
-    setActiveReport((prev) => (prev === reportKey ? null : reportKey));
+    setActiveReport(reportKey);
   };
 
   // Filtered Project List
@@ -639,7 +650,6 @@ export default function AdminReports() {
                 >
                   <FolderKanban size={16} />
                   <span>Projects Quality Overview</span>
-                  <span className="tab-count-pill">{projectReports.length}</span>
                 </button>
 
                 {canViewQAReport && (
@@ -651,7 +661,6 @@ export default function AdminReports() {
                   >
                     <UsersRound size={16} />
                     <span>QA Members Performance</span>
-                    <span className="tab-count-pill">{qaMembersReport.length}</span>
                   </button>
                 )}
               </div>
@@ -659,46 +668,40 @@ export default function AdminReports() {
 
             {/* ======================================================== */}
             {/* REPORT 1: PROJECT-WISE QUALITY & DEFECT OVERVIEW         */}
-            {/* Collapsible card: opening this closes Report 2 below     */}
+            {/* Dedicated page view controlled by top navigation tab     */}
             {/* ======================================================== */}
-            <section id="reports-projects-section" className={`report-accordion-card ${activeReport === 'projects' ? 'is-expanded' : ''}`}>
-              <div
-                id="reports-projects-accordion-toggle"
-                className="report-accordion-header"
-                onClick={() => handleToggleReport('projects')}
-                role="button"
-                tabIndex={0}
-                aria-expanded={activeReport === 'projects'}
-              >
-                <div className="report-accordion-title-side">
-                  <div className="accordion-icon-box">
-                    <FolderKanban size={18} />
+            {activeReport === 'projects' && (
+              <section id="reports-projects-section" className="report-accordion-card is-expanded">
+                <div
+                  id="reports-projects-accordion-toggle"
+                  className="report-accordion-header"
+                  style={{ cursor: 'default' }}
+                >
+                  <div className="report-accordion-title-side">
+                    <div className="accordion-icon-box">
+                      <FolderKanban size={18} />
+                    </div>
+                    <div className="accordion-title-text">
+                      <h3 id="reports-projects-heading">
+                        Project-Wise Quality &amp; Defect Overview
+                        <span className="accordion-badge">{filteredProjects.length} Projects</span>
+                      </h3>
+                      <p>Aggregated test cases, execution progress bar, defect tickets, and developer resolutions.</p>
+                    </div>
                   </div>
-                  <div className="accordion-title-text">
-                    <h3 id="reports-projects-heading">
-                      Project-Wise Quality &amp; Defect Overview
-                      <span className="accordion-badge">{filteredProjects.length} Projects</span>
-                    </h3>
-                    <p>Aggregated test cases, execution progress bar, defect tickets, and developer resolutions.</p>
-                  </div>
-                </div>
 
-                <div className="report-accordion-meta-side">
-                  {projectOverall && (
-                    <span className="accordion-quick-stat">
-                      <CheckCheck size={14} color="#10B981" />
-                      <span>
-                        {projectOverall.total_test_cases} Cases &bull; {projectOverall.global_pass_rate}% Pass Rate
+                  <div className="report-accordion-meta-side">
+                    {projectOverall && (
+                      <span className="accordion-quick-stat">
+                        <CheckCheck size={14} color="#10B981" />
+                        <span>
+                          {projectOverall.total_test_cases} Cases &bull; {projectOverall.global_pass_rate}% Pass Rate
+                        </span>
                       </span>
-                    </span>
-                  )}
-                  <div className="accordion-chevron-circle">
-                    <ChevronDown size={16} />
+                    )}
                   </div>
                 </div>
-              </div>
 
-              {activeReport === 'projects' && (
                 <div className="report-accordion-body">
                   {/* Clean Search & Export Controls matching User Module */}
                   <div className="um-controls-bar" style={{ marginBottom: '16px' }}>
@@ -948,24 +951,21 @@ export default function AdminReports() {
                     )}
                   </div>
                 </div>
-              )}
-            </section>
+              </section>
+            )}
 
             {/* ======================================================== */}
             {/* REPORT 2: QA MEMBER TEST EXECUTION & DAILY WORK REPORT    */}
             {/* Visible ONLY to: Manager, QA Lead, QA Member             */}
             {/* Strictly EXCLUDES QA Lead from member rows               */}
-            {/* Collapsible card: opening this closes Report 1 above     */}
+            {/* Dedicated page view controlled by top navigation tab     */}
             {/* ======================================================== */}
-            {canViewQAReport && (
-              <section id="reports-qa-section" className={`report-accordion-card ${activeReport === 'qa' ? 'is-expanded' : ''}`}>
+            {canViewQAReport && activeReport === 'qa' && (
+              <section id="reports-qa-section" className="report-accordion-card is-expanded">
                 <div
                   id="reports-qa-accordion-toggle"
                   className="report-accordion-header"
-                  onClick={() => handleToggleReport('qa')}
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={activeReport === 'qa'}
+                  style={{ cursor: 'default' }}
                 >
                   <div className="report-accordion-title-side">
                     <div className="accordion-icon-box emerald">
@@ -974,7 +974,9 @@ export default function AdminReports() {
                     <div className="accordion-title-text">
                       <h3 id="reports-qa-heading">
                         QA Member Test Execution &amp; Daily Work Report
-                        <span className="accordion-badge emerald">{filteredQAMembers.length} QA Members</span>
+                        <span className="accordion-badge emerald">
+                          {filteredQAMembers.length} QA {filteredQAMembers.length === 1 ? 'Member' : 'Members'}
+                        </span>
                       </h3>
                       <p>Track how much each QA member tested today and across daily reporting periods with activity logs.</p>
                     </div>
@@ -985,19 +987,27 @@ export default function AdminReports() {
                       <span className="accordion-quick-stat">
                         <Calendar size={14} color="#059669" />
                         <span>
-                          <strong>{qaOverall.today_tests_executed || 0}</strong> Tested Today &bull;{' '}
-                          <strong>{qaOverall.period_tests_executed || qaOverall.total_tests_executed || 0}</strong> in {selectedPeriod === 'all' ? 'All Time' : selectedPeriod}
+                          <strong>
+                            {userRole.toLowerCase() === 'qa member'
+                              ? filteredQAMembers[0]?.today_tested || 0
+                              : qaOverall.today_tests_executed || 0}
+                          </strong>{' '}
+                          Tested Today &bull;{' '}
+                          <strong>
+                            {userRole.toLowerCase() === 'qa member'
+                              ? selectedPeriod === 'all'
+                                ? filteredQAMembers[0]?.total_tested || 0
+                                : filteredQAMembers[0]?.period_tested || 0
+                              : qaOverall.period_tests_executed || qaOverall.total_tests_executed || 0}
+                          </strong>{' '}
+                          in {selectedPeriod === 'all' ? 'All Time' : selectedPeriod}
                         </span>
                       </span>
                     )}
-                    <div className="accordion-chevron-circle">
-                      <ChevronDown size={16} />
-                    </div>
                   </div>
                 </div>
 
-                {activeReport === 'qa' && (
-                  <div className="report-accordion-body">
+                <div className="report-accordion-body">
                     {/* Daily Work Period Selector & Filter Bar */}
                     <div className="qa-daily-filter-card">
                       <div className="qa-period-tabs-bar">
@@ -1058,66 +1068,52 @@ export default function AdminReports() {
                       </div>
                     </div>
 
-                    {/* Today Output Quick Banner */}
-                    {qaOverall && (
-                      <div className="qa-today-output-banner">
-                        <div className="today-banner-left">
-                          <div className="today-banner-icon">
-                            <Clock size={16} />
-                          </div>
-                          <div className="today-banner-text">
-                            <strong>Today&apos;s QA Team Work Output:</strong>
-                            <span>Live execution metrics for {formatIndianDate(new Date())}</span>
-                          </div>
+                    {/* Today Output Quick Banner with Integrated Export Button */}
+                    <div className="qa-today-output-banner" style={{ marginBottom: '16px' }}>
+                      <div className="today-banner-left">
+                        <div className="today-banner-icon">
+                          <Clock size={16} />
                         </div>
-
-                        <div className="today-banner-chips">
-                          <span className="today-chip tested">
-                            <CheckCheck size={12} /> {qaOverall.today_tests_executed || 0} Cases Executed Today
-                          </span>
-                          <span className="today-chip passed">
-                            <CheckCircle2 size={12} /> {qaOverall.today_passed || 0} Passed Today
-                          </span>
-                          <span className="today-chip bugs">
-                            <Bug size={12} /> {qaOverall.today_bugs_raised || 0} Bugs Raised Today
-                          </span>
+                        <div className="today-banner-text">
+                          <strong>
+                            {userRole.toLowerCase() === 'qa member'
+                              ? "Today's My QA Work Output:"
+                              : "Today's QA Team Work Output:"}
+                          </strong>
+                          <span>Live execution metrics for {formatIndianDate(new Date())}</span>
                         </div>
                       </div>
-                    )}
 
-                    {/* Clean Search & Export Controls matching User Module */}
-                    <div className="um-controls-bar" style={{ marginBottom: '16px' }}>
-                      <div className="um-search-container">
-                        <Search size={16} color="#64748b" />
-                        <input
-                          id="reports-qa-search"
-                          type="text"
-                          placeholder="Search QA member name, email..."
-                          autoComplete="off"
-                          value={qaSearch}
-                          onChange={(e) => setQaSearch(e.target.value)}
-                        />
-                        {qaSearch && (
-                          <button
-                            id="reports-qa-search-clear-btn"
-                            type="button"
-                            className="um-search-clear-btn"
-                            onClick={() => setQaSearch('')}
-                            title="Clear search"
-                          >
-                            <X size={14} />
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="um-filter-selects">
+                      <div className="today-banner-chips" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+                        <span className="today-chip tested">
+                          <CheckCheck size={12} />{' '}
+                          {userRole.toLowerCase() === 'qa member'
+                            ? filteredQAMembers[0]?.today_tested || 0
+                            : qaOverall?.today_tests_executed || 0}{' '}
+                          Cases Executed Today
+                        </span>
+                        <span className="today-chip passed">
+                          <CheckCircle2 size={12} />{' '}
+                          {userRole.toLowerCase() === 'qa member'
+                            ? filteredQAMembers[0]?.today_passed || 0
+                            : qaOverall?.today_passed || 0}{' '}
+                          Passed Today
+                        </span>
+                        <span className="today-chip bugs">
+                          <Bug size={12} />{' '}
+                          {userRole.toLowerCase() === 'qa member'
+                            ? filteredQAMembers[0]?.today_bugs || 0
+                            : qaOverall?.today_bugs_raised || 0}{' '}
+                          Bugs Raised Today
+                        </span>
                         <button
                           id="reports-export-qa-csv-btn"
                           type="button"
                           className="um-btn-create"
+                          style={{ height: '32px', padding: '0 12px', fontSize: '0.78rem' }}
                           onClick={handleExportQACSV}
                         >
-                          <Download size={15} />
+                          <Download size={14} />
                           <span>Export QA Work CSV ({selectedPeriod})</span>
                         </button>
                       </div>
@@ -1155,16 +1151,11 @@ export default function AdminReports() {
                         <table id="reports-qa-table" className="report-modern-table">
                           <thead>
                             <tr>
-                              <th>QA Member</th>
-                              <th>
-                                {selectedPeriod === 'all'
-                                  ? 'Total Tested'
-                                  : `Tested (${selectedPeriod === 'today' ? 'Today' : selectedPeriod === 'yesterday' ? 'Yesterday' : selectedPeriod})`}
-                              </th>
-                              <th>Execution Progress</th>
-                              <th>Pass Rate %</th>
-                              <th>Bugs Raised</th>
-                              <th>Daily Activity</th>
+                              <th>QA Member Name</th>
+                              <th>Total Test Case</th>
+                              <th>Pass</th>
+                              <th>Fail</th>
+                              <th>Recommendation</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1174,22 +1165,8 @@ export default function AdminReports() {
                               const displayPass = selectedPeriod === 'all' ? qa.pass_count : (qa.period_pass || 0);
                               const displayFail = selectedPeriod === 'all' ? qa.fail_count : (qa.period_fail || 0);
                               const displayRec = selectedPeriod === 'all' ? qa.recommendation_count : (qa.period_rec || 0);
-                              const displayInProgress = selectedPeriod === 'all' ? qa.in_progress_count : (qa.period_in_progress || 0);
-                              const displayUntested = selectedPeriod === 'all' ? qa.untested_count : (qa.period_untested || 0);
-                              const displayRate = selectedPeriod === 'all' ? qa.pass_rate : (qa.period_pass_rate || 0);
-                              const displayBugs = selectedPeriod === 'all' ? qa.bugs_raised_count : (qa.period_bugs_raised || 0);
 
-                              const passRateTier = displayRate >= 80 ? 'high' : displayRate >= 60 ? 'medium' : 'low';
                               const avatar = qa.full_name ? qa.full_name.charAt(0).toUpperCase() : 'Q';
-                              const total = displayTested || 0;
-
-                              // Slice percentages
-                              const passPct = total > 0 ? (displayPass / total) * 100 : 0;
-                              const failPct = total > 0 ? (displayFail / total) * 100 : 0;
-                              const recPct = total > 0 ? (displayRec / total) * 100 : 0;
-                              const inProgPct = total > 0 ? (displayInProgress / total) * 100 : 0;
-                              const untestedPct = total > 0 ? (displayUntested / total) * 100 : 0;
-
                               const isTodayActive = qa.last_active_date === new Date().toISOString().split('T')[0];
 
                               return (
@@ -1228,99 +1205,24 @@ export default function AdminReports() {
                                   </td>
 
                                   <td>
-                                    <div className="segmented-progress-cell">
-                                      {/* Sleek Progress Track */}
-                                      <div className="segmented-progress-track">
-                                        {passPct > 0 && (
-                                          <div
-                                            className="seg-slice seg-pass"
-                                            style={{ width: `${passPct}%` }}
-                                            title={`Passed: ${displayPass}`}
-                                          />
-                                        )}
-                                        {failPct > 0 && (
-                                          <div
-                                            className="seg-slice seg-fail"
-                                            style={{ width: `${failPct}%` }}
-                                            title={`Failed: ${displayFail}`}
-                                          />
-                                        )}
-                                        {recPct > 0 && (
-                                          <div
-                                            className="seg-slice seg-rec"
-                                            style={{ width: `${recPct}%` }}
-                                            title={`Recommendation: ${displayRec}`}
-                                          />
-                                        )}
-                                        {inProgPct > 0 && (
-                                          <div
-                                            className="seg-slice seg-prog"
-                                            style={{ width: `${inProgPct}%` }}
-                                            title={`In Progress: ${displayInProgress}`}
-                                          />
-                                        )}
-                                        {untestedPct > 0 && (
-                                          <div
-                                            className="seg-slice seg-untested"
-                                            style={{ width: `${untestedPct}%` }}
-                                            title={`Untested: ${displayUntested}`}
-                                          />
-                                        )}
-                                      </div>
-
-                                      {/* Clean Typography Legend */}
-                                      <div className="segmented-legend-row">
-                                        <span className="legend-stat">
-                                          <span className="legend-dot dot-pass" />
-                                          <span>{displayPass} Pass</span>
-                                        </span>
-                                        {displayFail > 0 && (
-                                          <span className="legend-stat stat-fail">
-                                            <span className="legend-dot dot-fail" />
-                                            <span>{displayFail} Fail</span>
-                                          </span>
-                                        )}
-                                        {displayRec > 0 && (
-                                          <span className="legend-stat stat-rec">
-                                            <span className="legend-dot dot-rec" />
-                                            <span>{displayRec} Rec</span>
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </td>
-
-                                  <td>
-                                    <span className={`pass-rate-pill rate-${passRateTier}`}>
-                                      {displayRate}%
+                                    <span className="legend-stat" style={{ fontSize: '0.9rem', fontWeight: 700, color: '#16A34A' }}>
+                                      <span className="legend-dot dot-pass" />
+                                      <span>{displayPass}</span>
                                     </span>
                                   </td>
 
                                   <td>
-                                    <div className="defect-summary-col">
-                                      <span className="defect-count-pill">
-                                        <Bug size={13} color="#DC2626" />
-                                        <span>{displayBugs} Raised</span>
-                                      </span>
-                                      {qa.today_bugs > 0 && selectedPeriod === 'all' && (
-                                        <span style={{ fontSize: '0.72rem', color: '#16A34A', fontWeight: '700' }}>
-                                          +{qa.today_bugs} today
-                                        </span>
-                                      )}
-                                    </div>
+                                    <span className="legend-stat stat-fail" style={{ fontSize: '0.9rem', fontWeight: 700, color: '#DC2626' }}>
+                                      <span className="legend-dot dot-fail" />
+                                      <span>{displayFail}</span>
+                                    </span>
                                   </td>
 
                                   <td>
-                                    <button
-                                      id={`reports-qa-daily-log-btn-${qa.id}`}
-                                      type="button"
-                                      className="btn-view-daily-log"
-                                      onClick={() => setActiveDailyLogMember(qa)}
-                                      title="Open daily activity breakdown"
-                                    >
-                                      <History size={13} />
-                                      <span>Daily Log ({qa.daily_work?.length || 0}d)</span>
-                                    </button>
+                                    <span className="legend-stat stat-rec" style={{ fontSize: '0.9rem', fontWeight: 700, color: '#D97706' }}>
+                                      <span className="legend-dot dot-rec" />
+                                      <span>{displayRec}</span>
+                                    </span>
                                   </td>
                                 </tr>
                               );
@@ -1330,7 +1232,6 @@ export default function AdminReports() {
                       )}
                     </div>
                   </div>
-                )}
               </section>
             )}
           </div>
