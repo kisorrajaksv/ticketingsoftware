@@ -296,58 +296,68 @@ export const initDatabase = async () => {
     `);
 
     // ========================
-    // DEFAULT SYSTEM USERS
-    // ========================
-    const salt = await bcrypt.genSalt(10);
-    const adminHash = await bcrypt.hash('Admin@123', salt);
-
-    // Insert primary System Admin account if it doesn't already exist
-    await pool.query(`
-      INSERT INTO users (emp_id, full_name, email, password, department, role, phone, status)
-      VALUES 
-        ('EMP-000', 'System Admin', 'admin@gmail.com', $1, 'Management', 'Admin', '+91 9876543210', 'Active')
-      ON CONFLICT (email) DO UPDATE SET
-        phone = COALESCE(users.phone, EXCLUDED.phone);
-    `, [adminHash]);
-
-    // Backfill project_id on existing tickets if matching project_code
-    await pool.query(`
-      UPDATE tickets t
-      SET project_id = p.id
-      FROM projects p
-      WHERE t.project_code = p.project_code AND t.project_id IS NULL;
-    `);
-
-    // Link lead_name to project_lead_id if project_lead_id is null
-    await pool.query(`
-      UPDATE projects p
-      SET project_lead_id = u.id
-      FROM users u
-      WHERE (LOWER(p.lead_name) = LOWER(u.full_name) OR LOWER(p.lead_name) = LOWER(u.email))
-        AND p.project_lead_id IS NULL;
-    `);
-
-    // ========================
-    // DEFAULT ROLES
+    // PERFORMANCE INDEXES & DEFAULT SYSTEM USER
     // ========================
     await pool.query(`
-      INSERT INTO roles (role_name, description, permissions) VALUES
-        ('Admin', 'Complete company administration, employee management, and system governance', 
-         ARRAY['manage_users', 'manage_projects', 'manage_roles', 'view_reports', 'manage_tickets', 'approve_deployments']),
-        ('Manager', 'Complete workspace administration, team management, project governance, and system security controls', 
-         ARRAY['manage_users', 'manage_projects', 'manage_roles', 'view_reports', 'manage_tickets', 'approve_deployments']),
-        ('QA Lead', 'Oversees test strategies, test runs, sprint ticket approvals, and production release sign-offs', 
-         ARRAY['manage_tickets', 'view_reports', 'manage_projects', 'approve_deployments']),
-        ('QA Member', 'Executes manual and automated test cases, logs bug reports, and verifies defect fixes', 
-         ARRAY['manage_tickets', 'view_reports']),
-        ('Developer', 'Investigates assigned defect tickets, develops code fixes, and submits fixes for QA verification', 
-         ARRAY['manage_tickets']),
-        ('Project Lead', 'Directs roadmap execution, sprint velocity, cross-department ticket triage, and delivery milestones', 
-         ARRAY['manage_projects', 'manage_tickets', 'view_reports'])
-      ON CONFLICT (role_name) DO NOTHING;
+      CREATE INDEX IF NOT EXISTS idx_users_lower_email ON users (LOWER(email));
+      CREATE INDEX IF NOT EXISTS idx_tickets_project_id ON tickets (project_id);
+      CREATE INDEX IF NOT EXISTS idx_tickets_assigned_dev ON tickets (assigned_developer_id);
+      CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications (user_id, is_read);
+      CREATE INDEX IF NOT EXISTS idx_project_sheets_project_id ON project_sheets (project_id);
     `);
 
-    await backfillAllProjectTestCasesCounts(pool);
+    const existingAdmin = await pool.query(`SELECT id, phone FROM users WHERE LOWER(email) = 'admin@gmail.com' LIMIT 1`);
+    if (existingAdmin.rows.length === 0) {
+      const salt = await bcrypt.genSalt(10);
+      const adminHash = await bcrypt.hash('Admin@123', salt);
+      await pool.query(`
+        INSERT INTO users (emp_id, full_name, email, password, department, role, phone, status)
+        VALUES ('EMP-000', 'System Admin', 'admin@gmail.com', $1, 'Management', 'Admin', '+91 9876543210', 'Active')
+        ON CONFLICT (email) DO NOTHING;
+      `, [adminHash]);
+    } else if (!existingAdmin.rows[0].phone) {
+      await pool.query(`UPDATE users SET phone = '+91 9876543210' WHERE id = $1`, [existingAdmin.rows[0].id]);
+    }
+
+    // Backfill project links and default roles in parallel
+    await Promise.all([
+      pool.query(`
+        UPDATE tickets t
+        SET project_id = p.id
+        FROM projects p
+        WHERE t.project_code = p.project_code AND t.project_id IS NULL;
+      `),
+      pool.query(`
+        UPDATE projects p
+        SET project_lead_id = u.id
+        FROM users u
+        WHERE (LOWER(p.lead_name) = LOWER(u.full_name) OR LOWER(p.lead_name) = LOWER(u.email))
+          AND p.project_lead_id IS NULL;
+      `),
+      pool.query(`
+        INSERT INTO roles (role_name, description, permissions) VALUES
+          ('Admin', 'Complete company administration, employee management, and system governance', 
+           ARRAY['manage_users', 'manage_projects', 'manage_roles', 'view_reports', 'manage_tickets', 'approve_deployments']),
+          ('Manager', 'Complete workspace administration, team management, project governance, and system security controls', 
+           ARRAY['manage_users', 'manage_projects', 'manage_roles', 'view_reports', 'manage_tickets', 'approve_deployments']),
+          ('QA Lead', 'Oversees test strategies, test runs, sprint ticket approvals, and production release sign-offs', 
+           ARRAY['manage_tickets', 'view_reports', 'manage_projects', 'approve_deployments']),
+          ('QA Member', 'Executes manual and automated test cases, logs bug reports, and verifies defect fixes', 
+           ARRAY['manage_tickets', 'view_reports']),
+          ('Developer', 'Investigates assigned defect tickets, develops code fixes, and submits fixes for QA verification', 
+           ARRAY['manage_tickets']),
+          ('Project Lead', 'Directs roadmap execution, sprint velocity, cross-department ticket triage, and delivery milestones', 
+           ARRAY['manage_projects', 'manage_tickets', 'view_reports'])
+        ON CONFLICT (role_name) DO NOTHING;
+      `)
+    ]);
+
+    // Run project test-case count backfill asynchronously so server boot never stalls
+    setImmediate(() => {
+      backfillAllProjectTestCasesCounts(pool).catch((err) => {
+        console.warn('Async test case count backfill warning:', err.message);
+      });
+    });
 
     console.log('Database initialized successfully.');
   } catch (error) {

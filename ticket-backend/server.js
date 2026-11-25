@@ -641,21 +641,6 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
-// Helper to generate next sequential EMP-XXX ID safely on backend
-const generateNextEmpId = async () => {
-  const res = await pool.query(
-    `SELECT emp_id FROM users WHERE emp_id ~ '^EMP-[0-9]+$'`
-  );
-  let maxNum = 0;
-  for (const row of res.rows) {
-    const num = parseInt(String(row.emp_id).replace(/^EMP-/i, ''), 10);
-    if (!Number.isNaN(num) && num > maxNum) {
-      maxNum = num;
-    }
-  }
-  return `EMP-${String(maxNum + 1).padStart(3, '0')}`;
-};
-
 // Admin Users: Create a new user
 app.post('/api/admin/users', async (req, res) => {
   const requester = await getUserFromReq(req);

@@ -1,4 +1,3 @@
-import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,22 +7,6 @@ const __dirname = path.dirname(__filename);
 
 // Ensure .env is loaded cleanly without overriding already-set runtime env vars
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
-
-const DEFAULT_SMTP_TIMEOUT_MS = Number(process.env.EMAIL_TIMEOUT_MS) || 5000;
-
-/**
- * Races an async operation against a bounded timeout so blocked SMTP ports
- * cannot hang user-creation or forgot-password HTTP requests.
- */
-const withTimeout = (promise, ms, label) => {
-  let timer;
-  const timeoutPromise = new Promise((_, reject) => {
-    timer = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s (Outbound SMTP port may be blocked by host firewall — configure BREVO_API_KEY or RESEND_API_KEY for HTTPS port 443 delivery)`));
-    }, ms);
-  });
-  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
-};
 
 const extractValidEmail = (val) => {
   if (!val || typeof val !== 'string') return '';
@@ -47,27 +30,22 @@ const resolveSenderHeader = () => {
   return `"${name}" <${email}>`;
 };
 
-/**
- * Returns true if real email credentials are configured in environment
- * Supports modern HTTP REST APIs (Resend, Brevo, SendGrid) and legacy SMTP
- */
-export const isEmailConfigured = () => {
-  const hasResend = Boolean(process.env.RESEND_API_KEY);
-  const hasBrevo = Boolean(process.env.BREVO_API_KEY);
-  const hasSendGrid = Boolean(process.env.SENDGRID_API_KEY);
-  const hasCustomSmtp = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-  const hasGmail = Boolean(
-    (process.env.EMAIL_USER || process.env.GMAIL_USER) &&
-    (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.GMAIL_PASS)
-  );
-  return hasResend || hasBrevo || hasSendGrid || hasCustomSmtp || hasGmail;
+const formatBrevoError = (data, statusText) => {
+  const rawMsg = data?.message || statusText || 'Brevo API error';
+  if (/unrecognised IP address|authorised_ips/i.test(rawMsg)) {
+    return `${rawMsg} — Turn off IP restriction or authorize this server IP in Brevo: https://app.brevo.com/security/authorised_ips`;
+  }
+  return rawMsg;
 };
 
 /**
- * Universal email dispatcher:
- * 1. Checks modern HTTP REST email providers (Resend, Brevo, SendGrid) - NO Nodemailer/SMTP required
- * 2. Falls back to Nodemailer SMTP/Gmail if configured
- * 3. Falls back to clear console logging with credentials if no provider or delivery fails
+ * Returns true if Brevo HTTP API key is configured in environment
+ */
+export const isEmailConfigured = () => Boolean((process.env.BREVO_API_KEY || '').trim());
+
+/**
+ * Brevo HTTP REST API email dispatcher (HTTPS Port 443 — zero SMTP overhead or timeouts).
+ * Falls back cleanly to console logging if BREVO_API_KEY is unset or fails.
  */
 export const dispatchEmail = async ({
   to,
@@ -76,7 +54,6 @@ export const dispatchEmail = async ({
   text,
   html,
   replyTo,
-  headers = {},
   empId,
   role,
   password,
@@ -88,44 +65,9 @@ export const dispatchEmail = async ({
   }
 
   let lastError = null;
+  const brevoKey = (process.env.BREVO_API_KEY || '').trim();
 
-  // 1. RESEND API (Top modern Nodemailer replacement - REST HTTP over HTTPS)
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const from = process.env.EMAIL_FROM || 'QA Software <onboarding@resend.dev>';
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        signal: AbortSignal.timeout(8000),
-        headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY.trim()}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from,
-          to: [to],
-          subject,
-          text,
-          html,
-          ...(replyTo ? { reply_to: replyTo } : {}),
-          ...(headers && Object.keys(headers).length ? { headers } : {})
-        })
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data?.id) {
-        console.log(`✅ [Resend API] Email delivered to ${to} (Message ID: ${data.id})`);
-        return { success: true, simulated: false, provider: 'resend', messageId: data.id };
-      }
-      lastError = data?.message || data?.error || res.statusText || 'Resend API error';
-      console.warn(`⚠️ [Resend API] Error for ${to}:`, lastError);
-    } catch (err) {
-      lastError = err.message;
-      console.warn(`⚠️ [Resend API] Network error for ${to}:`, err.message);
-    }
-  }
-
-  // 2. BREVO / Sendinblue API (300 free emails/day - REST HTTP API)
-  if (process.env.BREVO_API_KEY) {
+  if (brevoKey) {
     try {
       const fromEmail = resolveSenderEmail();
       const fromName = (process.env.EMAIL_FROM_NAME || 'QA Software Workspace').trim();
@@ -133,7 +75,7 @@ export const dispatchEmail = async ({
         method: 'POST',
         signal: AbortSignal.timeout(8000),
         headers: {
-          'api-key': process.env.BREVO_API_KEY.trim(),
+          'api-key': brevoKey,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
@@ -143,7 +85,9 @@ export const dispatchEmail = async ({
           subject,
           textContent: text,
           htmlContent: html,
-          ...(replyTo ? { replyTo: { email: replyTo } } : {})
+          ...(replyTo && extractValidEmail(replyTo)
+            ? { replyTo: { email: extractValidEmail(replyTo) } }
+            : {})
         })
       });
 
@@ -153,7 +97,7 @@ export const dispatchEmail = async ({
         console.log(`✅ [Brevo API] Email delivered to ${to} (Message ID: ${id})`);
         return { success: true, simulated: false, provider: 'brevo', messageId: id };
       }
-      lastError = data?.message || res.statusText || 'Brevo API error';
+      lastError = formatBrevoError(data, res.statusText);
       console.warn(`⚠️ [Brevo API] Error for ${to}:`, lastError);
     } catch (err) {
       lastError = err.message;
@@ -161,53 +105,9 @@ export const dispatchEmail = async ({
     }
   }
 
-  // 3. Nodemailer SMTP / Gmail fallback (if configured) with bounded timeout
-  const transporter = createTransporter();
-  if (transporter) {
-    try {
-      const fromHeader = resolveSenderHeader();
-      const info = await withTimeout(
-        transporter.sendMail({
-          from: fromHeader,
-          replyTo: replyTo || resolveSenderEmail(),
-          to,
-          subject,
-          text,
-          html,
-          headers
-        }),
-        DEFAULT_SMTP_TIMEOUT_MS + 1000,
-        'SMTP delivery'
-      );
-
-      const previewUrl = nodemailer.getTestMessageUrl(info);
-      console.log(`✅ [Nodemailer] Email delivered to ${to} (Message ID: ${info.messageId})`);
-      if (previewUrl) {
-        console.log(`🔗 [Live Preview URL]: ${previewUrl}`);
-      }
-      return {
-        success: true,
-        simulated: false,
-        provider: 'nodemailer',
-        messageId: info.messageId,
-        previewUrl: previewUrl || undefined
-      };
-    } catch (smtpErr) {
-      lastError = smtpErr.message;
-      if (/timeout/i.test(lastError) && !/HTTPS port 443/i.test(lastError)) {
-        lastError = `${lastError} (Outbound SMTP port ${process.env.SMTP_PORT || 587} may be blocked on your cloud host — set BREVO_API_KEY or RESEND_API_KEY over HTTPS port 443)`;
-      }
-      console.error(`❌ [Nodemailer] Delivery error for ${to}:`, lastError);
-    } finally {
-      try {
-        transporter.close();
-      } catch {}
-    }
-  }
-
-  // 4. Console Dev Simulation (when no provider is active or delivery failed)
+  // Console Dev Simulation fallback (when BREVO_API_KEY is unset or delivery failed)
   console.log(`\n======================================================`);
-  console.log(`📧 [EMAIL SERVICE - DEV CONSOLE SIMULATION]`);
+  console.log(`📧 [EMAIL SERVICE - CONSOLE FALLBACK]`);
   console.log(`To: ${to}`);
   console.log(`Subject: ${subject}`);
   if (fullName) console.log(`Full Name: ${fullName}`);
@@ -218,125 +118,60 @@ export const dispatchEmail = async ({
   if (code) console.log(`🔑 Verification OTP: ${code}`);
   if (lastError) console.log(`⚠️ Reason live delivery failed: ${lastError}`);
   console.log(`🌐 Login URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
-  console.log(`💡 Setup live email without Nodemailer: Add RESEND_API_KEY or BREVO_API_KEY to ticket-backend/.env`);
   console.log(`======================================================\n`);
 
   return {
     success: false,
     simulated: true,
     delivery_attempted: Boolean(lastError),
-    error: lastError || 'No live email provider configured (credentials logged to console)',
+    error: lastError || 'BREVO_API_KEY is not configured in environment.',
     code,
     temporary_password: password,
     message: lastError
-      ? `Email delivery failed: ${lastError}. Credentials logged to server console.`
-      : 'Email credentials logged to server console (Add working EMAIL_USER / EMAIL_APP_PASSWORD, RESEND_API_KEY, or BREVO_API_KEY to .env for live delivery).'
+      ? `Email delivery failed: ${lastError}`
+      : 'BREVO_API_KEY not configured (credentials logged to server console).'
   };
 };
 
 /**
- * Creates and returns a configured Nodemailer Transporter
- * Supports Gmail Service, Custom SMTP (Host/Port), with valid Gmail fallback.
- */
-export const createTransporter = () => {
-  // Option 1: Custom SMTP (Brevo, SendGrid, Mailgun, Amazon SES, or custom mail server)
-  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    const host = process.env.SMTP_HOST.trim();
-    const user = process.env.SMTP_USER.trim();
-    const pass = process.env.SMTP_PASS.trim();
-    if (host.includes('supersecret') || user.includes('supersecret') || !host.includes('.')) {
-      console.warn(`⚠️ [Email] Invalid SMTP_HOST ("${host}") or SMTP_USER ("${user}") in environment variables.`);
-      return null;
-    }
-    const port = Number(process.env.SMTP_PORT) || 587;
-    return nodemailer.createTransport({
-      host,
-      port,
-      secure: process.env.SMTP_SECURE === 'true' || port === 465,
-      auth: {
-        user,
-        pass
-      },
-      connectionTimeout: 3500,
-      greetingTimeout: 3500,
-      socketTimeout: DEFAULT_SMTP_TIMEOUT_MS,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
-  }
-
-  // Option 2: Gmail with Google App Password (only if explicitly set in .env)
-  const gmailUser = (process.env.EMAIL_USER || process.env.GMAIL_USER || '').trim();
-  const gmailPassRaw = (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.GMAIL_PASS || '').trim();
-  const gmailPass = gmailPassRaw.replace(/\s+/g, ''); // strip any spaces in 16-character app password
-
-  if (gmailUser && gmailPass) {
-    return nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: gmailUser,
-        pass: gmailPass
-      },
-      connectionTimeout: 3500,
-      greetingTimeout: 3500,
-      socketTimeout: DEFAULT_SMTP_TIMEOUT_MS,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
-  }
-
-  return null;
-};
-
-/**
- * Returns complete diagnostic health of configured email systems
+ * Returns live diagnostic health of Brevo HTTP REST API configuration
  */
 export const checkEmailStatus = async () => {
+  const brevoKey = (process.env.BREVO_API_KEY || '').trim();
   const status = {
-    configured: isEmailConfigured(),
-    provider: 'none',
-    user: (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim(),
+    configured: Boolean(brevoKey),
+    provider: brevoKey ? 'brevo' : 'none',
+    user: resolveSenderEmail(),
     from: resolveSenderHeader(),
     transporter_ready: false,
     diagnostic: ''
   };
 
-  if (process.env.RESEND_API_KEY) {
-    status.provider = 'resend';
-    status.transporter_ready = true;
-    status.diagnostic = 'Resend HTTP API key is configured (HTTPS port 443).';
+  if (!brevoKey) {
+    status.diagnostic = 'BREVO_API_KEY is not set in environment.';
     return status;
-  }
-  if (process.env.BREVO_API_KEY) {
-    status.provider = 'brevo';
-    status.transporter_ready = true;
-    status.diagnostic = 'Brevo HTTP API key is configured (HTTPS port 443).';
-    return status;
-  }
-  if (process.env.SMTP_HOST) {
-    status.provider = 'custom_smtp';
-  } else if (process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD) {
-    status.provider = 'gmail_smtp';
   }
 
-  const transporter = createTransporter();
-  if (transporter) {
-    try {
-      await withTimeout(transporter.verify(), 4500, 'SMTP verification');
+  try {
+    const res = await fetch('https://api.brevo.com/v3/account', {
+      method: 'GET',
+      signal: AbortSignal.timeout(4000),
+      headers: {
+        'api-key': brevoKey,
+        'Accept': 'application/json'
+      }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
       status.transporter_ready = true;
-      status.diagnostic = 'SMTP connection verified successfully with mail host.';
-    } catch (vErr) {
+      status.diagnostic = `Brevo HTTP API connected (${data.email || resolveSenderEmail()}).`;
+    } else {
       status.transporter_ready = false;
-      status.diagnostic = `SMTP verification error: ${vErr.message}`;
-    } finally {
-      try {
-        transporter.close();
-      } catch {}
+      status.diagnostic = formatBrevoError(data, res.statusText);
     }
-  } else {
-    status.diagnostic = 'No email credentials found in environment. Emails are logged to console.';
+  } catch (err) {
+    status.transporter_ready = false;
+    status.diagnostic = `Brevo API connection check failed: ${err.message}`;
   }
 
   return status;
