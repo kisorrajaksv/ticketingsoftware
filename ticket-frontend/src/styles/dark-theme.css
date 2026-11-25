@@ -3089,8 +3089,6 @@ html[data-theme='dark'] .eye-icon:hover {
    Explicitly excludes Dashboard, Reports, Approvals & Requests, and
    Deployment Approvals Queue.
    ========================================================================== */
-html[data-theme='dark'] .admin-layout.users-page .um-header-container,
-html[data-theme='dark'] .admin-layout.users-page .um-controls-bar,
 html[data-theme='dark'] .admin-layout.tickets-page .projects-header-row,
 html[data-theme='dark'] .admin-layout.tickets-page .overview-card,
 html[data-theme='dark'] .admin-layout.tickets-page .overview-card:hover,
@@ -3636,7 +3634,6 @@ html[data-theme='dark'] .admin-layout .ws-settings-page .ws-header-row {
 }
 
 html[data-theme='dark'] .admin-layout .pj-page-container .pj-subheader,
-html[data-theme='dark'] .admin-layout.users-page .um-header-container,
 html[data-theme='dark'] .admin-layout .projects-header-row,
 html[data-theme='dark'] .admin-layout .reports-header-card,
 html[data-theme='dark'] .admin-layout .users-page-heading,

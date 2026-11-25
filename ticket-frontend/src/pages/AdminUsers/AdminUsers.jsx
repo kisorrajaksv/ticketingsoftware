@@ -1100,7 +1100,7 @@ function AdminUsers() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div className="um-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {/* Segmented View Switcher matching Tickets & Projects */}
                 <div id="um-view-switcher" className="ticket-view-toggle" role="group" aria-label="User directory view">
                   <button
