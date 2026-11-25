@@ -830,48 +830,12 @@
 }
 
 /* ==========================================================================
-   Projects 1st-Page Layout Parity (Application Settings)
+   Projects & Users Layout Parity (Application Settings)
    ========================================================================== */
-.admin-layout .ws-settings-page {
-  width: 100%;
-  max-width: 1560px;
-  margin: 0 auto;
-  padding: clamp(28px, 3vw, 42px) clamp(20px, 3vw, 40px) 48px;
+.ws-settings-layout {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  box-sizing: border-box;
-}
-
-.admin-layout .ws-header-row {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  padding: 8px 0 16px;
-  margin: 0;
-}
-
-.admin-layout .ws-header-row h1 {
-  font-family: 'Outfit', 'Plus Jakarta Sans', 'Inter', sans-serif;
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  margin: 0;
-}
-
-@media (max-width: 768px) {
-  .admin-layout .ws-settings-page {
-    padding: 20px 16px 32px;
-    gap: 18px;
-  }
-
-  .admin-layout .ws-header-row {
-    padding: 4px 0 12px;
-  }
-
-  .admin-layout .ws-header-row h1 {
-    font-size: 24px;
-  }
+  gap: 20px;
+  padding-bottom: 40px;
+  width: 100%;
 }

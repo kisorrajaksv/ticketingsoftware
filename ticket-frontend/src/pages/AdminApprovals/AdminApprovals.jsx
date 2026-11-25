@@ -6,6 +6,8 @@ import {
   CheckSquare,
   Clock,
   FileCheck2,
+  LayoutGrid,
+  List,
   LogOut,
   Plus,
   RefreshCw,
@@ -57,6 +59,7 @@ export default function AdminApprovals() {
   const navigate = useNavigate();
   const [approvals, setApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
@@ -312,6 +315,28 @@ export default function AdminApprovals() {
               </div>
 
               <div className="um-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Segmented View Switcher matching Tickets & Users */}
+                <div id="approvals-view-switcher" className="ticket-view-toggle" role="group" aria-label="Approval view mode">
+                  <button
+                    id="approvals-view-table-btn"
+                    type="button"
+                    className={`ticket-view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                    onClick={() => setViewMode('table')}
+                  >
+                    <List size={15} />
+                    <span>Table View</span>
+                  </button>
+                  <button
+                    id="approvals-view-grid-btn"
+                    type="button"
+                    className={`ticket-view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                    onClick={() => setViewMode('grid')}
+                  >
+                    <LayoutGrid size={15} />
+                    <span>Cards Grid</span>
+                  </button>
+                </div>
+
                 <span className="reports-live-badge">
                   <span className="reports-pulse-dot" /> Live Data Synced
                 </span>
@@ -453,140 +478,252 @@ export default function AdminApprovals() {
               </div>
             </div>
 
-            {/* Approvals Table Card */}
-            <div className="um-table-card approvals-table-card">
-              {loading ? (
-                <div style={{ textAlign: 'center', padding: '50px 20px', color: '#64748b' }}>
-                  <RefreshCw size={24} className="spin-icon" style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
-                  <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Loading approval requests...</p>
-                </div>
-              ) : filteredApprovals.length === 0 ? (
-                <div className="um-empty-state-card" style={{ border: 'none', boxShadow: 'none', margin: '24px 0' }}>
-                  <div className="um-empty-icon-wrap">
-                    <FileCheck2 size={32} />
-                  </div>
-                  <h3 id="approvals-empty-heading" style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 0' }}>
-                    No Approval Requests Found
-                  </h3>
-                  <p className="um-empty-description" style={{ maxWidth: 520, margin: 0, color: '#64748b', fontSize: '0.875rem', lineHeight: 1.5 }}>
-                    {hasActiveFilters
-                      ? 'No requests match your search keywords or filter criteria. Try resetting the filters.'
-                      : 'No approval requests have been submitted in your workspace yet.'}
-                  </p>
-                  {hasActiveFilters && (
-                    <button
-                      id="approvals-reset-filters-btn"
-                      type="button"
-                      className="um-btn-create"
-                      style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', boxShadow: 'none', marginTop: 8 }}
-                      onClick={resetFilters}
-                    >
-                      <X size={15} />
-                      <span>Reset Filters</span>
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="um-table-scroll">
-                  <table id="approvals-table" className="um-table">
-                    <thead>
-                      <tr>
-                        <th>Request Code</th>
-                        <th>Project Name</th>
-                        <th>Request Note</th>
-                        <th>Category</th>
-                        <th>Requested By</th>
-                        <th>Priority</th>
-                        <th>Status</th>
-                        <th>Submitted</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredApprovals.map((a) => (
-                        <tr key={a.id}>
-                          <td>
-                            <span className="project-code-badge">{a.req_code}</span>
-                          </td>
-                          <td>
-                            <strong style={{ color: '#0f172a', fontWeight: 700, fontSize: '0.88rem' }}>
-                              {a.project_name || a.title || '—'}
-                            </strong>
-                          </td>
-                          <td className="ap-request-note-cell">
-                            <span
-                              className="ap-request-note-text"
-                              title={a.details || a.title || ''}
-                            >
-                              {a.details?.trim() || a.title || '—'}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="user-dept-badge">{a.category || 'General'}</span>
-                          </td>
-                          <td>
-                            <span style={{ fontWeight: 500, color: '#334155', whiteSpace: 'nowrap' }}>
-                              {a.requested_by}
-                            </span>
-                          </td>
-                          <td>
-                            <span
-                              className={`priority-badge priority-${(a.priority || 'medium').toLowerCase()}`}
-                            >
-                              {a.priority}
-                            </span>
-                          </td>
-                          <td>
-                            <span
-                              className={`status-tag status-${(a.status || 'pending').toLowerCase()}`}
-                            >
-                              {a.status}
-                            </span>
-                          </td>
-                          <td>
-                            <span style={{ color: '#64748b', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                              {formatIndianDate(a.created_at, 'Recent')}
-                            </span>
-                          </td>
-                          <td>
-                            {a.status === 'Pending' && canReviewRequests ? (
-                              <div className="ap-actions-group">
-                                <button
-                                  id={`approval-approve-btn-${a.id}`}
-                                  type="button"
-                                  className="ap-btn-approve"
-                                  onClick={() => handleUpdateApprovalStatus(a.id, 'Approved')}
-                                  disabled={updatingId === a.id}
-                                  title="Approve this request"
-                                >
-                                  <CheckCircle2 size={13} />
-                                  <span>Approve</span>
-                                </button>
-                                <button
-                                  id={`approval-reject-btn-${a.id}`}
-                                  type="button"
-                                  className="ap-btn-reject"
-                                  onClick={() => handleUpdateApprovalStatus(a.id, 'Rejected')}
-                                  disabled={updatingId === a.id}
-                                  title="Reject this request"
-                                >
-                                  <XCircle size={13} />
-                                  <span>Reject</span>
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="ap-reviewer-tag">
-                                {a.reviewed_by ? `By ${a.reviewed_by}` : '—'}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+            {/* Section Header with Pill Badge matching Tickets, Projects & Users */}
+            <div className="ticket-folders-section-header" style={{ margin: '4px 0 16px' }}>
+              <div className="ticket-folders-section-title">
+                <FileCheck2 size={18} color="#2563eb" />
+                <span>Approval Requests</span>
+                <span className="ticket-folders-total-pill">
+                  {filteredApprovals.length} {filteredApprovals.length === 1 ? 'Request' : 'Requests'}
+                </span>
+              </div>
             </div>
+
+            {/* Approvals Table Card / Cards Grid */}
+            {viewMode === 'table' ? (
+              <div className="um-table-card approvals-table-card">
+                {loading ? (
+                  <div style={{ textAlign: 'center', padding: '50px 20px', color: '#64748b' }}>
+                    <RefreshCw size={24} className="spin-icon" style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
+                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Loading approval requests...</p>
+                  </div>
+                ) : filteredApprovals.length === 0 ? (
+                  <div className="um-empty-state-card" style={{ border: 'none', boxShadow: 'none', margin: '24px 0' }}>
+                    <div className="um-empty-icon-wrap">
+                      <FileCheck2 size={32} />
+                    </div>
+                    <h3 id="approvals-empty-heading" style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 0' }}>
+                      No Approval Requests Found
+                    </h3>
+                    <p className="um-empty-description" style={{ maxWidth: 520, margin: 0, color: '#64748b', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                      {hasActiveFilters
+                        ? 'No requests match your search keywords or filter criteria. Try resetting the filters.'
+                        : 'No approval requests have been submitted in your workspace yet.'}
+                    </p>
+                    {hasActiveFilters && (
+                      <button
+                        id="approvals-reset-filters-btn"
+                        type="button"
+                        className="um-btn-create"
+                        style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', boxShadow: 'none', marginTop: 8 }}
+                        onClick={resetFilters}
+                      >
+                        <X size={15} />
+                        <span>Reset Filters</span>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="um-table-scroll">
+                    <table id="approvals-table" className="um-table">
+                      <thead>
+                        <tr>
+                          <th>Request Code</th>
+                          <th>Project Name</th>
+                          <th>Request Note</th>
+                          <th>Category</th>
+                          <th>Requested By</th>
+                          <th>Priority</th>
+                          <th>Status</th>
+                          <th>Submitted</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredApprovals.map((a) => (
+                          <tr key={a.id}>
+                            <td>
+                              <span className="project-code-badge">{a.req_code}</span>
+                            </td>
+                            <td>
+                              <strong style={{ color: '#0f172a', fontWeight: 700, fontSize: '0.88rem' }}>
+                                {a.project_name || a.title || '—'}
+                              </strong>
+                            </td>
+                            <td className="ap-request-note-cell">
+                              <span
+                                className="ap-request-note-text"
+                                title={a.details || a.title || ''}
+                              >
+                                {a.details?.trim() || a.title || '—'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="user-dept-badge">{a.category || 'General'}</span>
+                            </td>
+                            <td>
+                              <span style={{ fontWeight: 500, color: '#334155', whiteSpace: 'nowrap' }}>
+                                {a.requested_by}
+                              </span>
+                            </td>
+                            <td>
+                              <span
+                                className={`priority-badge priority-${(a.priority || 'medium').toLowerCase()}`}
+                              >
+                                {a.priority}
+                              </span>
+                            </td>
+                            <td>
+                              <span
+                                className={`status-tag status-${(a.status || 'pending').toLowerCase()}`}
+                              >
+                                {a.status}
+                              </span>
+                            </td>
+                            <td>
+                              <span style={{ color: '#64748b', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                                {formatIndianDate(a.created_at, 'Recent')}
+                              </span>
+                            </td>
+                            <td>
+                              {a.status === 'Pending' && canReviewRequests ? (
+                                <div className="ap-actions-group">
+                                  <button
+                                    id={`approval-approve-btn-${a.id}`}
+                                    type="button"
+                                    className="ap-btn-approve"
+                                    onClick={() => handleUpdateApprovalStatus(a.id, 'Approved')}
+                                    disabled={updatingId === a.id}
+                                    title="Approve this request"
+                                  >
+                                    <CheckCircle2 size={13} />
+                                    <span>Approve</span>
+                                  </button>
+                                  <button
+                                    id={`approval-reject-btn-${a.id}`}
+                                    type="button"
+                                    className="ap-btn-reject"
+                                    onClick={() => handleUpdateApprovalStatus(a.id, 'Rejected')}
+                                    disabled={updatingId === a.id}
+                                    title="Reject this request"
+                                  >
+                                    <XCircle size={13} />
+                                    <span>Reject</span>
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="ap-reviewer-tag">
+                                  {a.reviewed_by ? `By ${a.reviewed_by}` : '—'}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Cards Grid View */
+              <div className="um-users-cards-grid">
+                {loading ? (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px 20px', color: '#64748b' }}>
+                    <RefreshCw size={24} className="spin-icon" style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
+                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Loading approval requests...</p>
+                  </div>
+                ) : filteredApprovals.length === 0 ? (
+                  <div style={{ gridColumn: '1 / -1' }} className="um-empty-state-card">
+                    <div className="um-empty-icon-wrap">
+                      <FileCheck2 size={32} />
+                    </div>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 0' }}>
+                      No Approval Requests Found
+                    </h3>
+                    <p className="um-empty-description" style={{ maxWidth: 520, margin: 0, color: '#64748b', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                      {hasActiveFilters
+                        ? 'No requests match your search keywords or filter criteria.'
+                        : 'No approval requests have been submitted in your workspace yet.'}
+                    </p>
+                  </div>
+                ) : (
+                  filteredApprovals.map((a) => (
+                    <div
+                      key={a.id}
+                      className="um-user-card"
+                      style={{ display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span className="project-code-badge">{a.req_code}</span>
+                        <span className={`status-tag status-${(a.status || 'pending').toLowerCase()}`}>
+                          {a.status}
+                        </span>
+                      </div>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
+                          {a.project_name || a.title || 'General Request'}
+                        </h4>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px' }}>
+                          <span className="user-dept-badge">{a.category || 'General'}</span>
+                          <span className={`priority-badge priority-${(a.priority || 'medium').toLowerCase()}`}>
+                            {a.priority}
+                          </span>
+                        </div>
+                      </div>
+                      {(a.details || a.title) && (
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b', lineHeight: 1.4, flexGrow: 1 }}>
+                          {a.details?.trim() || a.title}
+                        </p>
+                      )}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          paddingTop: '10px',
+                          borderTop: '1px solid #f1f5f9',
+                          fontSize: '0.78rem',
+                          color: '#94a3b8'
+                        }}
+                      >
+                        <span>
+                          Req by: <strong style={{ color: '#475569' }}>{a.requested_by}</strong>
+                        </span>
+                        <span>{formatIndianDate(a.created_at, 'Recent')}</span>
+                      </div>
+                      {a.status === 'Pending' && canReviewRequests ? (
+                        <div className="ap-actions-group" style={{ marginTop: '4px' }}>
+                          <button
+                            type="button"
+                            className="ap-btn-approve"
+                            style={{ flex: 1, justifyContent: 'center', padding: '6px 12px' }}
+                            onClick={() => handleUpdateApprovalStatus(a.id, 'Approved')}
+                            disabled={updatingId === a.id}
+                          >
+                            <CheckCircle2 size={14} />
+                            <span>Approve</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="ap-btn-reject"
+                            style={{ flex: 1, justifyContent: 'center', padding: '6px 12px' }}
+                            onClick={() => handleUpdateApprovalStatus(a.id, 'Rejected')}
+                            disabled={updatingId === a.id}
+                          >
+                            <XCircle size={14} />
+                            <span>Reject</span>
+                          </button>
+                        </div>
+                      ) : a.reviewed_by ? (
+                        <div style={{ fontSize: '0.78rem', color: '#64748b', textAlign: 'right' }}>
+                          Reviewed by <strong style={{ color: '#0f172a' }}>{a.reviewed_by}</strong>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
       </main>
