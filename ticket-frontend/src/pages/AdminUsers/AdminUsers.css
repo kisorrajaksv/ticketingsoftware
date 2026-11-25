@@ -1733,6 +1733,18 @@
   transition: all 0.15s ease;
 }
 
+.um-card-action-btn.view {
+  background: #f8fafc;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+
+.um-card-action-btn.view:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
 .um-card-action-btn.invite {
   background: #eff6ff;
   color: #1d4ed8;
