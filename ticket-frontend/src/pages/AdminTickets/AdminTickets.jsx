@@ -16,6 +16,7 @@ import {
   List,
   LogOut,
   Plus,
+  RefreshCw,
   Search,
   Ticket,
   Upload,
@@ -562,11 +563,10 @@ function AdminTickets() {
       }
     });
 
-    return [
-      { label: 'Total Folders', value: projectFolders.length, tone: 'total' },
-      { label: 'In Progress Folders', value: inProgressFolders, tone: 'progress' },
-      { label: 'Resolved Folders', value: resolvedFolders, tone: 'resolved' }
-    ];
+    return {
+      resolvedFolders,
+      inProgressFolders
+    };
   }, [projectFolders]);
 
   const filteredTickets = useMemo(() => {
@@ -577,20 +577,100 @@ function AdminTickets() {
     );
   }, [activeFolder, tickets, query, statusFilter, priorityFilter, typeFilter]);
 
-  const statsSource = activeFolder ? activeFolder.tickets : tickets;
-  const overviewStats = isShowingFoldersGrid
-    ? folderSummaryStats
-    : activeFolder
-      ? [
-          { label: 'Tickets', value: statsSource.length, tone: 'total' },
-          { label: 'Resolved', value: statsSource.filter((ticket) => ticket.status === 'Resolved').length, tone: 'resolved' }
-        ]
-      : [
-          { label: 'Total Tickets', value: statsSource.length, tone: 'total' },
-          { label: 'Open', value: statsSource.filter((ticket) => ticket.status === 'Open').length, tone: 'open' },
-          { label: 'In Progress', value: statsSource.filter((ticket) => ticket.status === 'In Progress').length, tone: 'progress' },
-          { label: 'Resolved', value: statsSource.filter((ticket) => ticket.status === 'Resolved').length, tone: 'resolved' }
-        ];
+  const overviewCards = useMemo(() => {
+    if (isShowingFoldersGrid) {
+      return [
+        {
+          key: 'folders-total',
+          label: 'Total Folders',
+          value: projectFolders.length,
+          Icon: Folder,
+          cardClass: 'card-total',
+          iconWrapClass: 'icon-wrap-blue',
+          badge: 'Workspaces',
+          badgeClass: 'badge-blue'
+        },
+        {
+          key: 'folders-progress',
+          label: 'Active Defect Folders',
+          value: folderSummaryStats.inProgressFolders,
+          Icon: Clock,
+          cardClass: 'card-inactive',
+          iconWrapClass: 'icon-wrap-orange',
+          badge: 'Investigating',
+          badgeClass: 'badge-orange'
+        },
+        {
+          key: 'folders-resolved',
+          label: 'Resolved Folders',
+          value: folderSummaryStats.resolvedFolders,
+          Icon: CheckCircle2,
+          cardClass: 'card-active',
+          iconWrapClass: 'icon-wrap-green',
+          badge: 'QA Cleared',
+          badgeClass: 'badge-green'
+        },
+        {
+          key: 'folders-tickets',
+          label: 'Total Bug Tickets',
+          value: tickets.length,
+          Icon: Ticket,
+          cardClass: 'card-departments',
+          iconWrapClass: 'icon-wrap-purple',
+          badge: 'All Defects',
+          badgeClass: 'badge-purple'
+        }
+      ];
+    }
+
+    const source = activeFolder ? activeFolder.tickets : tickets;
+    const openCount = source.filter((t) => ['Open', 'Reopened'].includes(t.status)).length;
+    const inProgressCount = source.filter((t) => t.status === 'In Progress').length;
+    const resolvedCount = source.filter((t) => ['Resolved', 'Closed'].includes(t.status)).length;
+
+    return [
+      {
+        key: 'tickets-total',
+        label: activeFolder ? 'Folder Tickets' : 'Total Defects',
+        value: source.length,
+        Icon: Ticket,
+        cardClass: 'card-total',
+        iconWrapClass: 'icon-wrap-blue',
+        badge: activeFolder ? (activeFolder.projectCode || 'Project') : 'Repository',
+        badgeClass: 'badge-blue'
+      },
+      {
+        key: 'tickets-open',
+        label: 'Open Defects',
+        value: openCount,
+        Icon: AlertCircle,
+        cardClass: 'card-inactive',
+        iconWrapClass: 'icon-wrap-orange',
+        badge: 'Action Needed',
+        badgeClass: 'badge-orange'
+      },
+      {
+        key: 'tickets-progress',
+        label: 'In Progress',
+        value: inProgressCount,
+        Icon: Clock,
+        cardClass: 'card-departments',
+        iconWrapClass: 'icon-wrap-purple',
+        badge: 'Under Fix',
+        badgeClass: 'badge-purple'
+      },
+      {
+        key: 'tickets-resolved',
+        label: 'Resolved & Closed',
+        value: resolvedCount,
+        Icon: CheckCircle2,
+        cardClass: 'card-active',
+        iconWrapClass: 'icon-wrap-green',
+        badge: 'QA Verified',
+        badgeClass: 'badge-green'
+      }
+    ];
+  }, [isShowingFoldersGrid, projectFolders.length, folderSummaryStats, tickets, activeFolder]);
 
   const folderNameByKey = useMemo(() => {
     const map = new Map();
@@ -667,20 +747,32 @@ function AdminTickets() {
           breadcrumbs={activeFolder ? [{ label: 'Tickets', to: '/admin/tickets' }] : []}
         />
         <div className="dashboard-container">
-          <div className="projects-layout">
+          <div className="users-page-layout tickets-workspace-layout">
             {!activeFolder && (
-              <div className="projects-header-row">
-                <div className="projects-header-info">
-                  <h2 id="tickets-page-heading">{isDeveloper ? 'Assigned Defects & Project Tickets' : isProjectLead ? 'Project Defect Tickets' : 'Tickets Workspace'}</h2>
-                  {!isShowingFoldersGrid && (
+              <header id="tickets-header-section" className="um-header-container">
+                <div className="um-header-left">
+                  <div className="um-header-icon-box">
+                    <Ticket size={24} color="#2563EB" />
+                  </div>
+                  <div className="um-header-titles">
+                    <h1 id="tickets-page-heading">
+                      {isDeveloper
+                        ? 'Assigned Defects & Project Tickets'
+                        : isProjectLead
+                        ? 'Project Defect Tickets'
+                        : 'Tickets Workspace'}
+                    </h1>
                     <p>
                       {isDeveloper
                         ? 'Investigate defects, apply code fixes, and submit resolution reports for QA signoff.'
-                        : 'Track, assign, prioritize, and resolve QA issues and bug reports.'}
+                        : isProjectLead
+                        ? 'Monitor project bug health, assign team tickets, and oversee resolution workflows.'
+                        : 'Track, assign, prioritize, triage, and resolve QA issues and bug reports across project workspaces.'}
                     </p>
-                  )}
+                  </div>
                 </div>
-                <div className="users-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+
+                <div className="um-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div id="tickets-view-toggle" className="ticket-view-toggle" role="group" aria-label="Ticket workspace view">
                     <button
                       id="tickets-view-folders-btn"
@@ -710,7 +802,7 @@ function AdminTickets() {
                   {!isDeveloper && (
                     <button
                       id="tickets-raise-btn"
-                      className="btn-primary-action"
+                      className="um-btn-create"
                       onClick={handleOpenRaiseModal}
                     >
                       <Plus size={18} />
@@ -718,11 +810,11 @@ function AdminTickets() {
                     </button>
                   )}
                 </div>
-              </div>
+              </header>
             )}
 
             {activeFolder && viewMode === 'folders' && (
-              <div id="tickets-active-folder-banner" className="ticket-active-folder-banner">
+              <header id="tickets-active-folder-banner" className="um-header-container ticket-active-folder-banner">
                 <div className="ticket-active-folder-left">
                   <button
                     id="tickets-back-folders-btn"
@@ -738,7 +830,9 @@ function AdminTickets() {
                   <div className="ticket-active-folder-identity">
                     <div>
                       <div className="ticket-active-folder-title-row">
-                        <h3 id="tickets-active-folder-heading">{activeFolder.projectName}</h3>
+                        <h1 id="tickets-active-folder-heading" style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                          {activeFolder.projectName}
+                        </h1>
                         {activeFolder.status && (
                           <span className={`pj-status-badge ${(activeFolder.status || 'active').toLowerCase().replace(/\s+/g, '-')}`}>
                             {activeFolder.status}
@@ -755,59 +849,67 @@ function AdminTickets() {
                   </div>
                 </div>
 
-                {!isDeveloper && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <button
-                    id="tickets-folder-raise-btn"
                     type="button"
-                    className="btn-primary-action"
-                    onClick={handleOpenRaiseModal}
+                    className="ticket-view-toggle-btn active"
+                    onClick={handleCloseFolder}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: '#f1f5f9',
+                      color: '#334155',
+                      border: '1px solid #cbd5e1',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
                   >
-                    <Plus size={18} />
-                    <span>Raise Ticket</span>
+                    <LayoutGrid size={15} />
+                    <span>All Folders</span>
                   </button>
-                )}
-              </div>
+
+                  {!isDeveloper && (
+                    <button
+                      id="tickets-folder-raise-btn"
+                      type="button"
+                      className="um-btn-create"
+                      onClick={handleOpenRaiseModal}
+                    >
+                      <Plus size={18} />
+                      <span>Raise Ticket</span>
+                    </button>
+                  )}
+                </div>
+              </header>
             )}
 
-            <div className={`tickets-overview ${isShowingFoldersGrid ? 'folders-overview' : ''}`}>
-              {overviewStats.map((card) => {
-                const iconTone =
-                  card.tone === 'total'
-                    ? 'blue'
-                    : card.tone === 'open'
-                      ? 'orange'
-                      : card.tone === 'progress'
-                        ? 'purple'
-                        : 'green';
-                const MetricIcon =
-                  card.tone === 'total'
-                    ? isShowingFoldersGrid
-                      ? Folder
-                      : Ticket
-                    : card.tone === 'open'
-                      ? AlertCircle
-                      : card.tone === 'progress'
-                        ? Clock
-                        : CheckCircle2;
-
+            {/* 4 Summary Stat Cards matching User Module */}
+            <section id="tickets-stats-grid" className="um-stats-grid">
+              {overviewCards.map((card) => {
+                const IconComponent = card.Icon;
                 return (
-                  <div key={card.label} className={`overview-card ${card.tone}`}>
-                    <div className="pj-metric-left">
-                      <div className={`pj-metric-icon-box ${iconTone}`}>
-                        <MetricIcon size={24} />
+                  <div id={`tm-stat-${card.key}-card`} key={card.key} className={`um-stat-card ${card.cardClass}`}>
+                    <div className="um-stat-left">
+                      <div className={`um-stat-icon-wrap ${card.iconWrapClass}`}>
+                        <IconComponent size={22} />
                       </div>
-                      <div className="pj-metric-info">
-                        <span className="pj-metric-label">{card.label}</span>
-                        <strong className="pj-metric-number">{card.value}</strong>
+                      <div className="um-stat-info">
+                        <span className="um-stat-label">{card.label}</span>
+                        <span className="um-stat-number">{card.value}</span>
                       </div>
                     </div>
+                    <span className={`um-stat-badge ${card.badgeClass}`}>{card.badge}</span>
                   </div>
                 );
               })}
-            </div>
+            </section>
 
-            <div className={`users-filter-bar ${isShowingFoldersGrid ? 'is-folders-search' : ''}`}>
-              <div className="users-search-box">
+            {/* Filter and Search Bar matching User Module Controls */}
+            <div className="um-controls-bar">
+              <div className="um-search-container">
                 <Search size={16} color="#64748b" />
                 <input
                   id="tickets-search-input"
@@ -821,45 +923,76 @@ function AdminTickets() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className="um-search-clear-btn"
+                    onClick={() => setSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
 
-              {!isShowingFoldersGrid && (
-                <div className="tickets-filter-dropdowns">
-                  <CustomSelect
-                    id="tickets-status-filter"
-                    value={statusFilter}
-                    onChange={setStatusFilter}
-                    options={TICKET_STATUS_OPTIONS}
-                    variant="filter"
-                    placeholder="All Statuses"
-                  />
+              <div className="um-filter-selects">
+                {!isShowingFoldersGrid ? (
+                  <>
+                    <CustomSelect
+                      id="tickets-status-filter"
+                      value={statusFilter}
+                      onChange={setStatusFilter}
+                      options={TICKET_STATUS_OPTIONS}
+                      variant="filter"
+                      placeholder="All Statuses"
+                    />
 
-                  <CustomSelect
-                    id="tickets-priority-filter"
-                    value={priorityFilter}
-                    onChange={setPriorityFilter}
-                    options={TICKET_PRIORITY_OPTIONS}
-                    variant="filter"
-                    placeholder="All Severities"
-                  />
+                    <CustomSelect
+                      id="tickets-priority-filter"
+                      value={priorityFilter}
+                      onChange={setPriorityFilter}
+                      options={TICKET_PRIORITY_OPTIONS}
+                      variant="filter"
+                      placeholder="All Severities"
+                    />
 
-                  <CustomSelect
-                    id="tickets-type-filter"
-                    value={typeFilter}
-                    onChange={setTypeFilter}
-                    options={TICKET_TYPE_OPTIONS}
-                    variant="filter"
-                    placeholder="All Types"
-                  />
-                </div>
-              )}
+                    <CustomSelect
+                      id="tickets-type-filter"
+                      value={typeFilter}
+                      onChange={setTypeFilter}
+                      options={TICKET_TYPE_OPTIONS}
+                      variant="filter"
+                      placeholder="All Types"
+                    />
+                  </>
+                ) : (
+                  <div
+                    className="ticket-folders-count-pill"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 14px',
+                      background: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '9999px',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: '#1d4ed8'
+                    }}
+                  >
+                    <Folder size={14} color="#2563eb" />
+                    <span>{visibleFolders.length} Active {visibleFolders.length === 1 ? 'Workspace Folder' : 'Workspace Folders'}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {isShowingFoldersGrid ? (
               <div className="ticket-folders-section">
                 <div className="ticket-folders-section-header">
                   <div className="ticket-folders-section-title">
-                    <Folder size={17} color="#2563eb" />
+                    <Folder size={18} color="#2563eb" />
                     <span>Project Folders</span>
                     <span className="ticket-folders-total-pill">
                       {visibleFolders.length} Folder{visibleFolders.length === 1 ? '' : 's'}
@@ -868,19 +1001,49 @@ function AdminTickets() {
                 </div>
 
                 {loading ? (
-                  <div className="users-table-card" style={{ textAlign: 'center', padding: '44px' }}>
-                    Loading project ticket folders...
+                  <div className="um-empty-state-card">
+                    <RefreshCw size={24} className="animate-spin" style={{ color: '#2563eb' }} />
+                    <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
+                      Loading project ticket folders...
+                    </p>
                   </div>
                 ) : visibleFolders.length === 0 ? (
-                  <div className="users-table-card">
-                    <div className="user-empty-state">
-                      <FolderOpen size={42} style={{ opacity: 0.35, marginBottom: '10px' }} />
-                      <p>
-                        {query
-                          ? 'No project folders match your search.'
-                          : 'No project ticket folders found yet.'}
-                      </p>
+                  <div className="um-empty-state-card">
+                    <div className="um-empty-icon-wrap">
+                      <FolderOpen size={32} />
                     </div>
+                    <h3 id="tickets-empty-heading" style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 0' }}>
+                      {projectFolders.length === 0 ? 'No Project Ticket Folders Yet' : 'No Project Folders Found'}
+                    </h3>
+                    <p className="um-empty-description" style={{ maxWidth: 520, margin: 0, color: '#64748b', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                      {projectFolders.length === 0
+                        ? 'Your defect workspace is clean and organized. Create projects or raise defect tickets to automatically generate dedicated workspace folders.'
+                        : "We couldn't find any project folders matching your search. Try searching for a different project name, lead, or ticket code."}
+                    </p>
+                    {projectFolders.length === 0 ? (
+                      !isDeveloper && (
+                        <button
+                          id="tickets-empty-raise-btn"
+                          className="um-btn-create"
+                          onClick={handleOpenRaiseModal}
+                          style={{ marginTop: 8 }}
+                        >
+                          <Plus size={16} />
+                          <span>Raise First Ticket</span>
+                        </button>
+                      )
+                    ) : (
+                      <button
+                        id="tickets-empty-clear-btn"
+                        type="button"
+                        className="um-btn-create"
+                        style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', boxShadow: 'none', marginTop: 8 }}
+                        onClick={() => setSearchQuery('')}
+                      >
+                        <X size={15} />
+                        <span>Clear Search</span>
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="ticket-folders-grid">
@@ -959,40 +1122,83 @@ function AdminTickets() {
                 )}
               </div>
             ) : (
-              <div className="users-table-card">
-                <table id="tickets-table" className="users-table">
-                  <thead>
-                    <tr>
-                      <th>Ticket Code</th>
-                      <th>Title & Description</th>
-                      <th>Project</th>
-                      <th>Type</th>
-                      <th>Severity</th>
-                      <th>Assigned To</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
+              <section id="tickets-table-section" className="um-table-card">
+                <div className="um-table-scroll">
+                  <table id="tickets-table" className="um-table users-table">
+                    <thead>
                       <tr>
-                        <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
-                          Loading tickets...
-                        </td>
+                        <th>Ticket Code</th>
+                        <th>Title & Description</th>
+                        <th>Project</th>
+                        <th>Type</th>
+                        <th>Severity</th>
+                        <th>Assigned To</th>
+                        <th>Actions</th>
                       </tr>
-                    ) : filteredTickets.length === 0 ? (
-                      <tr>
-                        <td colSpan="7">
-                          <div className="user-empty-state">
-                            <Ticket size={40} style={{ opacity: 0.35, marginBottom: '10px' }} />
-                            <p>
-                              {activeFolder
-                                ? `No tickets found inside ${activeFolder.projectName} matching your filters.`
-                                : 'No tickets found matching your search or filters.'}
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr>
+                          <td colSpan="7" style={{ textAlign: 'center', padding: '50px 20px' }}>
+                            <RefreshCw
+                              size={24}
+                              className="animate-spin"
+                              style={{ margin: '0 auto 12px', color: '#2563eb' }}
+                            />
+                            <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
+                              Loading defect tickets...
                             </p>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
+                          </td>
+                        </tr>
+                      ) : filteredTickets.length === 0 ? (
+                        <tr>
+                          <td colSpan="7">
+                            <div className="um-empty-state-card" style={{ border: 'none', boxShadow: 'none', margin: '20px 0' }}>
+                              <div className="um-empty-icon-wrap">
+                                <Ticket size={32} />
+                              </div>
+                              <h3 id="tickets-table-empty-heading" style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 0' }}>
+                                {tickets.length === 0 ? 'No Defect Tickets Yet' : 'No Tickets Found'}
+                              </h3>
+                              <p className="um-empty-description" style={{ maxWidth: 520, margin: 0, color: '#64748b', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                                {tickets.length === 0
+                                  ? 'No defect issues have been reported. Raise a new ticket to track bugs, features, and QA issues.'
+                                  : activeFolder
+                                  ? `No tickets found inside "${activeFolder.projectName}" matching your search or filters.`
+                                  : 'No tickets found matching your search or active filters. Try adjusting your search query or resetting filters.'}
+                              </p>
+                              {tickets.length === 0 ? (
+                                !isDeveloper && (
+                                  <button
+                                    id="tickets-empty-table-raise-btn"
+                                    className="um-btn-create"
+                                    onClick={handleOpenRaiseModal}
+                                    style={{ marginTop: 8 }}
+                                  >
+                                    <Plus size={16} />
+                                    <span>Raise Ticket</span>
+                                  </button>
+                                )
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="um-btn-create"
+                                  style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', boxShadow: 'none', marginTop: 8 }}
+                                  onClick={() => {
+                                    setSearchQuery('');
+                                    setStatusFilter('All');
+                                    setPriorityFilter('All');
+                                    setTypeFilter('All');
+                                  }}
+                                >
+                                  <X size={15} />
+                                  <span>Reset All Filters</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
                       filteredTickets.map((t) => (
                         <tr
                           id={`tickets-row-${t.id}`}
@@ -1091,10 +1297,11 @@ function AdminTickets() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </div>
+            </section>
+          )}
         </div>
-      </main>
+      </div>
+    </main>
 
       {isModalOpen && (
         <div

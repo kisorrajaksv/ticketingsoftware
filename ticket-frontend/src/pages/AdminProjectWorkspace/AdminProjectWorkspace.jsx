@@ -526,6 +526,7 @@ export default function AdminProjectWorkspace() {
       );
       if (data?.approval) {
         setTestingRequests((prev) => [data.approval, ...prev]);
+        window.dispatchEvent(new CustomEvent('workspace-approvals-updated'));
       }
       setTestingNotes('');
       setTestingMsg({

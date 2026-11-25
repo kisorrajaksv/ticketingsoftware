@@ -1037,10 +1037,10 @@
 
 .ticket-active-folder-banner {
   background: #ffffff;
-  border: 1px solid #dbe3ef;
-  border-radius: 14px;
-  padding: 14px 18px;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 18px 22px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
   display: flex;
   align-items: center;
   justify-content: space-between;

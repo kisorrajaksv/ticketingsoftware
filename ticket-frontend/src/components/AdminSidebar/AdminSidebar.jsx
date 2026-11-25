@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
+import axios from 'axios';
+import { API_BASE } from '../../utils/apiConfig';
 import {
   BarChart3,
   CheckSquare,
@@ -23,7 +25,7 @@ export const MAIN_ADMIN_NAV = [
   { label: 'Users', to: '/admin/users', icon: Users, end: true },
   { label: 'Tickets', to: '/admin/tickets', icon: Ticket },
   { label: 'Reports', to: '/admin/reports', icon: BarChart3 },
-  { label: 'Approvals & Requests', to: '/admin/approvals', icon: CheckSquare, badge: '3' },
+  { label: 'Approvals & Requests', to: '/admin/approvals', icon: CheckSquare },
   { label: 'Deployment Approval', to: '/admin/deployment-approval', icon: Rocket },
   { label: 'Application Settings', to: '/admin/settings', icon: Settings, end: true }
 ];
@@ -115,6 +117,50 @@ function AdminSidebar({
       : window.matchMedia('(max-width: 1100px) and (min-width: 761px)').matches);
   });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
+
+  // Dynamic Approvals Badge: fetch real pending count from backend & listen for live updates
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchPendingCount = async () => {
+      const token = window.localStorage.getItem('token');
+      if (!token) return;
+      try {
+        const res = await axios.get(`${API_BASE}/api/admin/approvals`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (isMounted && Array.isArray(res.data)) {
+          const count = res.data.filter(
+            (item) => (item.status || '').toLowerCase() === 'pending'
+          ).length;
+          setPendingApprovalsCount(count);
+        }
+      } catch {
+        // Silently handle unauthorized or offline state
+      }
+    };
+
+    fetchPendingCount();
+
+    const handleApprovalsUpdated = (e) => {
+      if (typeof e?.detail?.pendingCount === 'number') {
+        setPendingApprovalsCount(e.detail.pendingCount);
+      } else {
+        fetchPendingCount();
+      }
+    };
+
+    // Poll periodically every 30 seconds for external updates
+    const intervalId = setInterval(fetchPendingCount, 30000);
+
+    window.addEventListener('workspace-approvals-updated', handleApprovalsUpdated);
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+      window.removeEventListener('workspace-approvals-updated', handleApprovalsUpdated);
+    };
+  }, []);
 
   // Listen for toggle events from the floating TopNavbar hamburger button
   useEffect(() => {
@@ -222,27 +268,34 @@ function AdminSidebar({
 
         {/* 2. Organized 8 Nav Sections - Clean, Evenly Spaced */}
         <nav id="sidebar-nav-menu" className="sidebar-nav" aria-label="Main navigation">
-          {effectiveNavItems.map(({ label, to, icon: Icon, end, badge }) => (
-            <NavLink
-              id={`sidebar-nav-${to.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')}`}
-              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-              end={end}
-              key={label}
-              title={collapsed ? label : undefined}
-              to={to}
-              onClick={() => {
-                setMobileOpen(false);
-              }}
-            >
-              <Icon className="nav-icon" />
-              <span className="nav-label">{label}</span>
-              {!collapsed && (badge || (label === 'Approvals & Requests' ? '3' : null)) && (
-                <span className="sidebar-nav-badge">
-                  {badge || '3'}
-                </span>
-              )}
-            </NavLink>
-          ))}
+          {effectiveNavItems.map(({ label, to, icon: Icon, end, badge }) => {
+            const isApprovals = label === 'Approvals & Requests';
+            const effectiveBadge = isApprovals
+              ? (pendingApprovalsCount > 0 ? String(pendingApprovalsCount) : null)
+              : (badge || null);
+
+            return (
+              <NavLink
+                id={`sidebar-nav-${to.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')}`}
+                className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                end={end}
+                key={label}
+                title={collapsed ? (effectiveBadge ? `${label} (${effectiveBadge} pending)` : label) : undefined}
+                to={to}
+                onClick={() => {
+                  setMobileOpen(false);
+                }}
+              >
+                <Icon className="nav-icon" />
+                <span className="nav-label">{label}</span>
+                {!collapsed && effectiveBadge && (
+                  <span className="sidebar-nav-badge">
+                    {effectiveBadge}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
         {/* 3. Attractive Dedicated Collapse Button in Footer */}

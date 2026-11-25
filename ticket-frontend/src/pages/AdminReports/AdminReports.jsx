@@ -30,6 +30,7 @@ import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { formatIndianDate } from '../../utils/dateFormat';
 import '../../styles/admin.css';
+import '../AdminUsers/AdminUsers.css';
 import './AdminReports.css';
 
 export default function AdminReports() {
@@ -516,85 +517,113 @@ export default function AdminReports() {
         <TopNavbar pageTitle="Quality & Defect Reports" />
         {/* Dashboard Body */}
         <div className="dashboard-container">
-          <div className="reports-layout">
-            {/* Executive Summary Header */}
-            <header id="reports-header-section" className="reports-header-card">
-              <div className="reports-header-text">
-                <h2 id="reports-page-heading">Quality Assurance &amp; Defect Resolution Reports</h2>
+          <div className="users-page-layout reports-page-layout">
+            {/* Executive Summary Header matching User Module */}
+            <header id="reports-header-section" className="um-header-container">
+              <div className="um-header-left">
+                <div className="um-header-icon-box">
+                  <BarChart3 size={24} color="#2563EB" />
+                </div>
+                <div className="um-header-titles">
+                  <h1 id="reports-page-heading">Quality Assurance &amp; Defect Resolution Reports</h1>
+                  <p>
+                    Executive QA metrics, test case execution progress, daily member productivity, and developer defect resolution analytics.
+                  </p>
+                </div>
               </div>
-              <div className="reports-header-meta">
+
+              <div className="um-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span className="reports-live-badge">
                   <span className="reports-pulse-dot" /> Live Data Synced
                 </span>
+                <button
+                  id="reports-refresh-btn"
+                  type="button"
+                  className="um-btn-create"
+                  style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', boxShadow: 'none' }}
+                  onClick={fetchReportsData}
+                  title="Refresh report analytics"
+                >
+                  <RefreshCw size={14} />
+                  <span>Refresh Data</span>
+                </button>
               </div>
             </header>
 
-            {/* Top Workspace KPI Grid */}
-            <div className="reports-kpi-grid">
-              <div className="report-kpi-card">
-                <div className="report-kpi-header">
-                  <span className="report-kpi-title">Monitored Projects</span>
-                  <div className="report-kpi-icon">
-                    <FolderKanban size={17} />
+            {/* Top Workspace KPI Grid matching User Module (.um-stats-grid) */}
+            <section id="reports-kpi-grid" className="um-stats-grid">
+              {/* Card 1: Monitored Projects */}
+              <div id="reports-kpi-projects-card" className="um-stat-card card-total">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-blue">
+                    <FolderKanban size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Monitored Projects</span>
+                    <span className="um-stat-number">{projectOverall?.total_projects || projectReports.length}</span>
                   </div>
                 </div>
-                <span className="report-kpi-val">{projectOverall?.total_projects || projectReports.length}</span>
-                <span className="report-kpi-sub">
-                  <span style={{ color: '#10B981', fontWeight: '700' }}>Active Tracks</span>
+                <span className="um-stat-badge badge-blue">Active Tracks</span>
+              </div>
+
+              {/* Card 2: Total Test Cases */}
+              <div id="reports-kpi-cases-card" className="um-stat-card card-active">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-green">
+                    <CheckCheck size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Total Test Cases</span>
+                    <span className="um-stat-number">{projectOverall?.total_test_cases || 0}</span>
+                  </div>
+                </div>
+                <span className="um-stat-badge badge-green">
+                  {projectOverall?.total_passed || 0} Passed
                 </span>
               </div>
 
-              <div className="report-kpi-card kpi-success">
-                <div className="report-kpi-header">
-                  <span className="report-kpi-title">Total Test Cases</span>
-                  <div className="report-kpi-icon" style={{ background: '#ECFDF5', color: '#059669' }}>
-                    <CheckCheck size={17} />
+              {/* Card 3: Global Pass Rate */}
+              <div id="reports-kpi-rate-card" className="um-stat-card card-inactive">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-orange">
+                    <TrendingUp size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Global Pass Rate</span>
+                    <span
+                      className="um-stat-number"
+                      style={{
+                        color: (projectOverall?.global_pass_rate || 0) >= 80 ? '#16a34a' : '#ea580c'
+                      }}
+                    >
+                      {projectOverall?.global_pass_rate || 0}%
+                    </span>
                   </div>
                 </div>
-                <span className="report-kpi-val">{projectOverall?.total_test_cases || 0}</span>
-                <span className="report-kpi-sub">
-                  <strong style={{ color: '#10B981' }}>{projectOverall?.total_passed || 0} Passed</strong> &bull;{' '}
-                  {projectOverall?.total_failed || 0} Failed
-                </span>
+                <span className="um-stat-badge badge-orange">Pass Ratio</span>
               </div>
 
-              <div className="report-kpi-card kpi-amber">
-                <div className="report-kpi-header">
-                  <span className="report-kpi-title">Global Pass Rate</span>
-                  <div className="report-kpi-icon" style={{ background: '#FFFBEB', color: '#D97706' }}>
-                    <TrendingUp size={17} />
+              {/* Card 4: Defects Resolved */}
+              <div id="reports-kpi-defects-card" className="um-stat-card card-departments">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-purple">
+                    <Bug size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Defects Resolved</span>
+                    <span className="um-stat-number">
+                      {(projectOverall?.total_resolved || 0) + (projectOverall?.total_closed || 0)}
+                      <span style={{ fontSize: '0.9rem', color: '#64748B', fontWeight: '500' }}>
+                        {' '}/ {projectOverall?.total_tickets || 0}
+                      </span>
+                    </span>
                   </div>
                 </div>
-                <span
-                  className="report-kpi-val"
-                  style={{
-                    color: (projectOverall?.global_pass_rate || 0) >= 80 ? '#059669' : '#D97706'
-                  }}
-                >
-                  {projectOverall?.global_pass_rate || 0}%
-                </span>
-                <span className="report-kpi-sub">Evaluated test execution accuracy</span>
-              </div>
-
-              <div className="report-kpi-card kpi-purple">
-                <div className="report-kpi-header">
-                  <span className="report-kpi-title">Defects Resolved</span>
-                  <div className="report-kpi-icon" style={{ background: '#F3E8FF', color: '#7C3AED' }}>
-                    <Bug size={17} />
-                  </div>
-                </div>
-                <span className="report-kpi-val">
-                  {(projectOverall?.total_resolved || 0) + (projectOverall?.total_closed || 0)}
-                  <span style={{ fontSize: '1.05rem', color: '#64748B', fontWeight: '500' }}>
-                    {' '}
-                    / {projectOverall?.total_tickets || 0}
-                  </span>
-                </span>
-                <span className="report-kpi-sub">
-                  <strong>{projectOverall?.global_resolution_rate || 0}%</strong> fixed by dev team
+                <span className="um-stat-badge badge-purple">
+                  {projectOverall?.global_resolution_rate || 0}% Fixed
                 </span>
               </div>
-            </div>
+            </section>
 
             {/* ======================================================== */}
             {/* VIEW SELECTOR SWITCHER (Direct One-Click Navigation)     */}
@@ -671,10 +700,10 @@ export default function AdminReports() {
 
               {activeReport === 'projects' && (
                 <div className="report-accordion-body">
-                  {/* Clean Search & Export Toolbar */}
-                  <div className="report-toolbar-row">
-                    <div className="report-search-box">
-                      <Search size={15} color="#94A3B8" />
+                  {/* Clean Search & Export Controls matching User Module */}
+                  <div className="um-controls-bar" style={{ marginBottom: '16px' }}>
+                    <div className="um-search-container">
+                      <Search size={16} color="#64748b" />
                       <input
                         id="reports-project-search"
                         type="text"
@@ -687,7 +716,7 @@ export default function AdminReports() {
                         <button
                           id="reports-project-search-clear-btn"
                           type="button"
-                          className="report-search-clear"
+                          className="um-search-clear-btn"
                           onClick={() => setProjectSearch('')}
                           title="Clear search"
                         >
@@ -696,14 +725,14 @@ export default function AdminReports() {
                       )}
                     </div>
 
-                    <div className="report-actions-group">
+                    <div className="um-filter-selects">
                       <button
                         id="reports-export-projects-csv-btn"
                         type="button"
-                        className="report-btn-export"
+                        className="um-btn-create"
                         onClick={handleExportProjectCSV}
                       >
-                        <Download size={14} />
+                        <Download size={15} />
                         <span>Export Projects CSV</span>
                       </button>
                     </div>
@@ -712,14 +741,30 @@ export default function AdminReports() {
                   {/* Clean Modern Table (No Clutter, Segmented Progress Bars) */}
                   <div className="report-table-container">
                     {filteredProjects.length === 0 ? (
-                      <div className="report-empty-state">
-                        <FolderKanban size={36} color="#94A3B8" />
-                        <h4 id="reports-projects-empty-heading">No Projects Found</h4>
-                        <p>
+                      <div className="um-empty-state-card" style={{ border: 'none', boxShadow: 'none', margin: '24px 0' }}>
+                        <div className="um-empty-icon-wrap">
+                          <FolderKanban size={32} />
+                        </div>
+                        <h3 id="reports-projects-empty-heading" style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 0' }}>
+                          No Projects Found
+                        </h3>
+                        <p className="um-empty-description" style={{ maxWidth: 520, margin: 0, color: '#64748b', fontSize: '0.875rem', lineHeight: 1.5 }}>
                           {projectSearch
-                            ? 'No projects match your search keywords.'
+                            ? 'No projects match your search keywords. Try adjusting your search query.'
                             : 'No projects have been assigned or configured in your workspace.'}
                         </p>
+                        {projectSearch && (
+                          <button
+                            id="reports-projects-clear-btn"
+                            type="button"
+                            className="um-btn-create"
+                            style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', boxShadow: 'none', marginTop: 8 }}
+                            onClick={() => setProjectSearch('')}
+                          >
+                            <X size={15} />
+                            <span>Clear Search</span>
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <table id="reports-projects-table" className="report-modern-table">
@@ -1040,10 +1085,10 @@ export default function AdminReports() {
                       </div>
                     )}
 
-                    {/* Clean Search & Export Toolbar */}
-                    <div className="report-toolbar-row">
-                      <div className="report-search-box">
-                        <Search size={15} color="#94A3B8" />
+                    {/* Clean Search & Export Controls matching User Module */}
+                    <div className="um-controls-bar" style={{ marginBottom: '16px' }}>
+                      <div className="um-search-container">
+                        <Search size={16} color="#64748b" />
                         <input
                           id="reports-qa-search"
                           type="text"
@@ -1056,7 +1101,7 @@ export default function AdminReports() {
                           <button
                             id="reports-qa-search-clear-btn"
                             type="button"
-                            className="report-search-clear"
+                            className="um-search-clear-btn"
                             onClick={() => setQaSearch('')}
                             title="Clear search"
                           >
@@ -1065,14 +1110,14 @@ export default function AdminReports() {
                         )}
                       </div>
 
-                      <div className="report-actions-group">
+                      <div className="um-filter-selects">
                         <button
                           id="reports-export-qa-csv-btn"
                           type="button"
-                          className="report-btn-export"
+                          className="um-btn-create"
                           onClick={handleExportQACSV}
                         >
-                          <Download size={14} />
+                          <Download size={15} />
                           <span>Export QA Work CSV ({selectedPeriod})</span>
                         </button>
                       </div>
@@ -1081,10 +1126,30 @@ export default function AdminReports() {
                     {/* Modern QA Members Performance Table with Daily Work */}
                     <div className="report-table-container">
                       {filteredQAMembers.length === 0 ? (
-                        <div className="report-empty-state">
-                          <UsersRound size={36} color="#94A3B8" />
-                          <h4 id="reports-qa-empty-heading">No QA Members Found</h4>
-                          <p>No active QA Members match your search keyword.</p>
+                        <div className="um-empty-state-card" style={{ border: 'none', boxShadow: 'none', margin: '24px 0' }}>
+                          <div className="um-empty-icon-wrap">
+                            <UsersRound size={32} />
+                          </div>
+                          <h3 id="reports-qa-empty-heading" style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 0' }}>
+                            No QA Members Found
+                          </h3>
+                          <p className="um-empty-description" style={{ maxWidth: 520, margin: 0, color: '#64748b', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                            {qaSearch
+                              ? 'No active QA Members match your search keyword. Try searching for a different name or email.'
+                              : 'No QA Members found for the selected reporting period.'}
+                          </p>
+                          {qaSearch && (
+                            <button
+                              id="reports-qa-clear-btn"
+                              type="button"
+                              className="um-btn-create"
+                              style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', boxShadow: 'none', marginTop: 8 }}
+                              onClick={() => setQaSearch('')}
+                            >
+                              <X size={15} />
+                              <span>Clear Search</span>
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <table id="reports-qa-table" className="report-modern-table">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -8,18 +8,19 @@ import {
   FileCheck2,
   LogOut,
   Plus,
+  RefreshCw,
   Search,
   X,
-  XCircle
+  XCircle,
+  AlertCircle
 } from 'lucide-react';
-import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import { formatIndianDate } from '../../utils/dateFormat';
 import '../../styles/admin.css';
 import '../AdminUsers/AdminUsers.css';
-import '../AdminProjects/AdminProjects.css';
+import './AdminApprovals.css';
 
 const APPROVAL_STATUS_OPTIONS = [
   { value: 'All', label: 'All Statuses' },
@@ -52,7 +53,7 @@ const initialApprovalForm = {
   details: ''
 };
 
-function AdminApprovals() {
+export default function AdminApprovals() {
   const navigate = useNavigate();
   const [approvals, setApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +73,15 @@ function AdminApprovals() {
   const creatorLabel = `${currentUserName} (${currentUserRole})`;
   const canReviewRequests = ['QA Lead', 'Manager', 'Super Admin', 'Admin'].includes(currentUserRole);
   const canCreateRequest = currentUserRole !== 'QA Lead';
+
+  // KPI Calculations
+  const stats = useMemo(() => {
+    const total = approvals.length;
+    const pending = approvals.filter((a) => (a.status || '').toLowerCase() === 'pending').length;
+    const approved = approvals.filter((a) => (a.status || '').toLowerCase() === 'approved').length;
+    const rejected = approvals.filter((a) => (a.status || '').toLowerCase() === 'rejected').length;
+    return { total, pending, approved, rejected };
+  }, [approvals]);
 
   const openCreateRequestModal = async () => {
     if (!canCreateRequest) return;
@@ -112,6 +122,14 @@ function AdminApprovals() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setApprovals(response.data);
+      if (Array.isArray(response.data)) {
+        const pending = response.data.filter(
+          (item) => (item.status || '').toLowerCase() === 'pending'
+        ).length;
+        window.dispatchEvent(
+          new CustomEvent('workspace-approvals-updated', { detail: { pendingCount: pending } })
+        );
+      }
     } catch (error) {
       console.error('Failed to load approvals:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -158,7 +176,14 @@ function AdminApprovals() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setApprovals((prev) => [response.data.approval, ...prev]);
+      setApprovals((prev) => {
+        const next = [response.data.approval, ...prev];
+        const pending = next.filter((item) => (item.status || '').toLowerCase() === 'pending').length;
+        window.dispatchEvent(
+          new CustomEvent('workspace-approvals-updated', { detail: { pendingCount: pending } })
+        );
+        return next;
+      });
       setIsModalOpen(false);
       setFormData(initialApprovalForm);
     } catch (error) {
@@ -183,9 +208,14 @@ function AdminApprovals() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.data?.approval) {
-        setApprovals((prev) =>
-          prev.map((item) => (item.id === approvalId ? response.data.approval : item))
-        );
+        setApprovals((prev) => {
+          const next = prev.map((item) => (item.id === approvalId ? response.data.approval : item));
+          const pending = next.filter((item) => (item.status || '').toLowerCase() === 'pending').length;
+          window.dispatchEvent(
+            new CustomEvent('workspace-approvals-updated', { detail: { pendingCount: pending } })
+          );
+          return next;
+        });
       }
     } catch (error) {
       setActionError(error.response?.data?.error || `Failed to mark request as ${nextStatus}.`);
@@ -200,27 +230,37 @@ function AdminApprovals() {
     navigate('/', { replace: true });
   };
 
-  const filteredApprovals = approvals.filter((a) => {
+  const filteredApprovals = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    const matchesSearch =
-      !query ||
-      a.req_code?.toLowerCase().includes(query) ||
-      a.details?.toLowerCase().includes(query) ||
-      a.title?.toLowerCase().includes(query) ||
-      a.requested_by?.toLowerCase().includes(query) ||
-      a.category?.toLowerCase().includes(query) ||
-      a.project_name?.toLowerCase().includes(query) ||
-      a.project_code?.toLowerCase().includes(query);
+    return approvals.filter((a) => {
+      const matchesSearch =
+        !query ||
+        a.req_code?.toLowerCase().includes(query) ||
+        a.details?.toLowerCase().includes(query) ||
+        a.title?.toLowerCase().includes(query) ||
+        a.requested_by?.toLowerCase().includes(query) ||
+        a.category?.toLowerCase().includes(query) ||
+        a.project_name?.toLowerCase().includes(query) ||
+        a.project_code?.toLowerCase().includes(query);
 
-    const matchesStatus = statusFilter === 'All' || a.status === statusFilter;
-    const matchesPriority = priorityFilter === 'All' || a.priority === priorityFilter;
+      const matchesStatus = statusFilter === 'All' || a.status === statusFilter;
+      const matchesPriority = priorityFilter === 'All' || a.priority === priorityFilter;
 
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
+      return matchesSearch && matchesStatus && matchesPriority;
+    });
+  }, [approvals, searchQuery, statusFilter, priorityFilter]);
+
+  const hasActiveFilters = searchQuery || statusFilter !== 'All' || priorityFilter !== 'All';
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('All');
+    setPriorityFilter('All');
+  };
 
   return (
     <div className="admin-layout approvals-page">
-      {/* Logout Modal */}
+      {/* Logout Confirmation Dialog */}
       {showLogoutModal && (
         <div
           id="approvals-logout-overlay"
@@ -232,7 +272,7 @@ function AdminApprovals() {
           <section id="approvals-logout-modal" className="modal-content" role="dialog" aria-modal="true">
             <div className="modal-icon"><LogOut size={21} /></div>
             <h2 id="approvals-logout-title" className="modal-title">Sign out of your workspace?</h2>
-            <p className="modal-text">You can sign back in at any time with your account.</p>
+            <p className="modal-text">You can sign back in at any time with your account credentials.</p>
             <div className="modal-actions">
               <button
                 id="approvals-logout-cancel-btn"
@@ -256,47 +296,143 @@ function AdminApprovals() {
       <main id="approvals-main-content" className="main-content">
         <TopNavbar pageTitle="Approvals & Requests" />
         <div className="dashboard-container">
-          <div className="projects-layout">
-            {/* Header Card */}
-            <div className="projects-header-row">
-              <div className="projects-header-info">
-                <h2 id="approvals-page-heading">Approvals & Requests</h2>
+          <div className="users-page-layout approvals-page-layout">
+            {/* Executive Header Container matching Users, Tickets, Reports */}
+            <header id="approvals-header-section" className="um-header-container">
+              <div className="um-header-left">
+                <div className="um-header-icon-box">
+                  <FileCheck2 size={24} color="#2563EB" />
+                </div>
+                <div className="um-header-titles">
+                  <h1 id="approvals-page-heading">Approvals &amp; Requests</h1>
+                  <p>
+                    Review, verify, and approve workspace deployment and project testing requests.
+                  </p>
+                </div>
               </div>
-              {canCreateRequest && (
-                <div className="users-header-actions">
+
+              <div className="um-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className="reports-live-badge">
+                  <span className="reports-pulse-dot" /> Live Data Synced
+                </span>
+                <button
+                  id="approvals-refresh-btn"
+                  type="button"
+                  className="um-btn-create"
+                  style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', boxShadow: 'none' }}
+                  onClick={fetchApprovals}
+                  title="Refresh approvals"
+                >
+                  <RefreshCw size={14} />
+                  <span>Refresh</span>
+                </button>
+                {canCreateRequest && (
                   <button
                     id="approvals-create-request-btn"
-                    className="btn-primary-action"
+                    type="button"
+                    className="um-btn-create"
                     onClick={openCreateRequestModal}
                   >
                     <Plus size={18} />
                     <span>Create Request</span>
                   </button>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </header>
 
+            {/* Top Workspace KPI Grid matching Users & Tickets (.um-stats-grid) */}
+            <section id="approvals-stats-grid" className="um-stats-grid">
+              {/* Card 1: Total Requests */}
+              <div id="approvals-stat-total" className="um-stat-card card-total">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-blue">
+                    <FileCheck2 size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Total Requests</span>
+                    <span className="um-stat-number">{stats.total}</span>
+                  </div>
+                </div>
+                <span className="um-stat-badge badge-blue">All Submissions</span>
+              </div>
+
+              {/* Card 2: Pending Review */}
+              <div id="approvals-stat-pending" className="um-stat-card card-inactive">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-orange">
+                    <Clock size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Pending Review</span>
+                    <span className="um-stat-number">{stats.pending}</span>
+                  </div>
+                </div>
+                <span className="um-stat-badge badge-orange">Requires Action</span>
+              </div>
+
+              {/* Card 3: Approved */}
+              <div id="approvals-stat-approved" className="um-stat-card card-active">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-green">
+                    <CheckCircle2 size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Approved</span>
+                    <span className="um-stat-number">{stats.approved}</span>
+                  </div>
+                </div>
+                <span className="um-stat-badge badge-green">Authorized</span>
+              </div>
+
+              {/* Card 4: Rejected */}
+              <div id="approvals-stat-rejected" className="um-stat-card card-departments">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-purple">
+                    <XCircle size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Rejected</span>
+                    <span className="um-stat-number">{stats.rejected}</span>
+                  </div>
+                </div>
+                <span className="um-stat-badge badge-purple">Declined</span>
+              </div>
+            </section>
+
+            {/* Action/Error Alert */}
             {actionError && (
-              <div className="user-error-banner" style={{ marginBottom: '12px' }}>
-                {actionError}
+              <div className="user-error-banner" style={{ margin: 0 }}>
+                <AlertCircle size={16} />
+                <span>{actionError}</span>
               </div>
             )}
 
-            {/* Filter Bar */}
-            <div className="users-filter-bar">
-              <div className="users-search-box">
+            {/* Filter & Search Bar matching Users & Tickets */}
+            <div className="um-controls-bar">
+              <div className="um-search-container">
                 <Search size={16} color="#64748b" />
                 <input
                   id="approvals-search-input"
                   type="text"
-                  placeholder="Search request code, project, request note, requested by..."
+                  placeholder="Search request code, project, note, requester..."
                   autoComplete="off"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
+                {searchQuery && (
+                  <button
+                    id="approvals-search-clear-btn"
+                    type="button"
+                    className="um-search-clear-btn"
+                    onClick={() => setSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <div className="um-filter-selects">
                 <CustomSelect
                   id="approvals-status-filter"
                   value={statusFilter}
@@ -317,195 +453,194 @@ function AdminApprovals() {
               </div>
             </div>
 
-            {/* Approvals Table */}
-            <div className="users-table-card approvals-table-card">
-              <table id="approvals-table" className="users-table">
-                <thead>
-                  <tr>
-                    <th>Request Code</th>
-                    <th>Request Note</th>
-                    <th>Category</th>
-                    <th>Requested By</th>
-                    <th>Priority</th>
-                    <th>Status</th>
-                    <th>Submitted</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
-                        Loading requests...
-                      </td>
-                    </tr>
-                  ) : filteredApprovals.length === 0 ? (
-                    <tr>
-                      <td colSpan="8">
-                        <div className="user-empty-state">
-                          <CheckSquare size={40} style={{ opacity: 0.35, marginBottom: '10px' }} />
-                          <p>No approval requests found matching your filters.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredApprovals.map((a) => (
-                      <tr key={a.id}>
-                        <td>
-                          <span className="project-code-badge">{a.req_code}</span>
-                        </td>
-                        <td className="ap-request-note-cell">
-                          <span
-                            className="ap-request-note-text"
-                            title={a.details || a.title || ''}
-                          >
-                            {a.details?.trim() || a.title || '—'}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="user-dept-badge">{a.category}</span>
-                        </td>
-                        <td style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{a.requested_by}</td>
-                        <td>
-                          <span
-                            className={`priority-badge ${
-                              a.priority === 'Critical'
-                                ? 'priority-critical'
-                                : a.priority === 'High'
-                                ? 'priority-high'
-                                : a.priority === 'Low'
-                                ? 'priority-low'
-                                : 'priority-medium'
-                            }`}
-                          >
-                            {a.priority}
-                          </span>
-                        </td>
-                        <td>
-                          <span
-                            className={`status-tag ${
-                              a.status === 'Approved'
-                                ? 'status-active'
-                                : a.status === 'Rejected'
-                                ? 'priority-critical'
-                                : 'status-in-progress'
-                            }`}
-                          >
-                            {a.status}
-                          </span>
-                        </td>
-                        <td style={{ color: '#64748b', fontSize: '12px', whiteSpace: 'nowrap' }}>
-                          {formatIndianDate(a.created_at, 'Recent')}
-                        </td>
-                        <td>
-                          {a.status === 'Pending' && canReviewRequests ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <button
-                                id={`approval-approve-btn-${a.id}`}
-                                type="button"
-                                onClick={() => handleUpdateApprovalStatus(a.id, 'Approved')}
-                                disabled={updatingId === a.id}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  padding: '3px 8px',
-                                  borderRadius: '6px',
-                                  border: '1px solid #86EFAC',
-                                  background: '#DCFCE7',
-                                  color: '#15803D',
-                                  fontSize: '11.5px',
-                                  lineHeight: 1.25,
-                                  fontWeight: 700,
-                                  whiteSpace: 'nowrap',
-                                  cursor: updatingId === a.id ? 'not-allowed' : 'pointer'
-                                }}
-                              >
-                                <CheckCircle2 size={12} />
-                                <span>Approve</span>
-                              </button>
-                              <button
-                                id={`approval-reject-btn-${a.id}`}
-                                type="button"
-                                onClick={() => handleUpdateApprovalStatus(a.id, 'Rejected')}
-                                disabled={updatingId === a.id}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  padding: '3px 8px',
-                                  borderRadius: '6px',
-                                  border: '1px solid #FCA5A5',
-                                  background: '#FEE2E2',
-                                  color: '#B91C1C',
-                                  fontSize: '11.5px',
-                                  lineHeight: 1.25,
-                                  fontWeight: 700,
-                                  whiteSpace: 'nowrap',
-                                  cursor: updatingId === a.id ? 'not-allowed' : 'pointer'
-                                }}
-                              >
-                                <XCircle size={12} />
-                                <span>Reject</span>
-                              </button>
-                            </div>
-                          ) : (
-                            <span style={{ fontSize: '11.5px', color: '#64748b', whiteSpace: 'nowrap' }}>
-                              {a.reviewed_by ? `By ${a.reviewed_by}` : '—'}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+            {/* Approvals Table Card */}
+            <div className="um-table-card approvals-table-card">
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '50px 20px', color: '#64748b' }}>
+                  <RefreshCw size={24} className="spin-icon" style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
+                  <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Loading approval requests...</p>
+                </div>
+              ) : filteredApprovals.length === 0 ? (
+                <div className="um-empty-state-card" style={{ border: 'none', boxShadow: 'none', margin: '24px 0' }}>
+                  <div className="um-empty-icon-wrap">
+                    <FileCheck2 size={32} />
+                  </div>
+                  <h3 id="approvals-empty-heading" style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 0' }}>
+                    No Approval Requests Found
+                  </h3>
+                  <p className="um-empty-description" style={{ maxWidth: 520, margin: 0, color: '#64748b', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                    {hasActiveFilters
+                      ? 'No requests match your search keywords or filter criteria. Try resetting the filters.'
+                      : 'No approval requests have been submitted in your workspace yet.'}
+                  </p>
+                  {hasActiveFilters && (
+                    <button
+                      id="approvals-reset-filters-btn"
+                      type="button"
+                      className="um-btn-create"
+                      style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', boxShadow: 'none', marginTop: 8 }}
+                      onClick={resetFilters}
+                    >
+                      <X size={15} />
+                      <span>Reset Filters</span>
+                    </button>
                   )}
-                </tbody>
-              </table>
+                </div>
+              ) : (
+                <div className="um-table-scroll">
+                  <table id="approvals-table" className="um-table">
+                    <thead>
+                      <tr>
+                        <th>Request Code</th>
+                        <th>Project Name</th>
+                        <th>Request Note</th>
+                        <th>Category</th>
+                        <th>Requested By</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredApprovals.map((a) => (
+                        <tr key={a.id}>
+                          <td>
+                            <span className="project-code-badge">{a.req_code}</span>
+                          </td>
+                          <td>
+                            <strong style={{ color: '#0f172a', fontWeight: 700, fontSize: '0.88rem' }}>
+                              {a.project_name || a.title || '—'}
+                            </strong>
+                          </td>
+                          <td className="ap-request-note-cell">
+                            <span
+                              className="ap-request-note-text"
+                              title={a.details || a.title || ''}
+                            >
+                              {a.details?.trim() || a.title || '—'}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="user-dept-badge">{a.category || 'General'}</span>
+                          </td>
+                          <td>
+                            <span style={{ fontWeight: 500, color: '#334155', whiteSpace: 'nowrap' }}>
+                              {a.requested_by}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={`priority-badge priority-${(a.priority || 'medium').toLowerCase()}`}
+                            >
+                              {a.priority}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={`status-tag status-${(a.status || 'pending').toLowerCase()}`}
+                            >
+                              {a.status}
+                            </span>
+                          </td>
+                          <td>
+                            <span style={{ color: '#64748b', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                              {formatIndianDate(a.created_at, 'Recent')}
+                            </span>
+                          </td>
+                          <td>
+                            {a.status === 'Pending' && canReviewRequests ? (
+                              <div className="ap-actions-group">
+                                <button
+                                  id={`approval-approve-btn-${a.id}`}
+                                  type="button"
+                                  className="ap-btn-approve"
+                                  onClick={() => handleUpdateApprovalStatus(a.id, 'Approved')}
+                                  disabled={updatingId === a.id}
+                                  title="Approve this request"
+                                >
+                                  <CheckCircle2 size={13} />
+                                  <span>Approve</span>
+                                </button>
+                                <button
+                                  id={`approval-reject-btn-${a.id}`}
+                                  type="button"
+                                  className="ap-btn-reject"
+                                  onClick={() => handleUpdateApprovalStatus(a.id, 'Rejected')}
+                                  disabled={updatingId === a.id}
+                                  title="Reject this request"
+                                >
+                                  <XCircle size={13} />
+                                  <span>Reject</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="ap-reviewer-tag">
+                                {a.reviewed_by ? `By ${a.reviewed_by}` : '—'}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </main>
 
-      {/* Create Request Modal */}
+      {/* Modern Create Request Modal matching Design System */}
       {canCreateRequest && isModalOpen && (
         <div
           id="approval-create-modal-overlay"
-          className="modal-overlay-user"
+          className="um-modal-overlay"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setIsModalOpen(false);
           }}
         >
-          <div id="approval-create-modal" className="modal-card-user" role="dialog" aria-modal="true">
-            <div className="modal-header-user">
-              <h3 id="approval-create-modal-title">Create Approval Request</h3>
+          <div id="approval-create-modal" className="um-modal-card" role="dialog" aria-modal="true">
+            <div className="um-modal-header">
+              <div className="um-modal-header-titles">
+                <h3 id="approval-create-modal-title">Create Approval Request</h3>
+                <p>Submit a project testing or deployment approval request for lead review.</p>
+              </div>
               <button
                 id="approval-create-modal-close-btn"
-                className="modal-close-btn"
+                className="um-modal-close"
                 onClick={() => setIsModalOpen(false)}
                 aria-label="Close dialog"
               >
-                <X size={19} />
+                <X size={18} />
               </button>
             </div>
 
-            <form id="approval-create-form" onSubmit={handleCreateApproval}>
-              <div className="modal-body-user">
-                {formError && <div className="user-error-banner">{formError}</div>}
+            <form id="approval-create-form" className="um-modal-form" onSubmit={handleCreateApproval}>
+              <div className="um-modal-body">
+                {formError && (
+                  <div className="user-error-banner" style={{ margin: 0 }}>
+                    <AlertCircle size={15} />
+                    <span>{formError}</span>
+                  </div>
+                )}
 
-                <div className="form-grid-2">
-                  <div className="form-group-user">
+                <div className="um-form-grid-2">
+                  <div className="um-form-group">
                     <label htmlFor="approval-req-code">Request Code</label>
-                    <input
-                      id="approval-req-code"
-                      type="text"
-                      name="req_code"
-                      value={formData.req_code}
-                      readOnly
-                      autoComplete="off"
-                      style={{ background: '#F8FAFC', color: '#475569', cursor: 'not-allowed' }}
-                    />
+                    <div className="um-input-box um-input-box-disabled">
+                      <input
+                        id="approval-req-code"
+                        type="text"
+                        name="req_code"
+                        value={formData.req_code}
+                        readOnly
+                        autoComplete="off"
+                      />
+                    </div>
                   </div>
 
-                  <div className="form-group-user">
+                  <div className="um-form-group">
                     <label htmlFor="approval-priority">Priority</label>
                     <CustomSelect
                       id="approval-priority"
@@ -517,52 +652,61 @@ function AdminApprovals() {
                   </div>
                 </div>
 
-                <div className="form-group-user">
-                  <label htmlFor="approval-project-name">Project Name *</label>
-                  <input
-                    id="approval-project-name"
-                    type="text"
-                    name="title"
-                    placeholder="Enter project name"
-                    autoComplete="off"
-                    required
-                    value={formData.title}
-                    onChange={handleInputChange}
-                  />
+                <div className="um-form-group">
+                  <label htmlFor="approval-project-name">
+                    Project Name <span className="req-star">*</span>
+                  </label>
+                  <div className="um-input-box">
+                    <input
+                      id="approval-project-name"
+                      type="text"
+                      name="title"
+                      placeholder="Enter project name"
+                      autoComplete="off"
+                      required
+                      value={formData.title}
+                      onChange={handleInputChange}
+                    />
+                  </div>
                 </div>
 
-                <div className="form-group-user">
-                  <label htmlFor="approval-notes">Notes</label>
-                  <input
-                    id="approval-notes"
-                    type="text"
-                    name="details"
-                    placeholder="Enter testing notes or request details..."
-                    autoComplete="off"
-                    value={formData.details}
-                    onChange={handleInputChange}
-                  />
+                <div className="um-form-group">
+                  <label htmlFor="approval-notes">
+                    Notes <span className="opt-text">(Optional)</span>
+                  </label>
+                  <div className="um-input-box">
+                    <input
+                      id="approval-notes"
+                      type="text"
+                      name="details"
+                      placeholder="Enter testing notes or request details..."
+                      autoComplete="off"
+                      value={formData.details}
+                      onChange={handleInputChange}
+                    />
+                  </div>
                 </div>
 
-                <div className="form-group-user">
+                <div className="um-form-group">
                   <label htmlFor="approval-requested-by">Requested By</label>
-                  <input
-                    id="approval-requested-by"
-                    type="text"
-                    name="requested_by"
-                    autoComplete="name"
-                    value={formData.requested_by || creatorLabel}
-                    readOnly
-                    style={{ background: '#F8FAFC', color: '#475569', cursor: 'not-allowed' }}
-                  />
+                  <div className="um-input-box um-input-box-disabled">
+                    <input
+                      id="approval-requested-by"
+                      type="text"
+                      name="requested_by"
+                      autoComplete="name"
+                      value={formData.requested_by || creatorLabel}
+                      readOnly
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="modal-footer-user">
+              <div className="um-modal-footer">
                 <button
                   id="approval-create-cancel-btn"
                   type="button"
-                  className="btn-secondary"
+                  className="um-btn-secondary"
                   onClick={() => setIsModalOpen(false)}
                 >
                   Cancel
@@ -570,7 +714,7 @@ function AdminApprovals() {
                 <button
                   id="approval-create-submit-btn"
                   type="submit"
-                  className="btn-primary-action"
+                  className="um-btn-primary"
                   disabled={submitting}
                 >
                   {submitting ? 'Submitting...' : 'Submit Request'}
@@ -583,5 +727,3 @@ function AdminApprovals() {
     </div>
   );
 }
-
-export default AdminApprovals;

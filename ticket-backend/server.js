@@ -2565,6 +2565,10 @@ app.post('/api/admin/projects/:id/testing-request', async (req, res) => {
       )
     );
 
+    if (io) {
+      io.emit('approval_created', { approval: inserted.rows[0] });
+    }
+
     res.status(201).json({
       message: 'Testing request sent to QA Lead Approvals & Requests module.',
       approval: inserted.rows[0]
@@ -3071,6 +3075,10 @@ app.post('/api/admin/approvals', async (req, res) => {
       ]
     );
 
+    if (io) {
+      io.emit('approval_created', { approval: result.rows[0] });
+    }
+
     res.status(201).json({
       message: 'Approval request created successfully',
       approval: result.rows[0]
@@ -3121,6 +3129,10 @@ app.put('/api/admin/approvals/:id/status', async (req, res) => {
         status === 'Approved' ? 'approval_approved' : 'approval_rejected',
         row.project_id ? `/admin/projects/${row.project_id}` : '/admin/approvals'
       );
+    }
+
+    if (io) {
+      io.emit('approval_updated', { approval: row });
     }
 
     res.json({
