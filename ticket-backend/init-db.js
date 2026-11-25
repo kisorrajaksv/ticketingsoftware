@@ -303,10 +303,11 @@ export const initDatabase = async () => {
 
     // Insert primary System Admin account if it doesn't already exist
     await pool.query(`
-      INSERT INTO users (emp_id, full_name, email, password, department, role, status)
+      INSERT INTO users (emp_id, full_name, email, password, department, role, phone, status)
       VALUES 
-        ('EMP-000', 'System Admin', 'admin@gmail.com', $1, 'Management', 'Admin', 'Active')
-      ON CONFLICT (email) DO NOTHING;
+        ('EMP-000', 'System Admin', 'admin@gmail.com', $1, 'Management', 'Admin', '+91 9876543210', 'Active')
+      ON CONFLICT (email) DO UPDATE SET
+        phone = COALESCE(users.phone, EXCLUDED.phone);
     `, [adminHash]);
 
     // Backfill project_id on existing tickets if matching project_code

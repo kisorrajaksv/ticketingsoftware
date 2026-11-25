@@ -48,12 +48,13 @@ export async function resetProductionDatabase() {
     const adminPasswordHash = await bcrypt.hash('Admin@123', salt);
 
     await pool.query(`
-      INSERT INTO users (emp_id, full_name, email, password, department, role, status)
+      INSERT INTO users (emp_id, full_name, email, password, department, role, phone, status)
       VALUES 
-        ('EMP-000', 'System Admin', 'admin@gmail.com', $1, 'Management', 'Admin', 'Active')
+        ('EMP-000', 'System Admin', 'admin@gmail.com', $1, 'Management', 'Admin', '+91 9876543210', 'Active')
       ON CONFLICT (email) DO UPDATE SET
         password = EXCLUDED.password,
         role = EXCLUDED.role,
+        phone = '+91 9876543210',
         status = 'Active';
     `, [adminPasswordHash]);
     console.log('   ✓ Clean system account seeded (System Admin: admin@gmail.com, Password: Admin@123).');

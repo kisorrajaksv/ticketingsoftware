@@ -230,10 +230,17 @@ function AdminUsers() {
   const [submitting, setSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState(null);
 
+  const userEmail = (localStorage.getItem('userEmail') || '').toLowerCase().trim();
   const currentUserRole = localStorage.getItem('userRole') || '';
-  const isAdmin = currentUserRole === 'Admin' || currentUserRole === 'Super Admin';
-  const isManager = currentUserRole === 'Manager';
-  const isQAMember = currentUserRole === 'QA Member';
+  const normalizedUserRole = currentUserRole.toLowerCase().trim();
+  const isAdmin =
+    normalizedUserRole === 'admin' ||
+    normalizedUserRole === 'super admin' ||
+    normalizedUserRole === 'system admin' ||
+    normalizedUserRole === 'administrator' ||
+    userEmail === 'admin@gmail.com';
+  const isManager = normalizedUserRole === 'manager';
+  const isQAMember = normalizedUserRole === 'qa member';
   const [formError, setFormError] = useState('');
 
   // Manager role permissions modal state (for Admin)
@@ -261,11 +268,17 @@ function AdminUsers() {
     if (!user) return false;
     if (isQAMember) return false;
     if (isAdmin) return true;
+    if (userEmail && user.email?.toLowerCase() === userEmail) {
+      return true;
+    }
+    if (isManager && user.email?.toLowerCase() !== 'admin@gmail.com') {
+      return true;
+    }
     if (user.role === 'Manager' || user.role === 'Admin' || user.role === 'Super Admin' || PROTECTED_EMAILS.includes(user.email?.toLowerCase())) {
       return false;
     }
     return true;
-  }, [isAdmin, isQAMember]);
+  }, [isAdmin, isManager, isQAMember, userEmail]);
 
   const canDeleteUser = useCallback((user) => {
     if (!user) return false;
@@ -874,11 +887,20 @@ function AdminUsers() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setUsers((prev) =>
-        prev.map((u) => (u.id === editFormData.id ? response.data.user : u))
-      );
+      const updatedUser = response.data?.user;
+      if (updatedUser) {
+        setUsers((prev) =>
+          prev.map((u) => (Number(u.id) === Number(editFormData.id) ? { ...u, ...updatedUser } : u))
+        );
+      }
+      await fetchUsers();
       setIsEditModalOpen(false);
       setEditFormData(null);
+      setSuccessToast({
+        title: 'User Updated',
+        message: `Account details for ${editFormData.full_name || 'user'} were updated successfully.`
+      });
+      setTimeout(() => setSuccessToast(null), 5000);
     } catch (error) {
       console.error('Error updating user:', error);
       setFormError(
@@ -1408,7 +1430,15 @@ function AdminUsers() {
                     const canDelete = canDeleteUser(user);
 
                     return (
-                      <article id={`um-user-card-${user.id}`} key={user.id} className="um-user-card">
+                      <article
+                        id={`um-user-card-${user.id}`}
+                        key={user.id}
+                        className="um-user-card"
+                        onDoubleClick={() => {
+                          if (canEdit) openEditModal(user);
+                          else setViewingUser(user);
+                        }}
+                      >
                         <div className="um-user-card-header">
                           <div className="um-user-avatar-wrap">
                             {user.avatar ? (
@@ -1466,12 +1496,29 @@ function AdminUsers() {
                         {!isQAMember && (
                           <div className="um-user-card-footer">
                             <button
+                              id={`um-card-view-btn-${user.id}`}
+                              type="button"
+                              className="um-card-action-btn view"
+                              title="View user details"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewingUser(user);
+                              }}
+                            >
+                              <Eye size={14} />
+                              <span>View</span>
+                            </button>
+
+                            <button
                               id={`um-card-resend-btn-${user.id}`}
                               type="button"
                               className="um-card-action-btn invite"
                               disabled={resendingUserId === user.id}
                               title="Resend welcome email with temporary credentials"
-                              onClick={() => handleResendInvite(user)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleResendInvite(user);
+                              }}
                             >
                               <MailCheck size={14} />
                               <span>{resendingUserId === user.id ? 'Sending...' : 'Invite'}</span>
@@ -1481,7 +1528,7 @@ function AdminUsers() {
                               <button
                                 className="um-card-action-btn edit disabled"
                                 disabled
-                                title="Primary Admin account is protected"
+                                title="This account is protected"
                               >
                                 <Lock size={14} />
                                 <span>Locked</span>
@@ -1492,7 +1539,10 @@ function AdminUsers() {
                                 type="button"
                                 className="um-card-action-btn edit"
                                 title="Edit user"
-                                onClick={() => openEditModal(user)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditModal(user);
+                                }}
                               >
                                 <Pencil size={14} />
                                 <span>Edit</span>
@@ -1513,7 +1563,10 @@ function AdminUsers() {
                                 type="button"
                                 className="um-card-action-btn delete"
                                 title="Delete user"
-                                onClick={() => setUserToDelete(user)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setUserToDelete(user);
+                                }}
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -2444,6 +2497,22 @@ function AdminUsers() {
             </div>
 
             <div className="um-modal-footer">
+              {!isQAMember && canEditUser(viewingUser) && (
+                <button
+                  id="um-view-edit-footer-btn"
+                  type="button"
+                  className="um-btn-primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  onClick={() => {
+                    const u = viewingUser;
+                    setViewingUser(null);
+                    openEditModal(u);
+                  }}
+                >
+                  <Pencil size={14} />
+                  <span>Edit Profile</span>
+                </button>
+              )}
               {!isQAMember && !PROTECTED_EMAILS.includes(viewingUser.email?.toLowerCase()) && (
                 <button
                   id="um-view-resend-invite-btn"
