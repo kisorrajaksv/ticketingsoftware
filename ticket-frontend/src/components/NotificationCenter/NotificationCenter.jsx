@@ -46,7 +46,7 @@ const TYPE_META = {
   urgent: { label: 'Urgent', className: 'notif-type-urgent' }
 };
 
-function NotificationCenter({ collapsed = false }) {
+function NotificationCenter({ collapsed = false, hideTrigger = false }) {
   const [notifications, setNotifications] = useState([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filterTab, setFilterTab] = useState('all');
@@ -246,25 +246,27 @@ function NotificationCenter({ collapsed = false }) {
 
   return (
     <>
-      <button
-        id="notif-sidebar-trigger-btn"
-        type="button"
-        className="nav-item sidebar-notif-trigger"
-        onClick={() => {
-          setDrawerOpen(true);
-          fetchNotifications();
-        }}
-        title={collapsed ? `Notifications (${unreadCount} unread)` : 'Open Notifications Inbox'}
-        aria-label={`Notifications (${unreadCount} unread)`}
-      >
-        <Bell className="nav-icon" />
-        <span className="nav-label">Notifications</span>
-        {unreadCount > 0 && (
-          <span className="sidebar-notif-badge">
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
-        )}
-      </button>
+      {!hideTrigger && (
+        <button
+          id="notif-sidebar-trigger-btn"
+          type="button"
+          className="nav-item sidebar-notif-trigger"
+          onClick={() => {
+            setDrawerOpen(true);
+            fetchNotifications();
+          }}
+          title={collapsed ? `Notifications (${unreadCount} unread)` : 'Open Notifications Inbox'}
+          aria-label={`Notifications (${unreadCount} unread)`}
+        >
+          <Bell className="nav-icon" />
+          <span className="nav-label">Notifications</span>
+          {unreadCount > 0 && (
+            <span className="sidebar-notif-badge">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </button>
+      )}
 
       {liveToast && (
         <div id="notif-toast" className="notif-toast" role="status" aria-live="polite">

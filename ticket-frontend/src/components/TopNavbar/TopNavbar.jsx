@@ -11,6 +11,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { getSavedTheme, applyTheme } from '../../utils/theme';
+import NotificationCenter from '../NotificationCenter/NotificationCenter';
 import './TopNavbar.css';
 
 export default function TopNavbar({
@@ -26,11 +27,22 @@ export default function TopNavbar({
   }));
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [theme, setTheme] = useState(() => getSavedTheme());
-  const [unreadNotifCount, setUnreadNotifCount] = useState(3);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+
+  // Listen to unread notification count updates
+  useEffect(() => {
+    const handleCount = (e) => {
+      if (typeof e?.detail?.unreadCount === 'number') {
+        setUnreadNotifCount(e.detail.unreadCount);
+      }
+    };
+    window.addEventListener('notifications-unread-count', handleCount);
+    return () => window.removeEventListener('notifications-unread-count', handleCount);
+  }, []);
 
   // Keep live time ticking smoothly every second
   useEffect(() => {
@@ -134,10 +146,7 @@ export default function TopNavbar({
   };
 
   const handleOpenNotifications = () => {
-    const sidebarNotifBtn = document.getElementById('notif-sidebar-trigger-btn');
-    if (sidebarNotifBtn) {
-      sidebarNotifBtn.click();
-    }
+    window.dispatchEvent(new CustomEvent('open-notifications-drawer'));
   };
 
   const displayName = profile.name.trim() || (profile.email ? profile.email.split('@')[0] : 'QA Lead');
@@ -332,6 +341,7 @@ export default function TopNavbar({
         </div>
       </div>
     </header>
+    <NotificationCenter hideTrigger />
   </div>
   );
 }

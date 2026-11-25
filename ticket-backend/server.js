@@ -1091,13 +1091,27 @@ app.post('/api/admin/projects', async (req, res) => {
     return res.status(403).json({ error: 'You do not have permission to create projects.' });
   }
 
-  const { project_code, name, description, lead_name, project_lead_id, client_name, department, status, priority, progress, start_date, end_date, team_members } = req.body;
+  let { project_code, name, description, lead_name, project_lead_id, client_name, department, status, priority, progress, start_date, end_date, team_members } = req.body;
 
-  if (!project_code || !name) {
-    return res.status(400).json({ error: 'Project Code and Project Name are required.' });
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Project Name is required.' });
   }
 
   try {
+    // If project_code is missing or empty, auto-generate sequential PRJ-KSV-001, PRJ-KSV-002, etc.
+    if (!project_code || !project_code.trim()) {
+      const codeRes = await pool.query("SELECT project_code FROM projects WHERE project_code ~* '^PRJ-KSV-[0-9]+$'");
+      let maxNum = 0;
+      codeRes.rows.forEach((r) => {
+        const match = (r.project_code || '').trim().match(/^PRJ-KSV-([0-9]+)$/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
+      });
+      project_code = `PRJ-KSV-${String(maxNum + 1).padStart(3, '0')}`;
+    }
+
     const existing = await pool.query('SELECT * FROM projects WHERE project_code = $1', [project_code.trim()]);
     if (existing.rows.length > 0) {
       return res.status(400).json({ error: 'A project with this Project Code already exists.' });
