@@ -298,11 +298,11 @@ function AdminProjects() {
   const canCreateProject = !isQAMember && !isDeveloper && !isProjectLead;
 
   // Fetch projects from backend
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async ({ silent = false } = {}) => {
     const token = getValidToken();
     if (!token) return;
 
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const response = await axios.get('http://localhost:5000/api/admin/projects', {
         headers: { Authorization: `Bearer ${token}` }
@@ -313,7 +313,7 @@ function AdminProjects() {
     } catch (error) {
       console.warn('Backend unavailable:', error.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -321,7 +321,11 @@ function AdminProjects() {
     fetchProjects();
   }, [fetchProjects]);
 
-  useRealtimeSync(['projects', 'sheets', 'tickets', 'approvals'], fetchProjects);
+  const silentRefreshProjects = useCallback(() => {
+    fetchProjects({ silent: true });
+  }, [fetchProjects]);
+
+  useRealtimeSync(['projects', 'sheets', 'tickets', 'approvals'], silentRefreshProjects);
 
   // Close card context menu on click outside
   useEffect(() => {

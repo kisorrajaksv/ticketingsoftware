@@ -119,8 +119,11 @@ function AdminSidebar({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
 
-  // Dynamic Approvals Badge: fetch real pending count from backend & listen for live updates
+  const hasApprovalsNav = effectiveNavItems.some((item) => item.label === 'Approvals & Requests');
+
+  // Dynamic Approvals Badge: fetch real pending count only for roles that see Approvals & Requests
   useEffect(() => {
+    if (!hasApprovalsNav) return undefined;
     let isMounted = true;
 
     const fetchPendingCount = async () => {
@@ -151,8 +154,8 @@ function AdminSidebar({
       }
     };
 
-    // Poll periodically every 30 seconds for external updates
-    const intervalId = setInterval(fetchPendingCount, 30000);
+    // Poll periodically every 60 seconds as fallback (Socket.IO triggers immediate updates)
+    const intervalId = setInterval(fetchPendingCount, 60000);
 
     window.addEventListener('workspace-approvals-updated', handleApprovalsUpdated);
     return () => {
@@ -160,7 +163,7 @@ function AdminSidebar({
       clearInterval(intervalId);
       window.removeEventListener('workspace-approvals-updated', handleApprovalsUpdated);
     };
-  }, []);
+  }, [hasApprovalsNav]);
 
   // Listen for toggle events from the floating TopNavbar hamburger button
   useEffect(() => {

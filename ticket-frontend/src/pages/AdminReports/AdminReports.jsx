@@ -66,14 +66,14 @@ export default function AdminReports() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Fetch Reports Data with optional daily period filters
-  const fetchReportsData = useCallback(async () => {
+  const fetchReportsData = useCallback(async ({ silent = false } = {}) => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/', { replace: true });
       return;
     }
 
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       // 1. Fetch project overview (Role-scoped by backend)
       const projPromise = axios.get('http://localhost:5000/api/admin/reports/project-overview', {
@@ -137,7 +137,7 @@ export default function AdminReports() {
         navigate('/', { replace: true });
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [navigate, canViewQAReport, selectedPeriod, customDate]);
 
@@ -145,7 +145,11 @@ export default function AdminReports() {
     fetchReportsData();
   }, [fetchReportsData]);
 
-  useRealtimeSync(['reports', 'projects', 'sheets', 'tickets', 'users'], fetchReportsData);
+  const silentRefreshReports = useCallback(() => {
+    fetchReportsData({ silent: true });
+  }, [fetchReportsData]);
+
+  useRealtimeSync(['reports', 'projects', 'sheets', 'tickets', 'users'], silentRefreshReports);
 
   const confirmLogout = () => {
     localStorage.clear();

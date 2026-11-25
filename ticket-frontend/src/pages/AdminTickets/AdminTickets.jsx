@@ -199,14 +199,14 @@ function AdminTickets() {
   const isDeveloper = currentUserRole === 'Developer';
   const isProjectLead = currentUserRole === 'Project Lead';
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async ({ silent = false } = {}) => {
     const token = getValidToken();
     if (!token) {
       navigate('/', { replace: true });
       return;
     }
 
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const [ticketsRes, projectsRes, usersRes] = await Promise.all([
         axios.get('http://localhost:5000/api/admin/tickets', {
@@ -231,7 +231,7 @@ function AdminTickets() {
         console.error('Failed to load tickets:', error);
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [navigate]);
 
@@ -239,7 +239,11 @@ function AdminTickets() {
     fetchData();
   }, [fetchData]);
 
-  useRealtimeSync(['tickets', 'projects'], fetchData);
+  const silentRefreshTickets = useCallback(() => {
+    fetchData({ silent: true });
+  }, [fetchData]);
+
+  useRealtimeSync(['tickets', 'projects'], silentRefreshTickets);
 
   const projectOptions = useMemo(() => {
     if (!projects || projects.length === 0) {

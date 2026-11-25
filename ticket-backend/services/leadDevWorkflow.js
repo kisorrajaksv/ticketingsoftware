@@ -20,6 +20,18 @@ const ticketsUploadsDir = path.join(uploadsDir, 'tickets');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(ticketsUploadsDir)) fs.mkdirSync(ticketsUploadsDir, { recursive: true });
 
+// Short-TTL auth user cache avoids hitting remote Neon DB on every single API request
+const USER_AUTH_CACHE_TTL_MS = 15000;
+const userAuthCache = new Map();
+
+export const invalidateUserAuthCache = (userId) => {
+  if (userId !== undefined && userId !== null) {
+    userAuthCache.delete(Number(userId));
+  } else {
+    userAuthCache.clear();
+  }
+};
+
 // Helper to authenticate and fetch user record
 export const getUserFromReq = async (req) => {
   const authorization = req.headers.authorization;
@@ -27,11 +39,20 @@ export const getUserFromReq = async (req) => {
   try {
     const token = authorization.slice('Bearer '.length);
     const decoded = jwt.verify(token, JWT_SECRET);
+    const uid = Number(decoded.userId);
+    const cached = userAuthCache.get(uid);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.user;
+    }
     const res = await pool.query(
       'SELECT id, email, full_name, role, emp_id, department FROM users WHERE id = $1',
       [decoded.userId]
     );
-    return res.rows[0] || null;
+    const user = res.rows[0] || null;
+    if (user) {
+      userAuthCache.set(uid, { user, expiresAt: Date.now() + USER_AUTH_CACHE_TTL_MS });
+    }
+    return user;
   } catch (err) {
     return null;
   }

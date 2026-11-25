@@ -18,7 +18,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { registerWorkflowRoutes, getUserFromReq, sendInAppNotification } from './services/leadDevWorkflow.js';
+import { registerWorkflowRoutes, getUserFromReq, invalidateUserAuthCache, sendInAppNotification } from './services/leadDevWorkflow.js';
 import { countWrittenTestCasesByProject, syncProjectTestCasesCount } from './services/sheetMetrics.js';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -472,6 +472,8 @@ const handleUpdateMyProfile = async (req, res) => {
       [nextFullName, nextPhone, nextBio, nextAvatar, nextTheme, decoded.userId]
     );
 
+    invalidateUserAuthCache(decoded.userId);
+
     res.json({
       message: 'Profile updated successfully.',
       user: updated.rows[0]
@@ -586,25 +588,21 @@ app.get('/api/admin/dashboard-stats', async (req, res) => {
   }
 
   try {
-    // Fetch total users, total projects, and total tickets from DB
-    const usersResult = await pool.query('SELECT COUNT(*) FROM users');
-    const totalUsers = parseInt(usersResult.rows[0].count, 10);
+    // Fetch all workspace counts in a single database round-trip
+    const statsRes = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM users)::int AS total_users,
+        (SELECT COUNT(*) FROM projects)::int AS total_projects,
+        (SELECT COUNT(*) FROM tickets)::int AS total_tickets,
+        (SELECT COUNT(*) FROM approvals WHERE status = 'Pending')::int AS pending_approvals
+    `);
+    const row = statsRes.rows[0] || {};
 
-    const projectsResult = await pool.query('SELECT COUNT(*) FROM projects');
-    const totalProjects = parseInt(projectsResult.rows[0].count, 10);
-
-    const ticketsResult = await pool.query('SELECT COUNT(*) FROM tickets');
-    const totalTickets = parseInt(ticketsResult.rows[0].count, 10);
-
-    const pendingApprovalsResult = await pool.query("SELECT COUNT(*) FROM approvals WHERE status = 'Pending'");
-    const pendingApprovals = parseInt(pendingApprovalsResult.rows[0].count, 10);
-
-    // Send back real data
     res.json({
-      totalProjects: totalProjects, // Real from DB!
-      totalTickets: totalTickets,   // Real from DB!
-      totalUsers: totalUsers,       // Real from DB!
-      pendingApprovals: pendingApprovals // Real from DB!
+      totalProjects: row.total_projects || 0,
+      totalTickets: row.total_tickets || 0,
+      totalUsers: row.total_users || 0,
+      pendingApprovals: row.pending_approvals || 0
     });
   } catch (error) {
     console.error('Error fetching stats:', error);
@@ -692,29 +690,36 @@ app.post('/api/admin/users', async (req, res) => {
   }
 
   try {
-    // Check for existing email first
-    const existingEmailCheck = await pool.query(
-      `SELECT id FROM users WHERE LOWER(email) = $1`,
-      [normalizedEmail]
+    // Single query checks existing email + fetches existing EMP-XXX IDs simultaneously
+    const requestedEmpId = emp_id && String(emp_id).trim() ? String(emp_id).trim() : null;
+    const lookupRes = await pool.query(
+      `SELECT id, LOWER(email) AS email_lower, emp_id FROM users WHERE LOWER(email) = $1 OR emp_id ~ '^EMP-[0-9]+$' OR ($2::text IS NOT NULL AND emp_id = $2)`,
+      [normalizedEmail, requestedEmpId]
     );
 
-    if (existingEmailCheck.rows.length > 0) {
+    if (lookupRes.rows.some((r) => r.email_lower === normalizedEmail)) {
       return res.status(400).json({ error: 'A user with this email address already exists.' });
     }
 
-    // Resolve Employee ID cleanly: auto-generate if omitted/blank or resolve auto-ID race
-    let resolvedEmpId = emp_id && String(emp_id).trim() ? String(emp_id).trim() : null;
-    if (!resolvedEmpId) {
-      resolvedEmpId = await generateNextEmpId();
-    } else {
-      const empIdCheck = await pool.query(`SELECT id FROM users WHERE emp_id = $1`, [resolvedEmpId]);
-      if (empIdCheck.rows.length > 0) {
-        if (/^EMP-\d+$/i.test(resolvedEmpId)) {
-          resolvedEmpId = await generateNextEmpId();
-        } else {
-          return res.status(400).json({ error: 'A user with this Employee ID already exists.' });
+    let maxEmpNum = 0;
+    let exactEmpCollision = false;
+    for (const row of lookupRes.rows) {
+      if (requestedEmpId && row.emp_id === requestedEmpId) {
+        exactEmpCollision = true;
+      }
+      if (row.emp_id && /^EMP-[0-9]+$/i.test(row.emp_id)) {
+        const num = parseInt(String(row.emp_id).replace(/^EMP-/i, ''), 10);
+        if (!Number.isNaN(num) && num > maxEmpNum) {
+          maxEmpNum = num;
         }
       }
+    }
+
+    let resolvedEmpId = requestedEmpId;
+    if (!resolvedEmpId || (exactEmpCollision && /^EMP-\d+$/i.test(resolvedEmpId))) {
+      resolvedEmpId = `EMP-${String(maxEmpNum + 1).padStart(3, '0')}`;
+    } else if (exactEmpCollision) {
+      return res.status(400).json({ error: 'A user with this Employee ID already exists.' });
     }
 
     const generatedPlainPassword = password || generateTemporaryPassword();
@@ -973,6 +978,7 @@ app.put('/api/admin/users/:id', async (req, res) => {
       message: 'User updated successfully',
       user: updated.rows[0]
     });
+    invalidateUserAuthCache(id);
   } catch (error) {
     console.error('Error updating user:', error);
     res.status(500).json({ error: 'Failed to update user in database.' });
@@ -1027,6 +1033,7 @@ app.delete('/api/admin/users/:id', async (req, res) => {
     }
 
     await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    invalidateUserAuthCache(id);
 
     res.json({
       message: 'User deleted successfully',
@@ -1276,19 +1283,19 @@ app.post('/api/admin/projects', async (req, res) => {
           `/admin/projects/${createdProject.id}`
         );
 
-        // Send email to lead
+        // Dispatch lead assignment email asynchronously so project creation returns immediately
         if (leadUser?.email) {
-          try {
-            await sendProjectAssignmentEmail({
+          setImmediate(() => {
+            sendProjectAssignmentEmail({
               to: leadUser.email,
               userName: leadUser.full_name,
               managerName: assignedByName,
               projectName: createdProject.name,
               projectCode: createdProject.project_code
+            }).catch((mailErr) => {
+              console.warn('Failed to send project assignment email to lead:', mailErr.message);
             });
-          } catch (mailErr) {
-            console.warn('Failed to send project assignment email to lead:', mailErr.message);
-          }
+          });
         }
       } catch (histErr) {
         console.warn('Could not record initial lead assignment history or email:', histErr.message);
@@ -1456,19 +1463,19 @@ app.put('/api/admin/projects/:id', async (req, res) => {
           `/admin/projects/${id}`
         );
 
-        // Send email to new lead
+        // Dispatch lead assignment email asynchronously so project update returns immediately
         if (leadUser?.email) {
-          try {
-            await sendProjectAssignmentEmail({
+          setImmediate(() => {
+            sendProjectAssignmentEmail({
               to: leadUser.email,
               userName: leadUser.full_name,
               managerName: assignedByName,
               projectName: cur.name,
               projectCode: cur.project_code
+            }).catch((mailErr) => {
+              console.warn('Failed to send project assignment email to lead:', mailErr.message);
             });
-          } catch (mailErr) {
-            console.warn('Failed to send project assignment email to lead:', mailErr.message);
-          }
+          });
         }
       } catch (leadAssignErr) {
         console.warn('Could not record lead assignment history during project update:', leadAssignErr.message);

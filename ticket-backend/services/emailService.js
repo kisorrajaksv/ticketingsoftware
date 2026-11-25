@@ -9,17 +9,17 @@ const __dirname = path.dirname(__filename);
 // Ensure .env is loaded cleanly without overriding already-set runtime env vars
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-const DEFAULT_SMTP_TIMEOUT_MS = Number(process.env.EMAIL_TIMEOUT_MS) || 10000;
+const DEFAULT_SMTP_TIMEOUT_MS = Number(process.env.EMAIL_TIMEOUT_MS) || 5000;
 
 /**
  * Races an async operation against a bounded timeout so blocked SMTP ports
- * cannot hang user-creation or forgot-password HTTP requests for 10+ minutes.
+ * cannot hang user-creation or forgot-password HTTP requests.
  */
 const withTimeout = (promise, ms, label) => {
   let timer;
   const timeoutPromise = new Promise((_, reject) => {
     timer = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s (SMTP port may be blocked by host firewall)`));
+      reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s (Outbound SMTP port may be blocked by host firewall — configure BREVO_API_KEY or RESEND_API_KEY for HTTPS port 443 delivery)`));
     }, ms);
   });
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
@@ -167,7 +167,7 @@ export const dispatchEmail = async ({
           html,
           headers
         }),
-        DEFAULT_SMTP_TIMEOUT_MS + 2000,
+        DEFAULT_SMTP_TIMEOUT_MS + 1000,
         'SMTP delivery'
       );
 
@@ -185,7 +185,10 @@ export const dispatchEmail = async ({
       };
     } catch (smtpErr) {
       lastError = smtpErr.message;
-      console.error(`❌ [Nodemailer] Delivery error for ${to}:`, smtpErr.message);
+      if (/timeout/i.test(lastError) && !/HTTPS port 443/i.test(lastError)) {
+        lastError = `${lastError} (Outbound SMTP port ${process.env.SMTP_PORT || 587} may be blocked on your cloud host — set BREVO_API_KEY or RESEND_API_KEY over HTTPS port 443)`;
+      }
+      console.error(`❌ [Nodemailer] Delivery error for ${to}:`, lastError);
     } finally {
       try {
         transporter.close();
@@ -229,17 +232,24 @@ export const dispatchEmail = async ({
 export const createTransporter = () => {
   // Option 1: Custom SMTP (Brevo, SendGrid, Mailgun, Amazon SES, or custom mail server)
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    const host = process.env.SMTP_HOST.trim();
+    const user = process.env.SMTP_USER.trim();
+    const pass = process.env.SMTP_PASS.trim();
+    if (host.includes('supersecret') || user.includes('supersecret') || !host.includes('.')) {
+      console.warn(`⚠️ [Email] Invalid SMTP_HOST ("${host}") or SMTP_USER ("${user}") in environment variables.`);
+      return null;
+    }
     const port = Number(process.env.SMTP_PORT) || 587;
     return nodemailer.createTransport({
-      host: process.env.SMTP_HOST.trim(),
+      host,
       port,
       secure: process.env.SMTP_SECURE === 'true' || port === 465,
       auth: {
-        user: process.env.SMTP_USER.trim(),
-        pass: process.env.SMTP_PASS.trim()
+        user,
+        pass
       },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
+      connectionTimeout: 3500,
+      greetingTimeout: 3500,
       socketTimeout: DEFAULT_SMTP_TIMEOUT_MS,
       tls: {
         rejectUnauthorized: false
@@ -259,8 +269,8 @@ export const createTransporter = () => {
         user: gmailUser,
         pass: gmailPass
       },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
+      connectionTimeout: 3500,
+      greetingTimeout: 3500,
       socketTimeout: DEFAULT_SMTP_TIMEOUT_MS,
       tls: {
         rejectUnauthorized: false
@@ -305,7 +315,7 @@ export const checkEmailStatus = async () => {
   const transporter = createTransporter();
   if (transporter) {
     try {
-      await withTimeout(transporter.verify(), 8000, 'SMTP verification');
+      await withTimeout(transporter.verify(), 4500, 'SMTP verification');
       status.transporter_ready = true;
       status.diagnostic = 'SMTP connection verified successfully with mail host.';
     } catch (vErr) {

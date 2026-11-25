@@ -35,14 +35,14 @@ function AdminDashboard() {
   const [userEmail] = useState(() => localStorage.getItem('userEmail') || '');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const refreshStats = useCallback(async (signal) => {
+  const refreshStats = useCallback(async (signal, silent = false) => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/', { replace: true });
       return;
     }
 
-    setLoading(true);
+    if (!silent) setLoading(true);
     setErrorMessage('');
     try {
       const response = await axios.get('http://localhost:5000/api/admin/dashboard-stats', {
@@ -66,7 +66,7 @@ function AdminDashboard() {
       console.error('Failed to fetch dashboard stats:', error);
       setErrorMessage('We could not load the latest dashboard data. Please try again.');
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!signal?.aborted && !silent) setLoading(false);
     }
   }, [navigate]);
 
@@ -95,7 +95,7 @@ function AdminDashboard() {
   }, [navigate, refreshStats]);
 
   useRealtimeSync(['dashboard', 'projects', 'tickets', 'users', 'approvals'], () => {
-    refreshStats();
+    refreshStats(undefined, true);
   });
 
   const confirmLogout = () => {

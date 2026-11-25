@@ -79,14 +79,14 @@ function AdminDeployments() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const currentUserRole = localStorage.getItem('userRole') || 'Administrator';
 
-  const fetchDeployments = useCallback(async () => {
+  const fetchDeployments = useCallback(async ({ silent = false } = {}) => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/', { replace: true });
       return;
     }
 
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const response = await axios.get('http://localhost:5000/api/admin/deployments', {
         headers: { Authorization: `Bearer ${token}` }
@@ -99,7 +99,7 @@ function AdminDeployments() {
         navigate('/', { replace: true });
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [navigate]);
 
@@ -107,7 +107,11 @@ function AdminDeployments() {
     fetchDeployments();
   }, [fetchDeployments]);
 
-  useRealtimeSync(['deployments', 'projects'], fetchDeployments);
+  const silentRefreshDeployments = useCallback(() => {
+    fetchDeployments({ silent: true });
+  }, [fetchDeployments]);
+
+  useRealtimeSync(['deployments', 'projects'], silentRefreshDeployments);
 
   // Compute 4 KPI stats
   const stats = useMemo(() => {

@@ -24,7 +24,7 @@ export function getSharedRealtimeSocket() {
  * user mutates matching data on the backend, `onSync` is called automatically
  * (debounced) without requiring a page refresh.
  */
-export function useRealtimeSync(modules, onSync, debounceMs = 250) {
+export function useRealtimeSync(modules, onSync, debounceMs = 500) {
   const onSyncRef = useRef(onSync);
   const modulesKey = Array.isArray(modules) ? modules.join(',') : String(modules || '');
 

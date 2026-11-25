@@ -114,14 +114,14 @@ export default function AdminApprovals() {
     }
   };
 
-  const fetchApprovals = useCallback(async () => {
+  const fetchApprovals = useCallback(async ({ silent = false } = {}) => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/', { replace: true });
       return;
     }
 
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const response = await axios.get('http://localhost:5000/api/admin/approvals', {
         headers: { Authorization: `Bearer ${token}` }
@@ -142,11 +142,15 @@ export default function AdminApprovals() {
         navigate('/', { replace: true });
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [navigate]);
 
-  useRealtimeSync(['approvals', 'projects'], fetchApprovals);
+  const silentRefreshApprovals = useCallback(() => {
+    fetchApprovals({ silent: true });
+  }, [fetchApprovals]);
+
+  useRealtimeSync(['approvals', 'projects'], silentRefreshApprovals);
 
   useEffect(() => {
     fetchApprovals();
