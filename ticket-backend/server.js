@@ -799,16 +799,16 @@ app.put('/api/admin/users/:id', async (req, res) => {
     const existingUser = userCheck.rows[0];
     const requester = await getUserFromReq(req);
 
-    // If requester is a Manager:
-    if (requester && requester.role === 'Manager') {
+    // Non-Admin users (including QA Lead, Manager, Project Lead, Developer) cannot modify Manager or Admin accounts
+    if (requester?.role !== 'Admin' && requester?.role !== 'Super Admin') {
       if (existingUser.role === 'Manager' || existingUser.role === 'Admin' || existingUser.role === 'Super Admin') {
         return res.status(403).json({
-          error: 'Managers cannot modify accounts with the Manager or Admin role. Only a System Administrator can modify this user.'
+          error: 'Only a System Administrator can modify accounts with the Manager or Admin role.'
         });
       }
       if (role === 'Manager' || role === 'Admin' || role === 'Super Admin') {
         return res.status(403).json({
-          error: 'Managers are not authorized to assign the Manager or Admin role. Only a System Administrator can grant Manager access.'
+          error: 'Only a System Administrator can grant Manager or Admin access.'
         });
       }
     }
@@ -823,7 +823,7 @@ app.put('/api/admin/users/:id', async (req, res) => {
     // Default protected accounts (manager@gmail.com, qalead@gmail.com) cannot have their email changed by non-admins
     if (PROTECTED_SYSTEM_EMAILS.includes(existingUser.email.toLowerCase()) && requester?.role !== 'Admin' && requester?.role !== 'Super Admin') {
       return res.status(403).json({
-        error: `Inbuilt system user (${existingUser.email}) is protected and cannot be edited by Manager.`
+        error: `Inbuilt system user (${existingUser.email}) is protected and cannot be edited.`
       });
     }
 
@@ -897,11 +897,11 @@ app.delete('/api/admin/users/:id', async (req, res) => {
     const targetUser = userCheck.rows[0];
     const requester = await getUserFromReq(req);
 
-    // If requester is a Manager, prevent deleting Manager or Admin accounts
-    if (requester && requester.role === 'Manager') {
+    // Non-Admin users (including QA Lead, Manager, Project Lead, Developer) cannot delete Manager or Admin accounts
+    if (requester?.role !== 'Admin' && requester?.role !== 'Super Admin') {
       if (targetUser.role === 'Manager' || targetUser.role === 'Admin' || targetUser.role === 'Super Admin') {
         return res.status(403).json({
-          error: 'Managers cannot delete Manager or Admin accounts. Only a System Administrator can delete this account.'
+          error: 'Only a System Administrator can delete accounts with the Manager or Administrator role.'
         });
       }
     }
@@ -916,7 +916,7 @@ app.delete('/api/admin/users/:id', async (req, res) => {
     // Inbuilt protected accounts (manager@gmail.com, qalead@gmail.com) cannot be deleted by non-admins
     if (PROTECTED_SYSTEM_EMAILS.includes(targetUser.email.toLowerCase()) && requester?.role !== 'Admin' && requester?.role !== 'Super Admin') {
       return res.status(403).json({
-        error: `Inbuilt system user (${targetUser.email}) is protected and cannot be deleted by Manager.`
+        error: `Inbuilt system user (${targetUser.email}) is protected and cannot be deleted.`
       });
     }
 
