@@ -33,7 +33,6 @@ import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import FolderEmblem from './FolderEmblem';
-import ProjectSpreadsheetView from './ProjectSpreadsheetView';
 import { formatIndianDate } from '../../utils/dateFormat';
 import { getValidToken } from '../../utils/auth';
 import '../../styles/admin.css';
@@ -189,8 +188,8 @@ function AdminProjects() {
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState(() => {
     const saved = sessionStorage.getItem('projectsViewMode');
-    return ['grid', 'list', 'sheet'].includes(saved) ? saved : 'grid';
-  }); // 'grid' | 'list' | 'sheet'
+    return ['grid', 'list'].includes(saved) ? saved : 'grid';
+  }); // 'grid' | 'list'
 
   useEffect(() => {
     sessionStorage.setItem('projectsViewMode', viewMode);
@@ -673,72 +672,6 @@ function AdminProjects() {
     setActiveMenuId(null);
   };
 
-  const handleUpdateProjectCell = async (id, field, value) => {
-    setProjects((prev) =>
-      prev.map((p) => {
-        if (p.id === id) {
-          return { ...p, [field]: value };
-        }
-        return p;
-      })
-    );
-
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        await axios.put(
-          `http://localhost:5000/api/admin/projects/${id}`,
-          { [field]: value },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } catch (err) {
-        console.warn('Could not sync cell update to backend:', err.message);
-      }
-    }
-  };
-
-  const handleAddSheetRow = async () => {
-    const randomSuffix = Math.floor(100 + Math.random() * 900);
-    const newCode = `PRJ-QA-${randomSuffix}`;
-    const newRow = {
-      project_code: newCode,
-      name: 'New QA Project',
-      description: 'Project created via spreadsheet sheet view',
-      lead_name: 'Lead Tester',
-      department: 'Website',
-      status: 'Planning',
-      priority: 'Medium',
-      start_date: new Date().toISOString().split('T')[0],
-      team_members: 4,
-      test_cases: 0,
-      documents: 0,
-      tickets_count: 0,
-      folder_color: 'blue',
-      folder_icon: 'folder'
-    };
-
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const res = await axios.post('http://localhost:5000/api/admin/projects', newRow, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.data) {
-          setProjects((prev) => [...prev, res.data]);
-          return;
-        }
-      } catch (err) {
-        console.warn('Backend create project failed, fallback local:', err.message);
-      }
-    }
-
-    const fallbackRow = {
-      ...newRow,
-      id: Date.now()
-    };
-    setProjects((prev) => [...prev, fallbackRow]);
-  };
-
   const confirmLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userEmail');
@@ -845,15 +778,6 @@ function AdminProjects() {
                   >
                     <List size={15} />
                     <span>Table List</span>
-                  </button>
-                  <button
-                    id="pj-view-sheet-btn"
-                    type="button"
-                    className={`ticket-view-toggle-btn ${viewMode === 'sheet' ? 'active' : ''}`}
-                    onClick={() => setViewMode('sheet')}
-                  >
-                    <FileSpreadsheet size={15} />
-                    <span>Spreadsheet</span>
                   </button>
                 </div>
 
@@ -1015,16 +939,14 @@ function AdminProjects() {
               </div>
             </div>
 
-          {/* 4. Projects Display: Sheet View, Grid View or List View */}
+          {/* 4. Projects Display: Grid View or List View */}
           {loading && projects.length === 0 ? (
-            viewMode === 'sheet' ? (
-              <SkeletonLoader variant="sheet" rows={6} />
-            ) : viewMode === 'list' ? (
+            viewMode === 'list' ? (
               <SkeletonLoader variant="table" rows={5} />
             ) : (
               <SkeletonLoader variant="cards" count={6} />
             )
-          ) : filteredProjects.length === 0 && viewMode !== 'sheet' ? (
+          ) : filteredProjects.length === 0 ? (
             <div className="pj-empty-state-card" id="pj-empty-state">
               <div className="pj-empty-icon-wrap">
                 <FolderPlus size={32} />
@@ -1071,18 +993,6 @@ function AdminProjects() {
                 </button>
               )}
             </div>
-          ) : viewMode === 'sheet' ? (
-            <ProjectSpreadsheetView
-              projects={projects}
-              onUpdateProject={canManageProjects ? handleUpdateProjectCell : undefined}
-              onAddRow={canCreateProject ? handleAddSheetRow : undefined}
-              onDeleteRow={canManageProjects ? handleDeleteProject : undefined}
-              onOpenProjectSheet={(project) => navigate(`/admin/projects/${project.id}/sheet`)}
-              searchQuery={isDeveloper ? '' : searchQuery}
-              departmentFilter={isDeveloper ? 'All Departments' : departmentFilter}
-              statusFilter={isDeveloper ? 'All Statuses' : statusFilter}
-              readOnly={!canManageProjects}
-            />
           ) : viewMode === 'grid' ? (
             <section id="pj-cards-grid" className="pj-cards-grid">
               {filteredProjects.map((project) => (
