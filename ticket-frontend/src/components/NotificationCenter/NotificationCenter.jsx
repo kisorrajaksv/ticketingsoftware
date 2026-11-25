@@ -78,7 +78,7 @@ function NotificationCenter({ collapsed = false, hideTrigger = false }) {
     try {
       const title = incoming.title || 'QA Software Workspace';
       const body = incoming.message || 'You have received a new notification.';
-      const iconUrl = '/vite.svg';
+      const iconUrl = '/favicon.svg';
 
       const osNotif = new window.Notification(title, {
         body,
@@ -384,7 +384,7 @@ function NotificationCenter({ collapsed = false, hideTrigger = false }) {
                     if (perm === 'granted') {
                       new window.Notification('OS Notifications Enabled! 🎉', {
                         body: 'You will now receive desktop alerts for projects and tickets outside the site.',
-                        icon: '/vite.svg'
+                        icon: '/favicon.svg'
                       });
                     }
                   } catch (e) {

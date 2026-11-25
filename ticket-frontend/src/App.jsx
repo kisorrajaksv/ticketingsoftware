@@ -159,7 +159,7 @@ function App() {
         <Route
           path="/admin/settings"
           element={
-            <RoleRoute allowedRoles={['Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Developer']}>
+            <RoleRoute allowedRoles={['Admin', 'Super Admin', 'Manager', 'QA Lead', 'QA Member', 'Project Lead', 'Developer']}>
               <AdminWorkspacePage section="settings" />
             </RoleRoute>
           }

@@ -120,11 +120,11 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// Basic test route
-app.get('/api/test', async (req, res) => {
+// Basic test & health check routes
+app.get(['/api/test', '/api/health'], async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
-    res.json({ message: 'Backend is running!', db_time: result.rows[0].now });
+    res.json({ status: 'ok', message: 'Backend is running!', db_time: result.rows[0].now });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Database connection failed' });
@@ -133,16 +133,26 @@ app.get('/api/test', async (req, res) => {
 
 // Login endpoint
 app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
 
   try {
-    // 1. Check if the user exists in the database
-    const userQuery = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    // 1. Check if the user exists in the database (case-insensitive)
+    const userQuery = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1', [normalizedEmail]);
     if (userQuery.rows.length === 0) {
       return res.status(401).json({ error: 'You are not a registered user.' });
     }
 
     const user = userQuery.rows[0];
+
+    if (String(user.status || 'Active').toLowerCase() === 'inactive') {
+      return res.status(403).json({ error: 'Your account is currently inactive. Please contact your administrator.' });
+    }
 
     // 2. Compare the entered password with the encrypted password in DB
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -628,53 +638,82 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
+// Helper to generate next sequential EMP-XXX ID safely on backend
+const generateNextEmpId = async () => {
+  const res = await pool.query(
+    `SELECT emp_id FROM users WHERE emp_id ~ '^EMP-[0-9]+$'`
+  );
+  let maxNum = 0;
+  for (const row of res.rows) {
+    const num = parseInt(String(row.emp_id).replace(/^EMP-/i, ''), 10);
+    if (!Number.isNaN(num) && num > maxNum) {
+      maxNum = num;
+    }
+  }
+  return `EMP-${String(maxNum + 1).padStart(3, '0')}`;
+};
+
 // Admin Users: Create a new user
 app.post('/api/admin/users', async (req, res) => {
-  const authorization = req.headers.authorization;
-  if (!authorization?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Authentication required' });
+  const requester = await getUserFromReq(req);
+  if (!requester) {
+    return res.status(401).json({ error: 'Invalid or expired authentication token.' });
   }
 
-  try {
-    jwt.verify(authorization.slice('Bearer '.length), JWT_SECRET);
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+  const requesterRoleLower = String(requester.role || '').trim().toLowerCase();
+  const allowedCreators = ['admin', 'super admin', 'administrator', 'manager', 'qa lead'];
+  if (!allowedCreators.includes(requesterRoleLower)) {
+    return res.status(403).json({ error: 'Access denied. You do not have permission to create users.' });
   }
 
-  const { emp_id, full_name, email, password, department, role, phone, status, avatar } = req.body;
+  const { emp_id, full_name, email, password, department, role, phone, status, avatar } = req.body || {};
 
   if (!email || !full_name) {
     return res.status(400).json({ error: 'Full name and email are required fields.' });
   }
 
+  const normalizedEmail = String(email).toLowerCase().trim();
+  const cleanFullName = String(full_name).trim();
+  const cleanRole = (role && String(role).trim()) || 'QA Member';
+  const cleanDept = (department && String(department).trim()) || 'Quality Assurance';
+  const cleanPhone = phone && String(phone).trim() ? String(phone).trim() : null;
+  const cleanStatus = status === 'Inactive' ? 'Inactive' : 'Active';
+
   // Block creating users with protected emails
-  if (PROTECTED_SYSTEM_EMAILS.includes(email.toLowerCase().trim())) {
+  if (PROTECTED_SYSTEM_EMAILS.includes(normalizedEmail)) {
     return res.status(400).json({ error: 'This email is reserved for an inbuilt system account.' });
   }
 
-  const requester = await getUserFromReq(req);
-  if (requester && requester.role === 'Manager') {
-    if (role === 'Manager' || role === 'Admin' || role === 'Super Admin') {
-      return res.status(403).json({
-        error: 'Managers are not authorized to create Manager or Admin accounts. Only a System Administrator can assign Manager access.'
-      });
-    }
+  const isRequesterAdmin = ['admin', 'super admin', 'administrator'].includes(requesterRoleLower);
+  if (!isRequesterAdmin && ['manager', 'admin', 'super admin', 'administrator'].includes(cleanRole.toLowerCase())) {
+    return res.status(403).json({
+      error: 'Only a System Administrator can create Manager or Admin accounts.'
+    });
   }
 
   try {
-    // Check for existing email or employee ID
-    const existingCheck = await pool.query(
-      `SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR (emp_id IS NOT NULL AND emp_id = $2)`,
-      [email.trim(), emp_id || '']
+    // Check for existing email first
+    const existingEmailCheck = await pool.query(
+      `SELECT id FROM users WHERE LOWER(email) = $1`,
+      [normalizedEmail]
     );
 
-    if (existingCheck.rows.length > 0) {
-      const match = existingCheck.rows[0];
-      if (match.email.toLowerCase() === email.toLowerCase().trim()) {
-        return res.status(400).json({ error: 'A user with this email address already exists.' });
-      }
-      if (emp_id && match.emp_id === emp_id) {
-        return res.status(400).json({ error: 'A user with this Employee ID already exists.' });
+    if (existingEmailCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'A user with this email address already exists.' });
+    }
+
+    // Resolve Employee ID cleanly: auto-generate if omitted/blank or resolve auto-ID race
+    let resolvedEmpId = emp_id && String(emp_id).trim() ? String(emp_id).trim() : null;
+    if (!resolvedEmpId) {
+      resolvedEmpId = await generateNextEmpId();
+    } else {
+      const empIdCheck = await pool.query(`SELECT id FROM users WHERE emp_id = $1`, [resolvedEmpId]);
+      if (empIdCheck.rows.length > 0) {
+        if (/^EMP-\d+$/i.test(resolvedEmpId)) {
+          resolvedEmpId = await generateNextEmpId();
+        } else {
+          return res.status(400).json({ error: 'A user with this Employee ID already exists.' });
+        }
       }
     }
 
@@ -687,21 +726,21 @@ app.post('/api/admin/users', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id, emp_id, full_name, email, department, role, phone, status, avatar, created_at`,
       [
-        emp_id || null,
-        full_name.trim(),
-        email.toLowerCase().trim(),
+        resolvedEmpId,
+        cleanFullName,
+        normalizedEmail,
         hashedPassword,
-        department || 'Quality Assurance',
-        role || 'QA Member',
-        phone || null,
-        status || 'Active',
+        cleanDept,
+        cleanRole,
+        cleanPhone,
+        cleanStatus,
         avatar || null
       ]
     );
 
     const newUser = result.rows[0];
 
-    // Trigger welcome email with role, department, and generated password via Nodemailer
+    // Trigger welcome email with bounded timeout so request completes fast even if SMTP is slow
     let emailStatus = { success: false, simulated: false };
     try {
       emailStatus = await sendWelcomeEmail({
@@ -727,6 +766,9 @@ app.post('/api/admin/users', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating user:', error);
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'A user with this email or Employee ID already exists.' });
+    }
     res.status(500).json({ error: 'Failed to create user in database.' });
   }
 });
@@ -3517,6 +3559,13 @@ io.on('connection', (socket) => {
         roomViewers.delete(currentRoom);
       }
     }
+  });
+});
+
+// Structured JSON 404 handler for any unmatched /api/* route
+app.use('/api', (req, res) => {
+  res.status(404).json({
+    error: `API endpoint not found: ${req.method} ${req.originalUrl}`
   });
 });
 

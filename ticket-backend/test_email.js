@@ -7,17 +7,23 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-const targetEmail = process.argv[2] || process.env.EMAIL_USER || 'test@example.com';
+const targetEmail = process.argv[2] || process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER || 'test@example.com';
+
+const hasCustomSmtp = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+const hasGmailSmtp = Boolean(process.env.EMAIL_USER && (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS));
 
 console.log(`\n======================================================`);
 console.log(`🚀 [TEST EMAIL DISPATCHER]`);
 console.log(`Target: ${targetEmail}`);
 console.log(`Resend API Key configured: ${Boolean(process.env.RESEND_API_KEY)}`);
 console.log(`Brevo API Key configured:  ${Boolean(process.env.BREVO_API_KEY)}`);
-console.log(`SMTP/Gmail configured:     ${Boolean(process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD)}`);
+console.log(`Custom SMTP configured:    ${hasCustomSmtp}${hasCustomSmtp ? ` (${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 587})` : ''}`);
+console.log(`Gmail SMTP configured:     ${hasGmailSmtp}`);
+console.log(`Sender Identity:           ${process.env.EMAIL_FROM || process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER || 'not set'}`);
 console.log(`======================================================\n`);
 
 async function run() {
+  const startedAt = Date.now();
   const result = await dispatchEmail({
     to: targetEmail,
     fullName: 'Test User',
@@ -41,8 +47,8 @@ async function run() {
     `
   });
 
-  console.log('Result:', result);
-  process.exit(0);
+  console.log(`Result (${Date.now() - startedAt}ms):`, result);
+  process.exit(result.success ? 0 : 1);
 }
 
 run().catch((err) => {

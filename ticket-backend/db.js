@@ -20,10 +20,21 @@ const isCloudDb = process.env.NODE_ENV === 'production' || (process.env.DATABASE
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: isCloudDb ? { rejectUnauthorized: false } : false,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000
 });
 
+let hasLoggedConnection = false;
 pool.on('connect', () => {
-  console.log('Connected to PostgreSQL Database!');
+  if (!hasLoggedConnection) {
+    hasLoggedConnection = true;
+    console.log('Connected to PostgreSQL Database!');
+  }
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected PostgreSQL pool error:', err.message);
 });
 
 export default pool;

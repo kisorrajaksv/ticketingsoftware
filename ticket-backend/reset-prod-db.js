@@ -2,46 +2,65 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
-import pool from './db.js';
+import pg from 'pg';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+const targetUrl = (process.argv[2] || process.env.DATABASE_URL || '').trim();
+if (!targetUrl) {
+  console.error('❌ No DATABASE_URL provided. Pass it as an argument or set DATABASE_URL in environment / .env');
+  process.exit(1);
+}
+
+const isCloudDb = !targetUrl.includes('localhost') && !targetUrl.includes('127.0.0.1');
+const pool = new pg.Pool({
+  connectionString: targetUrl,
+  ssl: isCloudDb ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 15000
+});
+
 export async function resetProductionDatabase() {
   console.log('\n======================================================');
   console.log('🚀 INITIALIZING CLEAN PRODUCTION DATABASE RESET');
+  console.log(`🎯 Target: ${isCloudDb ? 'Cloud / Live PostgreSQL (SSL)' : 'Local PostgreSQL'}`);
   console.log('======================================================\n');
 
   try {
-    // 1. Truncate all project, ticket, sheet, approval, deployment, and assignment tables
-    console.log('1. Clearing all test projects, tickets, sheets, assignments, and audit logs...');
-    await pool.query(`
-      TRUNCATE TABLE 
-        ticket_history,
-        notifications,
-        project_documents,
-        project_sheets,
-        project_developer_assignments,
-        project_lead_assignments,
-        tickets,
-        projects,
-        approvals,
-        deployments
-      RESTART IDENTITY CASCADE;
-    `);
-    console.log('   ✓ All test projects, sheets, and tickets cleared.');
+    // 1. Dynamically discover and truncate all application data tables (preserving schema)
+    console.log('1. Clearing all projects, tickets, sheets, reset codes, notifications, and logs...');
+    const tablesToClear = [
+      'password_reset_codes',
+      'ticket_history',
+      'notifications',
+      'project_documents',
+      'project_sheets',
+      'project_developer_assignments',
+      'project_lead_assignments',
+      'tickets',
+      'projects',
+      'approvals',
+      'deployments'
+    ];
 
-    // 2. Clean users table: remove all test users and keep only clean default system roles
+    const existingTablesRes = await pool.query(
+      `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`
+    );
+    const existingSet = new Set(existingTablesRes.rows.map((r) => r.table_name));
+    const presentTables = tablesToClear.filter((t) => existingSet.has(t));
+
+    if (presentTables.length > 0) {
+      await pool.query(`TRUNCATE TABLE ${presentTables.join(', ')} RESTART IDENTITY CASCADE;`);
+    }
+    console.log(`   ✓ Cleared ${presentTables.length} tables.`);
+
+    // 2. Clean users table: remove all existing users (including old manager@gmail.com / qalead@gmail.com)
     console.log('2. Resetting users table to clean production baseline...');
-    await pool.query(`
-      DELETE FROM users;
-    `);
-    
-    // Reset users sequence
-    try {
-      await pool.query(`ALTER SEQUENCE users_id_seq RESTART WITH 1;`);
-    } catch (seqErr) {
-      // quiet if sequence name differs
+    if (existingSet.has('users')) {
+      await pool.query(`TRUNCATE TABLE users RESTART IDENTITY CASCADE;`);
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -104,9 +123,11 @@ export async function resetProductionDatabase() {
     console.log('   - Default System Admin: admin@gmail.com (Password: Admin@123)');
     console.log('======================================================\n');
     
+    await pool.end();
     process.exit(0);
   } catch (error) {
     console.error('❌ Error resetting production database:', error);
+    await pool.end().catch(() => {});
     process.exit(1);
   }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
+import { SOCKET_URL } from '../utils/apiConfig';
 
-const SOCKET_URL = 'http://localhost:5000';
 let sharedSocket = null;
 
 /**

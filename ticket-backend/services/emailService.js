@@ -6,10 +6,37 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure .env is loaded even if imported standalone
-if (!process.env.EMAIL_USER && !process.env.SMTP_USER) {
-  dotenv.config({ path: path.join(__dirname, '..', '.env') });
-}
+// Ensure .env is loaded cleanly without overriding already-set runtime env vars
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
+const DEFAULT_SMTP_TIMEOUT_MS = Number(process.env.EMAIL_TIMEOUT_MS) || 10000;
+
+/**
+ * Races an async operation against a bounded timeout so blocked SMTP ports
+ * cannot hang user-creation or forgot-password HTTP requests for 10+ minutes.
+ */
+const withTimeout = (promise, ms, label) => {
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s (SMTP port may be blocked by host firewall)`));
+    }, ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
+};
+
+const resolveSenderEmail = () =>
+  (process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER || 'projectdemo691@gmail.com').trim();
+
+const resolveSenderHeader = () => {
+  const explicit = (process.env.EMAIL_FROM || '').trim();
+  if (explicit) {
+    return explicit.includes('<') ? explicit : `"QA Software Workspace" <${explicit}>`;
+  }
+  const email = resolveSenderEmail();
+  const name = (process.env.EMAIL_FROM_NAME || 'QA Software Workspace').trim();
+  return `"${name}" <${email}>`;
+};
 
 /**
  * Returns true if real email credentials are configured in environment
@@ -59,6 +86,7 @@ export const dispatchEmail = async ({
       const from = process.env.EMAIL_FROM || 'QA Software <onboarding@resend.dev>';
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
+        signal: AbortSignal.timeout(8000),
         headers: {
           'Authorization': `Bearer ${process.env.RESEND_API_KEY.trim()}`,
           'Content-Type': 'application/json'
@@ -90,10 +118,11 @@ export const dispatchEmail = async ({
   // 2. BREVO / Sendinblue API (300 free emails/day - REST HTTP API)
   if (process.env.BREVO_API_KEY) {
     try {
-      const fromEmail = (process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER || 'projectdemo691@gmail.com').trim();
+      const fromEmail = resolveSenderEmail();
       const fromName = (process.env.EMAIL_FROM_NAME || 'QA Software Workspace').trim();
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
+        signal: AbortSignal.timeout(8000),
         headers: {
           'api-key': process.env.BREVO_API_KEY.trim(),
           'Content-Type': 'application/json',
@@ -123,20 +152,24 @@ export const dispatchEmail = async ({
     }
   }
 
-  // 3. Nodemailer SMTP / Gmail fallback (if configured)
+  // 3. Nodemailer SMTP / Gmail fallback (if configured) with bounded timeout
   const transporter = createTransporter();
   if (transporter) {
     try {
-      const fromUser = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@qasoftware.com';
-      const info = await transporter.sendMail({
-        from: fromUser.includes('<') ? fromUser : `"QA Software Workspace" <${fromUser}>`,
-        replyTo: replyTo || fromUser,
-        to,
-        subject,
-        text,
-        html,
-        headers
-      });
+      const fromHeader = resolveSenderHeader();
+      const info = await withTimeout(
+        transporter.sendMail({
+          from: fromHeader,
+          replyTo: replyTo || resolveSenderEmail(),
+          to,
+          subject,
+          text,
+          html,
+          headers
+        }),
+        DEFAULT_SMTP_TIMEOUT_MS + 2000,
+        'SMTP delivery'
+      );
 
       const previewUrl = nodemailer.getTestMessageUrl(info);
       console.log(`✅ [Nodemailer] Email delivered to ${to} (Message ID: ${info.messageId})`);
@@ -153,6 +186,10 @@ export const dispatchEmail = async ({
     } catch (smtpErr) {
       lastError = smtpErr.message;
       console.error(`❌ [Nodemailer] Delivery error for ${to}:`, smtpErr.message);
+    } finally {
+      try {
+        transporter.close();
+      } catch {}
     }
   }
 
@@ -190,16 +227,20 @@ export const dispatchEmail = async ({
  * Supports Gmail Service, Custom SMTP (Host/Port), with valid Gmail fallback.
  */
 export const createTransporter = () => {
-  // Option 1: Custom SMTP (Ethereal, SendGrid, Mailgun, Amazon SES, or custom mail server)
+  // Option 1: Custom SMTP (Brevo, SendGrid, Mailgun, Amazon SES, or custom mail server)
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    const port = Number(process.env.SMTP_PORT) || 587;
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST.trim(),
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === 'true' || Number(process.env.SMTP_PORT) === 465,
+      port,
+      secure: process.env.SMTP_SECURE === 'true' || port === 465,
       auth: {
         user: process.env.SMTP_USER.trim(),
         pass: process.env.SMTP_PASS.trim()
       },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: DEFAULT_SMTP_TIMEOUT_MS,
       tls: {
         rejectUnauthorized: false
       }
@@ -218,6 +259,9 @@ export const createTransporter = () => {
         user: gmailUser,
         pass: gmailPass
       },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: DEFAULT_SMTP_TIMEOUT_MS,
       tls: {
         rejectUnauthorized: false
       }
@@ -235,7 +279,7 @@ export const checkEmailStatus = async () => {
     configured: isEmailConfigured(),
     provider: 'none',
     user: (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim(),
-    from: (process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@qasoftware.com').trim(),
+    from: resolveSenderHeader(),
     transporter_ready: false,
     diagnostic: ''
   };
@@ -243,13 +287,13 @@ export const checkEmailStatus = async () => {
   if (process.env.RESEND_API_KEY) {
     status.provider = 'resend';
     status.transporter_ready = true;
-    status.diagnostic = 'Resend HTTP API key is configured.';
+    status.diagnostic = 'Resend HTTP API key is configured (HTTPS port 443).';
     return status;
   }
   if (process.env.BREVO_API_KEY) {
     status.provider = 'brevo';
     status.transporter_ready = true;
-    status.diagnostic = 'Brevo HTTP API key is configured.';
+    status.diagnostic = 'Brevo HTTP API key is configured (HTTPS port 443).';
     return status;
   }
   if (process.env.SMTP_HOST) {
@@ -261,12 +305,16 @@ export const checkEmailStatus = async () => {
   const transporter = createTransporter();
   if (transporter) {
     try {
-      await transporter.verify();
+      await withTimeout(transporter.verify(), 8000, 'SMTP verification');
       status.transporter_ready = true;
       status.diagnostic = 'SMTP connection verified successfully with mail host.';
     } catch (vErr) {
       status.transporter_ready = false;
       status.diagnostic = `SMTP verification error: ${vErr.message}`;
+    } finally {
+      try {
+        transporter.close();
+      } catch {}
     }
   } else {
     status.diagnostic = 'No email credentials found in environment. Emails are logged to console.';
@@ -728,7 +776,7 @@ export const sendVerificationCodeEmail = async ({
   fullName,
   code
 }) => {
-  const fromUser = (process.env.EMAIL_FROM || process.env.EMAIL_USER || 'qalead.ksv@gmail.com').trim();
+  const fromUser = resolveSenderHeader();
 
   // Clean, spam-safe plain text version matching the HTML content
   const plainText = `

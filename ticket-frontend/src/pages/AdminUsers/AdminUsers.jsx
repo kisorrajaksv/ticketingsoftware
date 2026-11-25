@@ -109,7 +109,7 @@ const DEPARTMENT_FILTER_OPTIONS = [
 
 const ROLE_FILTER_OPTIONS = [
   { value: 'All', label: 'All Roles', icon: <ShieldCheck size={14} color="#64748b" /> },
-  ...AVAILABLE_ROLES.map((role) => ({
+  ...['Admin', ...AVAILABLE_ROLES].map((role) => ({
     value: role,
     label: role,
     icon: <ShieldCheck size={14} color="#64748b" />
@@ -366,19 +366,21 @@ function AdminUsers() {
     return Boolean(email && PROTECTED_EMAILS.includes(email.toLowerCase().trim()));
   };
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async ({ silent = false } = {}) => {
     const token = getValidToken();
     if (!token) {
       navigate('/', { replace: true });
       return;
     }
 
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
     try {
       const response = await axios.get('http://localhost:5000/api/admin/users', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setUsers(response.data);
+      setUsers(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Failed to load users:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -386,7 +388,9 @@ function AdminUsers() {
         navigate('/', { replace: true });
       }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [navigate]);
 
@@ -394,7 +398,11 @@ function AdminUsers() {
     fetchUsers();
   }, [fetchUsers]);
 
-  useRealtimeSync(['users', 'roles'], fetchUsers);
+  const silentRefreshUsers = useCallback(() => {
+    fetchUsers({ silent: true });
+  }, [fetchUsers]);
+
+  useRealtimeSync(['users', 'roles'], silentRefreshUsers);
 
   // Compute next auto-generated Employee ID
   const getNextEmpId = useCallback(() => {
@@ -731,7 +739,7 @@ function AdminUsers() {
       const response = await axios.post(
         `http://localhost:5000/api/admin/users/${targetUser.id}/resend-invite`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 25000 }
       );
       const emailStatus = response.data?.email_status;
       const temporaryPass = response.data?.temporary_password;
@@ -803,10 +811,13 @@ function AdminUsers() {
       const response = await axios.post(
         'http://localhost:5000/api/admin/users',
         payload,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 25000 }
       );
 
-      setUsers((prev) => [...prev, response.data.user]);
+      if (response.data?.user) {
+        setUsers((prev) => [...prev, response.data.user]);
+      }
+      await fetchUsers({ silent: true });
       setIsCreateModalOpen(false);
       setFormData(initialFormData);
 
@@ -894,7 +905,7 @@ function AdminUsers() {
           prev.map((u) => (Number(u.id) === Number(editFormData.id) ? { ...u, ...updatedUser } : u))
         );
       }
-      await fetchUsers();
+      await fetchUsers({ silent: true });
       setIsEditModalOpen(false);
       setEditFormData(null);
       setSuccessToast({
