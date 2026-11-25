@@ -20,6 +20,7 @@ import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import { formatIndianDate } from '../../utils/dateFormat';
+import { useRealtimeSync } from '../../hooks/useRealtimeSync';
 import '../../styles/admin.css';
 import '../AdminUsers/AdminUsers.css';
 import './AdminApprovals.css';
@@ -143,6 +144,8 @@ export default function AdminApprovals() {
       setLoading(false);
     }
   }, [navigate]);
+
+  useRealtimeSync(['approvals', 'projects'], fetchApprovals);
 
   useEffect(() => {
     fetchApprovals();

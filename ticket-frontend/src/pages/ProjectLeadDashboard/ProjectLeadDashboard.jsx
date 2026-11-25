@@ -29,6 +29,7 @@ import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
 import { formatIndianDate } from '../../utils/dateFormat';
+import { useRealtimeSync } from '../../hooks/useRealtimeSync';
 import '../../styles/admin.css';
 import './ProjectLeadDashboard.css';
 
@@ -89,6 +90,12 @@ export default function ProjectLeadDashboard() {
     fetchTickets();
     fetchAvailableDevelopers();
   }, [navigate]);
+
+  useRealtimeSync(['tickets', 'projects', 'users', 'dashboard'], () => {
+    fetchDashboardStats();
+    fetchTickets();
+    fetchAvailableDevelopers();
+  });
 
   const fetchDashboardStats = async () => {
     setLoading(true);

@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
+import { useRealtimeSync } from '../../hooks/useRealtimeSync';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import { formatIndianDate } from '../../utils/dateFormat';
 import { getValidToken } from '../../utils/auth';
@@ -391,6 +392,8 @@ function AdminUsers() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  useRealtimeSync(['users', 'roles'], fetchUsers);
 
   // Compute next auto-generated Employee ID
   const getNextEmpId = useCallback(() => {

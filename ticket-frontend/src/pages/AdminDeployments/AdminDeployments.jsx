@@ -19,6 +19,7 @@ import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import { formatIndianDate } from '../../utils/dateFormat';
+import { useRealtimeSync } from '../../hooks/useRealtimeSync';
 import '../../styles/admin.css';
 import '../AdminUsers/AdminUsers.css';
 import '../AdminProjects/AdminProjects.css';
@@ -104,6 +105,8 @@ function AdminDeployments() {
   useEffect(() => {
     fetchDeployments();
   }, [fetchDeployments]);
+
+  useRealtimeSync(['deployments', 'projects'], fetchDeployments);
 
   // Compute 4 KPI stats
   const stats = useMemo(() => {
