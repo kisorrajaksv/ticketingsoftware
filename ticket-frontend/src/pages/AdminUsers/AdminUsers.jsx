@@ -39,6 +39,7 @@ import {
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { useRealtimeSync } from '../../hooks/useRealtimeSync';
+import SkeletonLoader from '../../components/SkeletonLoader/SkeletonLoader';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import { formatIndianDate } from '../../utils/dateFormat';
 import { getValidToken } from '../../utils/auth';
@@ -1100,28 +1101,6 @@ function AdminUsers() {
               </div>
 
               <div className="um-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {/* Segmented View Switcher matching Tickets & Projects */}
-                <div id="um-view-switcher" className="ticket-view-toggle" role="group" aria-label="User directory view">
-                  <button
-                    id="um-view-grid-btn"
-                    type="button"
-                    className={`ticket-view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                    onClick={() => setViewMode('grid')}
-                  >
-                    <LayoutGrid size={15} />
-                    <span>Cards Grid</span>
-                  </button>
-                  <button
-                    id="um-view-table-btn"
-                    type="button"
-                    className={`ticket-view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-                    onClick={() => setViewMode('table')}
-                  >
-                    <List size={15} />
-                    <span>Table View</span>
-                  </button>
-                </div>
-
                 {isAdmin && (
                   <button
                     id="um-manage-role-perms-btn"
@@ -1544,15 +1523,8 @@ function AdminUsers() {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="7" style={{ textAlign: 'center', padding: '50px 20px' }}>
-                          <RefreshCw
-                            size={24}
-                            className="animate-spin"
-                            style={{ margin: '0 auto 12px', color: '#2563eb' }}
-                          />
-                          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
-                            Loading workspace users directory...
-                          </p>
+                        <td colSpan="7" style={{ padding: '12px' }}>
+                          <SkeletonLoader variant="table" rows={5} />
                         </td>
                       </tr>
                     ) : filteredUsers.length === 0 ? (

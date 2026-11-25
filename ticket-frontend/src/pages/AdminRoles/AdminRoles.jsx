@@ -16,6 +16,7 @@ import {
 import AdminSidebar from '../../components/AdminSidebar/AdminSidebar';
 import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
+import SkeletonLoader from '../../components/SkeletonLoader/SkeletonLoader';
 import '../../styles/admin.css';
 import '../AdminUsers/AdminUsers.css';
 import './AdminRoles.css';
@@ -213,9 +214,7 @@ function AdminRoles() {
 
             {/* Roles Grid Cards */}
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>
-                Loading roles & permissions...
-              </div>
+              <SkeletonLoader variant="cards" count={4} />
             ) : filteredRoles.length === 0 ? (
               <div className="users-table-card" style={{ padding: '60px 20px', textAlign: 'center' }}>
                 <ShieldAlert size={40} style={{ opacity: 0.35, marginBottom: '10px' }} />

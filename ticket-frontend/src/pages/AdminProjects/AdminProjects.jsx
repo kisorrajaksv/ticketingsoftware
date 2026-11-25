@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useRealtimeSync } from '../../hooks/useRealtimeSync';
+import SkeletonLoader from '../../components/SkeletonLoader/SkeletonLoader';
 import {
   AlertTriangle,
   Building2,
@@ -185,8 +186,15 @@ const readLockedFiltersState = () => {
 function AdminProjects() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
-  const [, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = sessionStorage.getItem('projectsViewMode');
+    return ['grid', 'list', 'sheet'].includes(saved) ? saved : 'grid';
+  }); // 'grid' | 'list' | 'sheet'
+
+  useEffect(() => {
+    sessionStorage.setItem('projectsViewMode', viewMode);
+  }, [viewMode]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filtersLocked, setFiltersLocked] = useState(() => Boolean(readLockedFiltersState()));
   const [departmentFilter, setDepartmentFilter] = useState(
@@ -1004,7 +1012,15 @@ function AdminProjects() {
             </div>
 
           {/* 4. Projects Display: Sheet View, Grid View or List View */}
-          {filteredProjects.length === 0 && viewMode !== 'sheet' ? (
+          {loading && projects.length === 0 ? (
+            viewMode === 'sheet' ? (
+              <SkeletonLoader variant="sheet" rows={6} />
+            ) : viewMode === 'list' ? (
+              <SkeletonLoader variant="table" rows={5} />
+            ) : (
+              <SkeletonLoader variant="cards" count={6} />
+            )
+          ) : filteredProjects.length === 0 && viewMode !== 'sheet' ? (
             <div className="pj-empty-state-card" id="pj-empty-state">
               <div className="pj-empty-icon-wrap">
                 <FolderPlus size={32} />

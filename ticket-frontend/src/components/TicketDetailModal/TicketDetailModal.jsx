@@ -29,6 +29,7 @@ import {
 import { io } from 'socket.io-client';
 import CustomSelect from '../CustomSelect/CustomSelect';
 import { formatIndianDate, formatIndianDateTime, formatIndianTime } from '../../utils/dateFormat';
+import SkeletonLoader from '../SkeletonLoader/SkeletonLoader';
 import './TicketDetailModal.css';
 import { API_BASE, SOCKET_URL } from '../../utils/apiConfig';
 
@@ -456,10 +457,7 @@ export default function TicketDetailModal({
         {/* Modal Body */}
         <div className="tdm-body">
           {loading ? (
-            <div className="tdm-loading-state">
-              <Clock className="tdm-spin" size={24} />
-              <span>Loading defect ticket details...</span>
-            </div>
+            <SkeletonLoader variant="detail" />
           ) : error ? (
             <div className="tdm-error-state">
               <AlertCircle size={20} />

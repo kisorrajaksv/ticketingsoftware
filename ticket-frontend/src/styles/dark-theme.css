@@ -3174,45 +3174,55 @@ html[data-theme='dark'] .admin-layout.tickets-page .users-search-box input::plac
   color: #64748b !important;
 }
 
-html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip {
+html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip,
+html[data-theme='dark'] .admin-layout .projects-page-layout .um-fix-filter-chip {
   background: #111827 !important;
   border: 1.5px solid #1e293b !important;
   color: #94a3b8 !important;
 }
 
-html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip svg {
+html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip svg,
+html[data-theme='dark'] .admin-layout .projects-page-layout .um-fix-filter-chip svg {
   color: #94a3b8 !important;
 }
 
-html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip:hover {
+html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip:hover,
+html[data-theme='dark'] .admin-layout .projects-page-layout .um-fix-filter-chip:hover {
   background: #1e293b !important;
   border-color: #334155 !important;
   color: #f1f5f9 !important;
 }
 
-html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip:hover svg {
+html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip:hover svg,
+html[data-theme='dark'] .admin-layout .projects-page-layout .um-fix-filter-chip:hover svg {
   color: #f1f5f9 !important;
 }
 
 html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip.is-locked,
-html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip.is-locked:hover {
+html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip.is-locked:hover,
+html[data-theme='dark'] .admin-layout .projects-page-layout .um-fix-filter-chip.is-locked,
+html[data-theme='dark'] .admin-layout .projects-page-layout .um-fix-filter-chip.is-locked:hover {
   background: rgba(37, 99, 235, 0.2) !important;
   border-color: rgba(59, 130, 246, 0.5) !important;
   color: #60a5fa !important;
 }
 
 html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip.is-locked svg,
-html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip.is-locked:hover svg {
+html[data-theme='dark'] .admin-layout.users-page .um-fix-filter-chip.is-locked:hover svg,
+html[data-theme='dark'] .admin-layout .projects-page-layout .um-fix-filter-chip.is-locked svg,
+html[data-theme='dark'] .admin-layout .projects-page-layout .um-fix-filter-chip.is-locked:hover svg {
   color: #60a5fa !important;
 }
 
-html[data-theme='dark'] .admin-layout.users-page .um-filter-selects .c-select-filter .c-select-trigger {
+html[data-theme='dark'] .admin-layout.users-page .um-filter-selects .c-select-filter .c-select-trigger,
+html[data-theme='dark'] .admin-layout .projects-page-layout .um-filter-selects .c-select-filter .c-select-trigger {
   background: #111827 !important;
   border: 1.5px solid #1e293b !important;
   color: #f1f5f9 !important;
 }
 
-html[data-theme='dark'] .admin-layout.users-page .um-filter-selects .c-select-filter .c-select-trigger:hover {
+html[data-theme='dark'] .admin-layout.users-page .um-filter-selects .c-select-filter .c-select-trigger:hover,
+html[data-theme='dark'] .admin-layout .projects-page-layout .um-filter-selects .c-select-filter .c-select-trigger:hover {
   background: #1e293b !important;
   border-color: #334155 !important;
   color: #ffffff !important;
@@ -3620,6 +3630,26 @@ html[data-theme='dark'] .tdm-btn-locked {
   background: #1e293b !important;
   border-color: #334155 !important;
   color: #64748b !important;
+}
+
+/* ==========================================================================
+   Dark Theme Skeleton Loader Overrides
+   ========================================================================== */
+html[data-theme='dark'] .sk-shimmer {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%) !important;
+  background-size: 200% 100% !important;
+}
+
+html[data-theme='dark'] .sk-card,
+html[data-theme='dark'] .sk-table-wrap {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+}
+
+html[data-theme='dark'] .sk-table-row,
+html[data-theme='dark'] .sk-card-meta-row,
+html[data-theme='dark'] .sk-sheet-toolbar {
+  border-color: #1e293b !important;
 }
 
 /* ==========================================================================

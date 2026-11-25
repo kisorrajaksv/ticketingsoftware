@@ -17,6 +17,7 @@ import AdminSidebar, { SmallCubeLogo } from '../../components/AdminSidebar/Admin
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { formatIndianDate } from '../../utils/dateFormat';
 import { useRealtimeSync } from '../../hooks/useRealtimeSync';
+import SkeletonLoader from '../../components/SkeletonLoader/SkeletonLoader';
 import '../../styles/admin.css';
 
 const initialStats = {
@@ -245,7 +246,7 @@ function AdminDashboard() {
                   <div className="stat-icon-wrapper"><Icon size={19} strokeWidth={1.8} /></div>
                   <span className="stat-period">CURRENT</span>
                 </div>
-                <div className="stat-value">{loading ? '—' : value.toLocaleString()}</div>
+                <div className="stat-value">{loading ? <SkeletonLoader variant="inline" width={54} height={28} /> : value.toLocaleString()}</div>
                 <div className="stat-bottomline">
                   <span className="stat-label">{label}</span>
                   {path && (
@@ -302,7 +303,7 @@ function AdminDashboard() {
                 </div>
                 <span className="panel-icon panel-icon-amber"><Clock3 size={18} /></span>
               </div>
-              <div className="queue-count">{loading ? '—' : stats.pendingApprovals.toLocaleString()}</div>
+              <div className="queue-count">{loading ? <SkeletonLoader variant="inline" width={64} height={36} /> : stats.pendingApprovals.toLocaleString()}</div>
               <p className="queue-description">items are waiting for an approval</p>
               <div className="queue-divider" />
               <div className="queue-note">

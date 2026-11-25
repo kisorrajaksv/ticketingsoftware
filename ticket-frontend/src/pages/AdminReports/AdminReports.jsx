@@ -29,6 +29,7 @@ import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { formatIndianDate } from '../../utils/dateFormat';
 import { useRealtimeSync } from '../../hooks/useRealtimeSync';
+import SkeletonLoader from '../../components/SkeletonLoader/SkeletonLoader';
 import '../../styles/admin.css';
 import '../AdminUsers/AdminUsers.css';
 import './AdminReports.css';
@@ -746,7 +747,9 @@ export default function AdminReports() {
 
                   {/* Clean Modern Table (No Clutter, Segmented Progress Bars) */}
                   <div className="report-table-container">
-                    {filteredProjects.length === 0 ? (
+                    {loading && projectReports.length === 0 ? (
+                      <SkeletonLoader variant="table" rows={5} />
+                    ) : filteredProjects.length === 0 ? (
                       <div className="um-empty-state-card" style={{ border: 'none', boxShadow: 'none', margin: '24px 0' }}>
                         <div className="um-empty-icon-wrap">
                           <FolderKanban size={32} />
@@ -1124,7 +1127,9 @@ export default function AdminReports() {
 
                     {/* Modern QA Members Performance Table with Daily Work */}
                     <div className="report-table-container">
-                      {filteredQAMembers.length === 0 ? (
+                      {loading && qaMembersReport.length === 0 ? (
+                        <SkeletonLoader variant="table" rows={4} />
+                      ) : filteredQAMembers.length === 0 ? (
                         <div className="um-empty-state-card" style={{ border: 'none', boxShadow: 'none', margin: '24px 0' }}>
                           <div className="um-empty-icon-wrap">
                             <UsersRound size={32} />

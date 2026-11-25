@@ -47,6 +47,7 @@ import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
 import { useRealtimeSync } from '../../hooks/useRealtimeSync';
+import SkeletonLoader from '../../components/SkeletonLoader/SkeletonLoader';
 import './AdminProjectWorkspace.css';
 
 const WORKSPACE_FOLDERS = [
@@ -1446,9 +1447,7 @@ export default function AdminProjectWorkspace() {
 
               {/* Documents Content view */}
               {documentsLoading ? (
-                <div style={{ padding: '36px', textAlign: 'center', color: '#64748B', fontSize: '14px' }}>
-                  Loading project documents...
-                </div>
+                <SkeletonLoader variant="table" rows={3} />
               ) : documents.length === 0 ? (
                 <div style={{
                   padding: '48px 24px',
@@ -1691,7 +1690,7 @@ export default function AdminProjectWorkspace() {
               <div className="pw-section-sub" style={{ marginTop: 24 }}>
                 <h3 id="pw-testing-history-heading">Testing Request History ({testingRequests.length})</h3>
                 {testingRequestsLoading ? (
-                  <p className="project-workspace-empty">Loading testing requests...</p>
+                  <SkeletonLoader variant="table" rows={3} />
                 ) : testingRequests.length === 0 ? (
                   <p className="project-workspace-empty">
                     No request to start testing has been raised for this project yet.

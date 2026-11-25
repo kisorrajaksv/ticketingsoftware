@@ -21,6 +21,7 @@ import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import { formatIndianDate } from '../../utils/dateFormat';
 import { useRealtimeSync } from '../../hooks/useRealtimeSync';
+import SkeletonLoader from '../../components/SkeletonLoader/SkeletonLoader';
 import '../../styles/admin.css';
 import '../AdminUsers/AdminUsers.css';
 import './AdminApprovals.css';
@@ -496,10 +497,7 @@ export default function AdminApprovals() {
             {viewMode === 'table' ? (
               <div className="um-table-card approvals-table-card">
                 {loading ? (
-                  <div style={{ textAlign: 'center', padding: '50px 20px', color: '#64748b' }}>
-                    <RefreshCw size={24} className="spin-icon" style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
-                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Loading approval requests...</p>
-                  </div>
+                  <SkeletonLoader variant="table" rows={5} />
                 ) : filteredApprovals.length === 0 ? (
                   <div className="um-empty-state-card" style={{ border: 'none', boxShadow: 'none', margin: '24px 0' }}>
                     <div className="um-empty-icon-wrap">
@@ -631,9 +629,8 @@ export default function AdminApprovals() {
               /* Cards Grid View */
               <div className="um-users-cards-grid">
                 {loading ? (
-                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px 20px', color: '#64748b' }}>
-                    <RefreshCw size={24} className="spin-icon" style={{ animation: 'spin 1s linear infinite', marginBottom: '8px' }} />
-                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Loading approval requests...</p>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <SkeletonLoader variant="cards" count={4} />
                   </div>
                 ) : filteredApprovals.length === 0 ? (
                   <div style={{ gridColumn: '1 / -1' }} className="um-empty-state-card">

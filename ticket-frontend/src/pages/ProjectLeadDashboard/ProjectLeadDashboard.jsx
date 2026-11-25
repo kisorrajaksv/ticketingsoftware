@@ -30,6 +30,7 @@ import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
 import { formatIndianDate } from '../../utils/dateFormat';
 import { useRealtimeSync } from '../../hooks/useRealtimeSync';
+import SkeletonLoader from '../../components/SkeletonLoader/SkeletonLoader';
 import '../../styles/admin.css';
 import './ProjectLeadDashboard.css';
 
@@ -537,7 +538,9 @@ export default function ProjectLeadDashboard() {
             </div>
 
             {/* Tickets Table */}
-            {filteredTickets.length === 0 ? (
+            {loading && tickets.length === 0 ? (
+              <SkeletonLoader variant="table" rows={5} />
+            ) : filteredTickets.length === 0 ? (
               <div className="pld-empty-card">
                 <Ticket size={34} color="#94A3B8" />
                 <h3 id="pld-empty-tickets-heading">No Bug Tickets Found</h3>

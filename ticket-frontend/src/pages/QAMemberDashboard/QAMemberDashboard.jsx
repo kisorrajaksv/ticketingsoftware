@@ -21,6 +21,7 @@ import RoleSidebar from '../../components/RoleSidebar/RoleSidebar';
 import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import { formatIndianDate } from '../../utils/dateFormat';
 import { useRealtimeSync } from '../../hooks/useRealtimeSync';
+import SkeletonLoader from '../../components/SkeletonLoader/SkeletonLoader';
 import '../../styles/admin.css';
 import '../../styles/RoleDashboard.css';
 import './QAMemberDashboard.css';
@@ -220,7 +221,7 @@ export default function QAMemberDashboard() {
                   <FolderKanban size={22} />
                 </div>
                 <div className="qa-stat-info">
-                  <span className="qa-stat-value">{loading ? '—' : stats.totalProjects}</span>
+                  <span className="qa-stat-value">{loading ? <SkeletonLoader variant="inline" width={40} height={22} /> : stats.totalProjects}</span>
                   <span className="qa-stat-label">Assigned Projects</span>
                 </div>
               </div>
@@ -230,7 +231,7 @@ export default function QAMemberDashboard() {
                   <Ticket size={22} />
                 </div>
                 <div className="qa-stat-info">
-                  <span className="qa-stat-value">{loading ? '—' : stats.totalTickets}</span>
+                  <span className="qa-stat-value">{loading ? <SkeletonLoader variant="inline" width={40} height={22} /> : stats.totalTickets}</span>
                   <span className="qa-stat-label">Total QA Tickets</span>
                 </div>
               </div>
@@ -240,7 +241,7 @@ export default function QAMemberDashboard() {
                   <AlertCircle size={22} />
                 </div>
                 <div className="qa-stat-info">
-                  <span className="qa-stat-value">{loading ? '—' : openDefectsCount}</span>
+                  <span className="qa-stat-value">{loading ? <SkeletonLoader variant="inline" width={40} height={22} /> : openDefectsCount}</span>
                   <span className="qa-stat-label">Active / Open Defects</span>
                 </div>
               </div>
@@ -250,7 +251,7 @@ export default function QAMemberDashboard() {
                   <UsersRound size={22} />
                 </div>
                 <div className="qa-stat-info">
-                  <span className="qa-stat-value">{loading ? '—' : stats.totalUsers}</span>
+                  <span className="qa-stat-value">{loading ? <SkeletonLoader variant="inline" width={40} height={22} /> : stats.totalUsers}</span>
                   <span className="qa-stat-label">Workspace Team Members</span>
                 </div>
               </div>

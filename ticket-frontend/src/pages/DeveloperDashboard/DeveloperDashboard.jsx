@@ -28,6 +28,7 @@ import TopNavbar from '../../components/TopNavbar/TopNavbar';
 import CustomSelect from '../../components/CustomSelect/CustomSelect';
 import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailModal';
 import { useRealtimeSync } from '../../hooks/useRealtimeSync';
+import SkeletonLoader from '../../components/SkeletonLoader/SkeletonLoader';
 import '../../styles/admin.css';
 import './DeveloperDashboard.css';
 
@@ -512,7 +513,9 @@ export default function DeveloperDashboard() {
             </div>
 
             {/* Tickets Table */}
-            {filteredTickets.length === 0 ? (
+            {loading && tickets.length === 0 ? (
+              <SkeletonLoader variant="table" rows={5} />
+            ) : filteredTickets.length === 0 ? (
               <div className="dev-empty-card">
                 <Ticket size={36} color="#94A3B8" />
                 <h3 id="dev-empty-heading">No Defect Tickets Assigned</h3>

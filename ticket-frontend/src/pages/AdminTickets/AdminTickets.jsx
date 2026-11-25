@@ -31,6 +31,7 @@ import TicketDetailModal from '../../components/TicketDetailModal/TicketDetailMo
 import FolderEmblem from '../AdminProjects/FolderEmblem';
 import { getValidToken, clearAuthSession } from '../../utils/auth';
 import { useRealtimeSync } from '../../hooks/useRealtimeSync';
+import SkeletonLoader from '../../components/SkeletonLoader/SkeletonLoader';
 import '../../styles/admin.css';
 import '../AdminUsers/AdminUsers.css';
 import '../AdminProjects/AdminProjects.css';
@@ -980,12 +981,7 @@ function AdminTickets() {
                 </div>
 
                 {loading ? (
-                  <div className="um-empty-state-card">
-                    <RefreshCw size={24} className="animate-spin" style={{ color: '#2563eb' }} />
-                    <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
-                      Loading project ticket folders...
-                    </p>
-                  </div>
+                  <SkeletonLoader variant="cards" count={4} />
                 ) : visibleFolders.length === 0 ? (
                   <div className="um-empty-state-card">
                     <div className="um-empty-icon-wrap">
@@ -1118,15 +1114,8 @@ function AdminTickets() {
                     <tbody>
                       {loading ? (
                         <tr>
-                          <td colSpan="7" style={{ textAlign: 'center', padding: '50px 20px' }}>
-                            <RefreshCw
-                              size={24}
-                              className="animate-spin"
-                              style={{ margin: '0 auto 12px', color: '#2563eb' }}
-                            />
-                            <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
-                              Loading defect tickets...
-                            </p>
+                          <td colSpan="7" style={{ padding: '12px' }}>
+                            <SkeletonLoader variant="table" rows={5} />
                           </td>
                         </tr>
                       ) : filteredTickets.length === 0 ? (
