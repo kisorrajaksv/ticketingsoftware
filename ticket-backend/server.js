@@ -120,6 +120,11 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// Root health probe route for hosting platforms (Render / load balancers)
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', service: 'QA Software Ticketing API' });
+});
+
 // Basic test & health check routes
 app.get(['/api/test', '/api/health'], async (req, res) => {
   try {
@@ -374,7 +379,7 @@ app.get('/api/auth/me', async (req, res) => {
     );
 
     if (userQuery.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(401).json({ error: 'Account session is no longer valid. Please sign in again.' });
     }
 
     res.json({ user: userQuery.rows[0] });
