@@ -25,12 +25,21 @@ const withTimeout = (promise, ms, label) => {
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
 };
 
+const extractValidEmail = (val) => {
+  if (!val || typeof val !== 'string') return '';
+  const match = val.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  return match ? match[0].trim() : '';
+};
+
 const resolveSenderEmail = () =>
-  (process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER || 'projectdemo691@gmail.com').trim();
+  extractValidEmail(process.env.EMAIL_FROM_ADDRESS) ||
+  extractValidEmail(process.env.EMAIL_USER) ||
+  extractValidEmail(process.env.EMAIL_FROM) ||
+  'projectdemo691@gmail.com';
 
 const resolveSenderHeader = () => {
   const explicit = (process.env.EMAIL_FROM || '').trim();
-  if (explicit) {
+  if (explicit && extractValidEmail(explicit)) {
     return explicit.includes('<') ? explicit : `"QA Software Workspace" <${explicit}>`;
   }
   const email = resolveSenderEmail();
