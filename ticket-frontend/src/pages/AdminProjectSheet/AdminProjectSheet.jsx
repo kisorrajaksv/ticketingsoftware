@@ -167,7 +167,7 @@ export default function AdminProjectSheet() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const isDeveloper = (localStorage.getItem('userRole') || '') === 'Developer';
+  const isDeveloper = (localStorage.getItem('userRole') || '').trim().toLowerCase() === 'developer';
   const currentUserRole = localStorage.getItem('userRole') || 'QA Member';
 
   // Project metadata
@@ -2957,7 +2957,7 @@ export default function AdminProjectSheet() {
                             verticalAlign: cellStyle.verticalAlign
                           }}
                           onClick={() => handleCellClick(rIdx, col.id)}
-                          onDoubleClick={() => startEditing(rIdx, col.id)}
+                          onDoubleClick={() => !isDeveloper && startEditing(rIdx, col.id)}
                           onContextMenu={(e) => handleContextMenu(e, 'cell', rIdx, col.id)}
                         >
                           {isEditing ? (
@@ -3040,8 +3040,9 @@ export default function AdminProjectSheet() {
                               <div
                                 id={`pjs-cell-status-empty-${rIdx}-${col.id}`}
                                 className="pjs-status-cover-empty"
-                                onClick={() => startEditing(rIdx, col.id)}
-                                title="Click to set status"
+                                style={isDeveloper ? { cursor: 'default' } : undefined}
+                                onClick={isDeveloper ? undefined : () => startEditing(rIdx, col.id)}
+                                title={isDeveloper ? 'No status set (Read-only)' : 'Click to set status'}
                               >
                                 —
                               </div>
@@ -3050,13 +3051,16 @@ export default function AdminProjectSheet() {
                                 <div
                                   id={`pjs-cell-status-trigger-${rIdx}-${col.id}`}
                                   className={`pjs-status-cover ${String(rawVal).toLowerCase().replace(/\s+/g, '')}`}
-                                  onClick={() => startEditing(rIdx, col.id)}
-                                  title={`Status: ${rawVal} (Click to change)`}
+                                  style={isDeveloper ? { cursor: 'default' } : undefined}
+                                  onClick={isDeveloper ? undefined : () => startEditing(rIdx, col.id)}
+                                  title={isDeveloper ? `Status: ${rawVal}` : `Status: ${rawVal} (Click to change)`}
                                 >
                                   <span>{rawVal}</span>
-                                  <span className="pjs-status-cover-arrow">
-                                    <ChevronDown size={11} />
-                                  </span>
+                                  {!isDeveloper && (
+                                    <span className="pjs-status-cover-arrow">
+                                      <ChevronDown size={11} />
+                                    </span>
+                                  )}
                                 </div>
                                 {row.ticket_code ? (
                                   <button
