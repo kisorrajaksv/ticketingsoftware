@@ -18,6 +18,13 @@
   color: #0f172a;
 }
 
+.projects-page-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
 .pj-top-utility-bar {
   width: 100%;
   max-width: 1560px;

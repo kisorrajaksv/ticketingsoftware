@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Building2,
   Calendar,
+  CheckCircle2,
   Clock,
   Edit2,
   FileSpreadsheet,
@@ -34,6 +35,8 @@ import ProjectSpreadsheetView from './ProjectSpreadsheetView';
 import { formatIndianDate } from '../../utils/dateFormat';
 import { getValidToken } from '../../utils/auth';
 import '../../styles/admin.css';
+import '../AdminUsers/AdminUsers.css';
+import '../AdminTickets/AdminTickets.css';
 import './AdminProjects.css';
 
 const PJ_TYPE_OPTIONS = [
@@ -788,126 +791,131 @@ function AdminProjects() {
         <TopNavbar pageTitle="Projects Directory" />
         {/* Projects Page Container */}
         <div className="pj-page-container">
-          {/* 1. Projects Directory Header Row */}
-          <section id="pj-header-section" className="pj-subheader">
-            <div className="pj-title-group">
-              <div className="pj-title-text">
-                <h1 id="pj-page-heading">Projects Directory</h1>
-                <p className="pj-subheader-subtitle">
-                  Track projects, monitor test execution progress, and manage QA workspace folders.
-                </p>
-              </div>
-            </div>
-
-            <div className="pj-header-actions">
-              {/* Grid vs List View Toggle */}
-              <div id="pj-view-switcher" className="pj-view-switcher" role="group" aria-label="View mode">
-                <button
-                  id="pj-view-grid-btn"
-                  className={`pj-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                  onClick={() => setViewMode('grid')}
-                  aria-label="Grid view"
-                >
-                  <LayoutGrid size={18} />
-                </button>
-                <button
-                  id="pj-view-list-btn"
-                  className={`pj-view-btn ${viewMode === 'list' ? 'active' : ''}`}
-                  onClick={() => setViewMode('list')}
-                  aria-label="List view"
-                >
-                  <List size={18} />
-                </button>
-                <button
-                  id="pj-view-sheet-btn"
-                  className={`pj-view-btn ${viewMode === 'sheet' ? 'active' : ''}`}
-                  onClick={() => setViewMode('sheet')}
-                  aria-label="Sheet view"
-                >
-                  <FileSpreadsheet size={18} />
-                </button>
-              </div>
-
-              {/* + Create Project Primary Button */}
-              {canCreateProject && (
-                <button id="pj-create-project-btn" className="pj-btn-create-primary" onClick={openCreateModal}>
-                  <Plus size={18} strokeWidth={2.5} />
-                  <span>Create Project</span>
-                </button>
-              )}
-            </div>
-          </section>
-
-
-
-          {/* 2. Dashboard Metrics (2x2) + Search & Filter Panel */}
-          <section id="pj-overview-section" className={`pj-overview-controls-row${isDeveloper ? ' pj-no-filters' : ''}`}>
-            {/* Left: Dashboard 4 Metric Cards */}
-            <div className="pj-dashboard-panel">
-              <div className="pj-metrics-grid">
-                {/* Card 1: Total Projects */}
-                <div id="pj-metric-total" className="pj-metric-card card-total">
-                  <div className="pj-metric-left">
-                    <div className="pj-metric-icon-box blue">
-                      <Folder size={22} />
-                    </div>
-                    <div className="pj-metric-info">
-                      <span className="pj-metric-label">Total Projects</span>
-                      <span className="pj-metric-number">{stats.total}</span>
-                    </div>
-                  </div>
-                  <span className="pj-metric-badge badge-blue">Workspaces</span>
+          <div className="users-page-layout projects-page-layout">
+            {/* 1. Projects Workspace Header Row matching Tickets & Users */}
+            <header id="pj-header-section" className="um-header-container">
+              <div className="um-header-left">
+                <div className="um-header-icon-box">
+                  <Folder size={24} color="#2563EB" />
                 </div>
-
-                {/* Card 2: In Progress */}
-                <div id="pj-metric-in-progress" className="pj-metric-card card-in-progress">
-                  <div className="pj-metric-left">
-                    <div className="pj-metric-icon-box green">
-                      <PlayCircle size={22} />
-                    </div>
-                    <div className="pj-metric-info">
-                      <span className="pj-metric-label">In Progress</span>
-                      <span className="pj-metric-number">{stats.inProgress}</span>
-                    </div>
-                  </div>
-                  <span className="pj-metric-badge badge-green">Active QA</span>
-                </div>
-
-                {/* Card 3: Not Started */}
-                <div id="pj-metric-not-started" className="pj-metric-card card-not-started">
-                  <div className="pj-metric-left">
-                    <div className="pj-metric-icon-box orange">
-                      <Clock size={22} />
-                    </div>
-                    <div className="pj-metric-info">
-                      <span className="pj-metric-label">Not Started</span>
-                      <span className="pj-metric-number">{stats.notStarted}</span>
-                    </div>
-                  </div>
-                  <span className="pj-metric-badge badge-orange">Pipeline</span>
-                </div>
-
-                {/* Card 4: Completed */}
-                <div id="pj-metric-completed" className="pj-metric-card card-completed">
-                  <div className="pj-metric-left">
-                    <div className="pj-metric-icon-box purple">
-                      <FolderPlus size={22} />
-                    </div>
-                    <div className="pj-metric-info">
-                      <span className="pj-metric-label">Completed</span>
-                      <span className="pj-metric-number">{stats.completed}</span>
-                    </div>
-                  </div>
-                  <span className="pj-metric-badge badge-purple">Delivered</span>
+                <div className="um-header-titles">
+                  <h1 id="pj-page-heading">
+                    {isDeveloper || isProjectLead ? 'Assigned Projects Workspace' : 'Projects Workspace'}
+                  </h1>
+                  <p>
+                    {isDeveloper || isProjectLead
+                      ? 'Inspect your assigned projects, view test suites, and execute roadmap milestones.'
+                      : 'Track projects, monitor test execution progress, and manage QA workspace folders.'}
+                  </p>
                 </div>
               </div>
-            </div>
 
-            {/* Right: Search & Three Filters (hidden for Developer) */}
+              <div className="um-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Segmented View Switcher matching Tickets */}
+                <div id="pj-view-switcher" className="ticket-view-toggle" role="group" aria-label="Project view mode">
+                  <button
+                    id="pj-view-grid-btn"
+                    type="button"
+                    className={`ticket-view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                    onClick={() => setViewMode('grid')}
+                  >
+                    <LayoutGrid size={15} />
+                    <span>Cards Grid</span>
+                  </button>
+                  <button
+                    id="pj-view-list-btn"
+                    type="button"
+                    className={`ticket-view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+                    onClick={() => setViewMode('list')}
+                  >
+                    <List size={15} />
+                    <span>Table List</span>
+                  </button>
+                  <button
+                    id="pj-view-sheet-btn"
+                    type="button"
+                    className={`ticket-view-toggle-btn ${viewMode === 'sheet' ? 'active' : ''}`}
+                    onClick={() => setViewMode('sheet')}
+                  >
+                    <FileSpreadsheet size={15} />
+                    <span>Spreadsheet</span>
+                  </button>
+                </div>
+
+                {/* + Create Project Primary Button */}
+                {canCreateProject && (
+                  <button id="pj-create-project-btn" className="um-btn-create" onClick={openCreateModal}>
+                    <Plus size={18} />
+                    <span>Create Project</span>
+                  </button>
+                )}
+              </div>
+            </header>
+
+            {/* 2. 4 Full-Width Summary KPI Cards matching Tickets & Users */}
+            <section id="pj-stats-grid" className="um-stats-grid">
+              {/* Card 1: Total Projects */}
+              <div id="pj-stat-total" className="um-stat-card card-total">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-blue">
+                    <Folder size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Total Projects</span>
+                    <span className="um-stat-number">{stats.total}</span>
+                  </div>
+                </div>
+                <span className="um-stat-badge badge-blue">Workspaces</span>
+              </div>
+
+              {/* Card 2: In Progress */}
+              <div id="pj-stat-in-progress" className="um-stat-card card-active">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-green">
+                    <PlayCircle size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">In Progress</span>
+                    <span className="um-stat-number">{stats.inProgress}</span>
+                  </div>
+                </div>
+                <span className="um-stat-badge badge-green">Active QA</span>
+              </div>
+
+              {/* Card 3: Not Started */}
+              <div id="pj-stat-not-started" className="um-stat-card card-inactive">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-orange">
+                    <Clock size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Not Started</span>
+                    <span className="um-stat-number">{stats.notStarted}</span>
+                  </div>
+                </div>
+                <span className="um-stat-badge badge-orange">Pipeline</span>
+              </div>
+
+              {/* Card 4: Completed */}
+              <div id="pj-stat-completed" className="um-stat-card card-departments">
+                <div className="um-stat-left">
+                  <div className="um-stat-icon-wrap icon-wrap-purple">
+                    <CheckCircle2 size={22} />
+                  </div>
+                  <div className="um-stat-info">
+                    <span className="um-stat-label">Completed</span>
+                    <span className="um-stat-number">{stats.completed}</span>
+                  </div>
+                </div>
+                <span className="um-stat-badge badge-purple">Delivered</span>
+              </div>
+            </section>
+
+            {/* 3. Full-Width Filter & Search Controls Bar */}
             {!isDeveloper && (
-              <div className="pj-filter-controls-row">
-                <div className="pj-search-input-wrap">
-                  <Search size={16} />
+              <div className="um-controls-bar">
+                <div className="um-search-container">
+                  <Search size={16} color="#64748b" />
                   <input
                     id="pj-search-input"
                     type="text"
@@ -916,9 +924,19 @@ function AdminProjects() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      className="um-search-clear-btn"
+                      onClick={() => setSearchQuery('')}
+                      title="Clear search"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
 
-                <div className="pj-dropdown-group">
+                <div className="um-filter-selects">
                   <CustomSelect
                     id="pj-type-filter"
                     value={departmentFilter}
@@ -943,32 +961,44 @@ function AdminProjects() {
                     disabled={filtersLocked}
                   />
 
-                  <CustomSelect
-                    id="pj-sort-filter"
-                    value={sortBy}
-                    onChange={(val) => {
-                      if (!filtersLocked) setSortBy(val);
-                    }}
-                    options={PJ_SORT_OPTIONS}
-                    variant="filter"
-                    placeholder="Sort by"
-                    disabled={filtersLocked}
-                  />
+                  <div className="um-sort-lock-group">
+                    <CustomSelect
+                      id="pj-sort-filter"
+                      value={sortBy}
+                      onChange={(val) => {
+                        if (!filtersLocked) setSortBy(val);
+                      }}
+                      options={PJ_SORT_OPTIONS}
+                      variant="filter"
+                      placeholder="Sort by"
+                      disabled={filtersLocked}
+                    />
 
-                  <button
-                    id="pj-filter-lock-btn"
-                    type="button"
-                    className={`pj-fix-filter-chip ${filtersLocked ? 'is-locked' : ''}`}
-                    onClick={toggleFilterLock}
-                    aria-pressed={filtersLocked}
-                    aria-label={filtersLocked ? 'Unlock filters' : 'Lock filters'}
-                  >
-                    {filtersLocked ? <Lock size={16} /> : <Unlock size={16} />}
-                  </button>
+                    <button
+                      id="pj-filter-lock-btn"
+                      type="button"
+                      className={`um-fix-filter-chip ${filtersLocked ? 'is-locked' : ''}`}
+                      onClick={toggleFilterLock}
+                      aria-pressed={filtersLocked}
+                      aria-label={filtersLocked ? 'Unlock filters' : 'Lock filters'}
+                    >
+                      {filtersLocked ? <Lock size={16} /> : <Unlock size={16} />}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
-          </section>
+
+            {/* Section Header with Pill Badge matching Tickets */}
+            <div className="ticket-folders-section-header" style={{ margin: '4px 0 16px' }}>
+              <div className="ticket-folders-section-title">
+                <Folder size={18} color="#2563eb" />
+                <span>Project Workspaces</span>
+                <span className="ticket-folders-total-pill">
+                  {filteredProjects.length} {filteredProjects.length === 1 ? 'Project' : 'Projects'}
+                </span>
+              </div>
+            </div>
 
           {/* 4. Projects Display: Sheet View, Grid View or List View */}
           {filteredProjects.length === 0 && viewMode !== 'sheet' ? (
@@ -1272,6 +1302,7 @@ function AdminProjects() {
               </div>
             </section>
           )}
+          </div>
         </div>
       </main>
 
