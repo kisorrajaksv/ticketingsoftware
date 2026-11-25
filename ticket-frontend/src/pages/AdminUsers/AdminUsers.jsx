@@ -42,7 +42,7 @@ import { getValidToken } from '../../utils/auth';
 import '../../styles/admin.css';
 import './AdminUsers.css';
 
-const PROTECTED_EMAILS = ['manager@gmail.com', 'qalead@gmail.com'];
+const PROTECTED_EMAILS = ['admin@gmail.com'];
 
 const AVAILABLE_ROLES = [
   'Manager',

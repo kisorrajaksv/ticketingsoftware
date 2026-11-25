@@ -19,6 +19,7 @@ export async function resetProductionDatabase() {
       TRUNCATE TABLE 
         ticket_history,
         notifications,
+        project_documents,
         project_sheets,
         project_developer_assignments,
         project_lead_assignments,
@@ -44,24 +45,25 @@ export async function resetProductionDatabase() {
     }
 
     const salt = await bcrypt.genSalt(10);
-    const defaultPasswordHash = await bcrypt.hash('Kanavu@123', salt);
+    const adminPasswordHash = await bcrypt.hash('Admin@123', salt);
 
     await pool.query(`
       INSERT INTO users (emp_id, full_name, email, password, department, role, status)
       VALUES 
-        ('EMP-001', 'Manager', 'manager@gmail.com', $1, 'Administration', 'Manager', 'Active'),
-        ('EMP-002', 'QA Lead', 'qalead@gmail.com', $1, 'Quality Assurance', 'QA Lead', 'Active')
+        ('EMP-000', 'System Admin', 'admin@gmail.com', $1, 'Management', 'Admin', 'Active')
       ON CONFLICT (email) DO UPDATE SET
         password = EXCLUDED.password,
         role = EXCLUDED.role,
         status = 'Active';
-    `, [defaultPasswordHash]);
-    console.log('   ✓ Clean system accounts seeded (Manager & QA Lead, Password: Kanavu@123).');
+    `, [adminPasswordHash]);
+    console.log('   ✓ Clean system account seeded (System Admin: admin@gmail.com, Password: Admin@123).');
 
     // 3. Ensure official roles are seeded
     console.log('3. Seeding standard production roles...');
     await pool.query(`
       INSERT INTO roles (role_name, description, permissions) VALUES
+        ('Admin', 'Complete company administration, employee management, and system governance', 
+         ARRAY['manage_users', 'manage_projects', 'manage_roles', 'view_reports', 'manage_tickets', 'approve_deployments']),
         ('Manager', 'Complete workspace administration, team management, project governance, and system security controls', 
          ARRAY['manage_users', 'manage_projects', 'manage_roles', 'view_reports', 'manage_tickets', 'approve_deployments']),
         ('QA Lead', 'Oversees test strategies, test runs, sprint ticket approvals, and production release sign-offs', 
@@ -98,7 +100,7 @@ export async function resetProductionDatabase() {
     console.log('   - 0 Tickets');
     console.log('   - 0 Test Case Sheets');
     console.log('   - 0 Dummy Assignments');
-    console.log('   - Default System Users: manager@gmail.com, qalead@gmail.com (Password: Kanavu@123)');
+    console.log('   - Default System Admin: admin@gmail.com (Password: Admin@123)');
     console.log('======================================================\n');
     
     process.exit(0);

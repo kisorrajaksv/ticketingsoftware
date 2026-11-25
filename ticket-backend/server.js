@@ -47,7 +47,7 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey_change_in_production';
 
 // Protected inbuilt system emails that cannot be edited or deleted
-const PROTECTED_SYSTEM_EMAILS = ['admin@gmail.com', 'manager@gmail.com', 'qalead@gmail.com'];
+const PROTECTED_SYSTEM_EMAILS = ['admin@gmail.com'];
 const DEFAULT_USER_PASSWORD = 'Welcome@123';
 
 // Middleware
@@ -820,7 +820,7 @@ app.put('/api/admin/users/:id', async (req, res) => {
       });
     }
 
-    // Default protected accounts (manager@gmail.com, qalead@gmail.com) cannot have their email changed by non-admins
+    // Inbuilt protected accounts (admin@gmail.com) cannot have their email changed by non-admins
     if (PROTECTED_SYSTEM_EMAILS.includes(existingUser.email.toLowerCase()) && requester?.role !== 'Admin' && requester?.role !== 'Super Admin') {
       return res.status(403).json({
         error: `Inbuilt system user (${existingUser.email}) is protected and cannot be edited.`
@@ -913,7 +913,7 @@ app.delete('/api/admin/users/:id', async (req, res) => {
       });
     }
 
-    // Inbuilt protected accounts (manager@gmail.com, qalead@gmail.com) cannot be deleted by non-admins
+    // Inbuilt protected accounts cannot be deleted by non-admins
     if (PROTECTED_SYSTEM_EMAILS.includes(targetUser.email.toLowerCase()) && requester?.role !== 'Admin' && requester?.role !== 'Super Admin') {
       return res.status(403).json({
         error: `Inbuilt system user (${targetUser.email}) is protected and cannot be deleted.`
@@ -951,7 +951,6 @@ app.get('/api/admin/project-leads', async (req, res) => {
        FROM users 
        WHERE LOWER(role) NOT IN ('admin', 'manager', 'super admin', 'qa member')
          AND LOWER(email) NOT LIKE '%admin%'
-         AND LOWER(email) != 'manager@gmail.com'
          AND status = 'Active'
        ORDER BY full_name ASC`
     );

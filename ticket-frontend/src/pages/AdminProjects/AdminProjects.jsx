@@ -254,7 +254,7 @@ function AdminProjects() {
           const nonAdminUsers = usersRes.data.filter((u) => {
             const r = (u.role || '').toLowerCase();
             const e = (u.email || '').toLowerCase();
-            return !r.includes('admin') && r !== 'manager' && r !== 'qa member' && !e.includes('admin') && e !== 'manager@gmail.com';
+            return !r.includes('admin') && r !== 'manager' && r !== 'qa member' && !e.includes('admin');
           });
           setProjectLeads(nonAdminUsers);
         }
